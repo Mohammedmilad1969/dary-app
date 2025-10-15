@@ -1,0 +1,1277 @@
+{
+  "appTitle": "Dary Properties",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "home": "Home",
+  "@home": {
+    "description": "Home tab label"
+  },
+  "addProperty": "Add Property",
+  "@addProperty": {
+    "description": "Add Property tab label"
+  },
+  "wallet": "Wallet",
+  "@wallet": {
+    "description": "Wallet tab label"
+  },
+  "profile": "Profile",
+  "@profile": {
+    "description": "Profile tab label"
+  },
+  "welcomeMessage": "Welcome to Dary!",
+  "@welcomeMessage": {
+    "description": "Welcome message on home screen"
+  },
+  "subtitleMessage": "Your minimal Flutter app with Material 3",
+  "@subtitleMessage": {
+    "description": "Subtitle message on home screen"
+  },
+  "navigationHint": "Use the bottom navigation to explore features",
+  "@navigationHint": {
+    "description": "Hint text for navigation"
+  },
+  "currentBalance": "Current Balance",
+  "@currentBalance": {
+    "description": "Current balance label"
+  },
+  "recharge": "Recharge",
+  "@recharge": {
+    "description": "Recharge button text"
+  },
+  "transactionHistory": "Transaction History",
+  "@transactionHistory": {
+    "description": "Transaction history section title"
+  },
+  "export": "Export",
+  "@export": {
+    "description": "Export button text"
+  },
+  "myProfile": "My Profile",
+  "@myProfile": {
+    "description": "Profile screen title"
+  },
+  "manageAccountSettings": "Manage your account settings",
+  "@manageAccountSettings": {
+    "description": "Profile screen subtitle"
+  },
+  "activeListings": "Active Listings",
+  "@activeListings": {
+    "description": "Active listings section title"
+  },
+  "viewAll": "View All",
+  "@viewAll": {
+    "description": "View all button text"
+  },
+  "accountManagement": "Account Management",
+  "@accountManagement": {
+    "description": "Account management section title"
+  },
+  "editProfile": "Edit Profile",
+  "@editProfile": {
+    "description": "Edit profile button text"
+  },
+  "upgradeToPremium": "Upgrade to Premium",
+  "@upgradeToPremium": {
+    "description": "Upgrade to premium button text"
+  },
+  "deleteAccount": "Delete Account",
+  "@deleteAccount": {
+    "description": "Delete account button text"
+  },
+  "upgradeToPremiumTitle": "Upgrade to Premium",
+  "@upgradeToPremiumTitle": {
+    "description": "Paywall screen title"
+  },
+  "boostYourListings": "Boost Your Listings",
+  "@boostYourListings": {
+    "description": "Paywall screen header title"
+  },
+  "getMoreVisibility": "Get more visibility with our Top Listing packages",
+  "@getMoreVisibility": {
+    "description": "Paywall screen header subtitle"
+  },
+  "limitedTimeOffer": "✨ Limited Time Offer",
+  "@limitedTimeOffer": {
+    "description": "Limited time offer badge"
+  },
+  "chooseYourPackage": "Choose Your Package",
+  "@chooseYourPackage": {
+    "description": "Choose package section title"
+  },
+  "selectPerfectDuration": "Select the perfect duration for your listing promotion",
+  "@selectPerfectDuration": {
+    "description": "Choose package section subtitle"
+  },
+  "topListing": "Top Listing",
+  "@topListing": {
+    "description": "Package name"
+  },
+  "oneDay": "1 Day",
+  "@oneDay": {
+    "description": "One day duration"
+  },
+  "oneWeek": "1 Week",
+  "@oneWeek": {
+    "description": "One week duration"
+  },
+  "oneMonth": "1 Month",
+  "@oneMonth": {
+    "description": "One month duration"
+  },
+  "popular": "POPULAR",
+  "@popular": {
+    "description": "Popular badge text"
+  },
+  "perfectForQuickPromotion": "Perfect for quick promotion",
+  "@perfectForQuickPromotion": {
+    "description": "One day package description"
+  },
+  "greatForTestingWaters": "Great for testing the waters",
+  "@greatForTestingWaters": {
+    "description": "One week package description"
+  },
+  "bestValueForSeriousSellers": "Best value for serious sellers",
+  "@bestValueForSeriousSellers": {
+    "description": "One month package description"
+  },
+  "priorityPlacement": "Priority placement in search results",
+  "@priorityPlacement": {
+    "description": "Feature description"
+  },
+  "featuredBadge": "Featured badge on your listing",
+  "@featuredBadge": {
+    "description": "Feature description"
+  },
+  "increasedVisibility": "Increased visibility",
+  "@increasedVisibility": {
+    "description": "Feature description"
+  },
+  "dayBoost": "24-hour boost",
+  "@dayBoost": {
+    "description": "Feature description"
+  },
+  "weekBoost": "7-day boost",
+  "@weekBoost": {
+    "description": "Feature description"
+  },
+  "monthBoost": "30-day boost",
+  "@monthBoost": {
+    "description": "Feature description"
+  },
+  "analyticsDashboard": "Analytics dashboard",
+  "@analyticsDashboard": {
+    "description": "Feature description"
+  },
+  "premiumSupport": "Premium support",
+  "@premiumSupport": {
+    "description": "Feature description"
+  },
+  "multipleListingPromotion": "Multiple listing promotion",
+  "@multipleListingPromotion": {
+    "description": "Feature description"
+  },
+  "customListingDesign": "Custom listing design",
+  "@customListingDesign": {
+    "description": "Feature description"
+  },
+  "buyOneDay": "Buy 1 Day",
+  "@buyOneDay": {
+    "description": "Buy one day button text"
+  },
+  "buyOneWeek": "Buy 1 Week",
+  "@buyOneWeek": {
+    "description": "Buy one week button text"
+  },
+  "buyOneMonth": "Buy 1 Month",
+  "@buyOneMonth": {
+    "description": "Buy one month button text"
+  },
+  "whyChooseTopListing": "Why Choose Top Listing?",
+  "@whyChooseTopListing": {
+    "description": "Benefits section title"
+  },
+  "increasedVisibilityDescription": "Your listing appears at the top of search results",
+  "@increasedVisibilityDescription": {
+    "description": "Benefit description"
+  },
+  "featuredBadgeDescription": "Stand out with a premium featured badge",
+  "@featuredBadgeDescription": {
+    "description": "Benefit description"
+  },
+  "analyticsDashboardDescription": "Track views, clicks, and engagement metrics",
+  "@analyticsDashboardDescription": {
+    "description": "Benefit description"
+  },
+  "premiumSupportDescription": "Get priority customer support",
+  "@premiumSupportDescription": {
+    "description": "Benefit description"
+  },
+  "successfullyPurchased": "Successfully purchased {packageName}!",
+  "@successfullyPurchased": {
+    "description": "Purchase success message",
+    "placeholders": {
+      "packageName": {
+        "type": "String",
+        "example": "Top Listing - 1 Week"
+      }
+    }
+  },
+  "viewDetails": "View Details",
+  "@viewDetails": {
+    "description": "View details button text"
+  },
+  "purchaseFailed": "Purchase failed. Please try again.",
+  "@purchaseFailed": {
+    "description": "Purchase failure message"
+  },
+  "errorProcessingPurchase": "Error processing purchase: {error}",
+  "@errorProcessingPurchase": {
+    "description": "Purchase error message",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Network error"
+      }
+    }
+  },
+  "addPropertyTitle": "Add Property",
+  "@addPropertyTitle": {
+    "description": "Add property screen title"
+  },
+  "propertyTitle": "Property Title",
+  "@propertyTitle": {
+    "description": "Property title field label"
+  },
+  "enterPropertyTitle": "Enter property title",
+  "@enterPropertyTitle": {
+    "description": "Property title field hint"
+  },
+  "description": "Description",
+  "@description": {
+    "description": "Description field label"
+  },
+  "describeYourProperty": "Describe your property",
+  "@describeYourProperty": {
+    "description": "Description field hint"
+  },
+  "price": "Price ($)",
+  "@price": {
+    "description": "Price field label"
+  },
+  "enterPrice": "Enter price",
+  "@enterPrice": {
+    "description": "Price field hint"
+  },
+  "size": "Size (sqm)",
+  "@size": {
+    "description": "Size field label"
+  },
+  "enterSize": "Enter size in square meters",
+  "@enterSize": {
+    "description": "Size field hint"
+  },
+  "features": "Features",
+  "@features": {
+    "description": "Features section title"
+  },
+  "balcony": "Balcony",
+  "@balcony": {
+    "description": "Balcony feature label"
+  },
+  "propertyHasBalcony": "Property has a balcony",
+  "@propertyHasBalcony": {
+    "description": "Balcony feature description"
+  },
+  "garden": "Garden",
+  "@garden": {
+    "description": "Garden feature label"
+  },
+  "propertyHasGarden": "Property has a garden",
+  "@propertyHasGarden": {
+    "description": "Garden feature description"
+  },
+  "parking": "Parking",
+  "@parking": {
+    "description": "Parking feature label"
+  },
+  "propertyHasParking": "Property has parking",
+  "@propertyHasParking": {
+    "description": "Parking feature description"
+  },
+  "images": "Images",
+  "@images": {
+    "description": "Images section title"
+  },
+  "uploadImages": "Upload Images (up to 10)",
+  "@uploadImages": {
+    "description": "Upload images button text"
+  },
+  "imagesSelected": "{count} images selected",
+  "@imagesSelected": {
+    "description": "Images selected text",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "selectedImages": "Selected Images:",
+  "@selectedImages": {
+    "description": "Selected images label"
+  },
+  "addPropertyButton": "Add Property",
+  "@addPropertyButton": {
+    "description": "Add property button text"
+  },
+  "addingProperty": "Adding Property...",
+  "@addingProperty": {
+    "description": "Adding property loading text"
+  },
+  "propertyAddedSuccessfully": "Property added successfully!",
+  "@propertyAddedSuccessfully": {
+    "description": "Property added success message"
+  },
+  "languageToggle": "Language",
+  "@languageToggle": {
+    "description": "Language toggle button tooltip"
+  },
+  "features": "Features",
+  "@features": {
+    "description": "Features section title"
+  },
+  "images": "Images",
+  "@images": {
+    "description": "Images section title"
+  },
+  "uploadImages": "Upload Images (up to 10)",
+  "@uploadImages": {
+    "description": "Upload images button text"
+  },
+  "selectedImages": "Selected Images:",
+  "@selectedImages": {
+    "description": "Selected images label"
+  },
+  "addPropertyButton": "Add Property",
+  "@addPropertyButton": {
+    "description": "Add property button text"
+  },
+  "addingProperty": "Adding Property...",
+  "@addingProperty": {
+    "description": "Adding property loading text"
+  },
+  "propertyAddedSuccessfully": "Property added successfully!",
+  "@propertyAddedSuccessfully": {
+    "description": "Property added success message"
+  },
+  "noTransactionsYet": "No transactions yet",
+  "@noTransactionsYet": {
+    "description": "No transactions message"
+  },
+  "exportTransactions": "Export transactions",
+  "@exportTransactions": {
+    "description": "Export transactions message"
+  },
+  "searchProperties": "Search properties...",
+  "@searchProperties": {
+    "description": "Search properties placeholder"
+  },
+  "featured": "Featured",
+  "@featured": {
+    "description": "Featured properties label"
+  },
+  "verified": "Verified",
+  "@verified": {
+    "description": "Verified properties label"
+  },
+  "priceRange": "Price Range",
+  "@priceRange": {
+    "description": "Price range label"
+  },
+  "clearFilters": "Clear Filters",
+  "@clearFilters": {
+    "description": "Clear filters button"
+  },
+  "advancedFilters": "Advanced",
+  "@advancedFilters": {
+    "description": "Advanced filters button"
+  },
+  "propertyType": "Property Type",
+  "@propertyType": {
+    "description": "Property type label"
+  },
+  "propertyStatus": "Property Status",
+  "@propertyStatus": {
+    "description": "Property status label"
+  },
+  "applyFilters": "Apply Filters",
+  "@applyFilters": {
+    "description": "Apply filters button"
+  },
+  "forSale": "For Sale",
+  "@forSale": {
+    "description": "For sale status"
+  },
+  "forRent": "For Rent",
+  "@forRent": {
+    "description": "For rent status"
+  },
+  "sold": "Sold",
+  "@sold": {
+    "description": "Sold status"
+  },
+  "rented": "Rented",
+  "@rented": {
+    "description": "Rented status"
+  },
+  "apartment": "Apartment",
+  "@apartment": {
+    "description": "Apartment type"
+  },
+  "house": "House",
+  "@house": {
+    "description": "House type"
+  },
+  "villa": "Villa",
+  "@villa": {
+    "description": "Villa type"
+  },
+  "townhouse": "Townhouse",
+  "@townhouse": {
+    "description": "Townhouse type"
+  },
+  "studio": "Studio",
+  "@studio": {
+    "description": "Studio type"
+  },
+  "penthouse": "Penthouse",
+  "@penthouse": {
+    "description": "Penthouse type"
+  },
+  "commercial": "Commercial",
+  "@commercial": {
+    "description": "Commercial type"
+  },
+  "land": "Land",
+  "@land": {
+    "description": "Land type"
+  },
+  "noPropertiesFound": "No properties found",
+  "@noPropertiesFound": {
+    "description": "No properties found message"
+  },
+  "tryAdjustingFilters": "Try adjusting your search filters",
+  "@tryAdjustingFilters": {
+    "description": "Try adjusting filters message"
+  },
+  "basicInformation": "Basic Information",
+  "@basicInformation": {
+    "description": "Basic information section title"
+  },
+  "locationInformation": "Location Information",
+  "@locationInformation": {
+    "description": "Location information section title"
+  },
+  "propertyDetails": "Property Details",
+  "@propertyDetails": {
+    "description": "Property details section title"
+  },
+  "contactInformation": "Contact Information",
+  "@contactInformation": {
+    "description": "Contact information section title"
+  },
+  "pleaseEnterTitle": "Please enter a title",
+  "@pleaseEnterTitle": {
+    "description": "Title validation message"
+  },
+  "pleaseEnterDescription": "Please enter a description",
+  "@pleaseEnterDescription": {
+    "description": "Description validation message"
+  },
+  "pleaseEnterPrice": "Please enter a price",
+  "@pleaseEnterPrice": {
+    "description": "Price validation message"
+  },
+  "pleaseEnterValidPrice": "Please enter a valid price",
+  "@pleaseEnterValidPrice": {
+    "description": "Valid price validation message"
+  },
+  "pleaseEnterSize": "Please enter the size",
+  "@pleaseEnterSize": {
+    "description": "Size validation message"
+  },
+  "pleaseEnterValidSize": "Please enter a valid size",
+  "@pleaseEnterValidSize": {
+    "description": "Valid size validation message"
+  },
+  "maxImages": "You can upload a maximum of 10 images.",
+  "@maxImages": {
+    "description": "Maximum images message"
+  },
+  "failedToPickImages": "Failed to pick images:",
+  "@failedToPickImages": {
+    "description": "Failed to pick images message"
+  },
+  "selectImages": "Select Images",
+  "@selectImages": {
+    "description": "Select images button"
+  },
+  "login": "Login",
+  "@login": {
+    "description": "Login button text"
+  },
+  "register": "Register",
+  "@register": {
+    "description": "Register button text"
+  },
+  "email": "Email",
+  "@email": {
+    "description": "Email field label"
+  },
+  "password": "Password",
+  "@password": {
+    "description": "Password field label"
+  },
+  "confirmPassword": "Confirm Password",
+  "@confirmPassword": {
+    "description": "Confirm password field label"
+  },
+  "fullName": "Full Name",
+  "@fullName": {
+    "description": "Full name field label"
+  },
+  "phoneNumber": "Phone Number",
+  "@phoneNumber": {
+    "description": "Phone number field label"
+  },
+  "loginTitle": "Welcome Back",
+  "@loginTitle": {
+    "description": "Login screen title"
+  },
+  "loginSubtitle": "Sign in to your account",
+  "@loginSubtitle": {
+    "description": "Login screen subtitle"
+  },
+  "registerTitle": "Create Account",
+  "@registerTitle": {
+    "description": "Register screen title"
+  },
+  "registerSubtitle": "Join Dary Properties today",
+  "@registerSubtitle": {
+    "description": "Register screen subtitle"
+  },
+  "loginButton": "Sign In",
+  "@loginButton": {
+    "description": "Login button text"
+  },
+  "registerButton": "Create Account",
+  "@registerButton": {
+    "description": "Register button text"
+  },
+  "alreadyHaveAccount": "Already have an account?",
+  "@alreadyHaveAccount": {
+    "description": "Already have account text"
+  },
+  "dontHaveAccount": "Don't have an account?",
+  "@dontHaveAccount": {
+    "description": "Don't have account text"
+  },
+  "signInHere": "Sign in here",
+  "@signInHere": {
+    "description": "Sign in link text"
+  },
+  "signUpHere": "Sign up here",
+  "@signUpHere": {
+    "description": "Sign up link text"
+  },
+  "enterEmail": "Enter your email",
+  "@enterEmail": {
+    "description": "Email field hint"
+  },
+  "enterPassword": "Enter your password",
+  "@enterPassword": {
+    "description": "Password field hint"
+  },
+  "enterConfirmPassword": "Confirm your password",
+  "@enterConfirmPassword": {
+    "description": "Confirm password field hint"
+  },
+  "enterFullName": "Enter your full name",
+  "@enterFullName": {
+    "description": "Full name field hint"
+  },
+  "enterPhoneNumber": "Enter your phone number",
+  "@enterPhoneNumber": {
+    "description": "Phone number field hint"
+  },
+  "emailRequired": "Email is required",
+  "@emailRequired": {
+    "description": "Email required validation"
+  },
+  "passwordRequired": "Password is required",
+  "@passwordRequired": {
+    "description": "Password required validation"
+  },
+  "nameRequired": "Full name is required",
+  "@nameRequired": {
+    "description": "Name required validation"
+  },
+  "phoneRequired": "Phone number is required",
+  "@phoneRequired": {
+    "description": "Phone required validation"
+  },
+  "confirmPasswordRequired": "Please confirm your password",
+  "@confirmPasswordRequired": {
+    "description": "Confirm password required validation"
+  },
+  "invalidEmail": "Please enter a valid email",
+  "@invalidEmail": {
+    "description": "Invalid email validation"
+  },
+  "passwordTooShort": "Password must be at least 6 characters",
+  "@passwordTooShort": {
+    "description": "Password too short validation"
+  },
+  "passwordsDoNotMatch": "Passwords do not match",
+  "@passwordsDoNotMatch": {
+    "description": "Passwords don't match validation"
+  },
+  "loginSuccess": "Login successful! Welcome back",
+  "@loginSuccess": {
+    "description": "Login success message"
+  },
+  "registerSuccess": "Account created successfully! Welcome to Dary",
+  "@registerSuccess": {
+    "description": "Register success message"
+  },
+  "loginFailed": "Login failed. Please check your credentials",
+  "@loginFailed": {
+    "description": "Login failed message"
+  },
+  "registerFailed": "Registration failed. Please try again",
+  "@registerFailed": {
+    "description": "Register failed message"
+  },
+  "loggingIn": "Signing in...",
+  "@loggingIn": {
+    "description": "Login loading text"
+  },
+  "registering": "Creating account...",
+  "@registering": {
+    "description": "Register loading text"
+  },
+  "forgotPassword": "Forgot Password?",
+  "@forgotPassword": {
+    "description": "Forgot password link"
+  },
+  "rememberMe": "Remember Me",
+  "@rememberMe": {
+    "description": "Remember me checkbox"
+  },
+  "termsAndConditions": "By signing up, you agree to our Terms and Conditions",
+  "@termsAndConditions": {
+    "description": "Terms and conditions text"
+  },
+  "privacyPolicy": "Privacy Policy",
+  "@privacyPolicy": {
+    "description": "Privacy policy link"
+  },
+  "logoutSuccess": "Logged out successfully",
+  "@logoutSuccess": {
+    "description": "Logout success message"
+  },
+  "messages": "Messages",
+  "@messages": {
+    "description": "Messages tab label"
+  },
+  "chat": "Chat",
+  "@chat": {
+    "description": "Chat screen title"
+  },
+  "typeMessage": "Type a message...",
+  "@typeMessage": {
+    "description": "Placeholder text for message input field"
+  },
+  "noMessagesYet": "No messages yet",
+  "@noMessagesYet": {
+    "description": "Text shown when there are no messages in a conversation"
+  },
+  "startConversation": "Start the conversation!",
+  "@startConversation": {
+    "description": "Text encouraging user to start a conversation"
+  },
+  "noConversationsYet": "No conversations yet",
+  "@noConversationsYet": {
+    "description": "Text shown when there are no conversations"
+  },
+  "startConversationWithSeller": "Start a conversation with a seller to discuss properties!",
+  "@startConversationWithSeller": {
+    "description": "Text encouraging user to start conversations with sellers"
+  },
+  "browseProperties": "Browse Properties",
+  "@browseProperties": {
+    "description": "Button text to browse properties"
+  },
+  "conversationNotFound": "Conversation not found",
+  "@conversationNotFound": {
+    "description": "Error message when conversation is not found"
+  },
+  "errorLoadingMessages": "Error loading messages",
+  "@errorLoadingMessages": {
+    "description": "Error message when messages fail to load"
+  },
+  "errorSendingMessage": "Error sending message",
+  "@errorSendingMessage": {
+    "description": "Error message when message fails to send"
+  },
+  "errorLoadingConversations": "Error loading conversations",
+  "@errorLoadingConversations": {
+    "description": "Error message when conversations fail to load"
+  },
+  "propertyDetails": "Property Details",
+  "@propertyDetails": {
+    "description": "Property details screen title"
+  },
+  "pleaseLoginFirst": "Please login first",
+  "@pleaseLoginFirst": {
+    "description": "Message shown when user needs to login to contact seller"
+  },
+  "cannotContactYourself": "You cannot contact yourself",
+  "@cannotContactYourself": {
+    "description": "Message shown when user tries to contact themselves"
+  },
+  "errorCreatingConversation": "Error creating conversation",
+  "@errorCreatingConversation": {
+    "description": "Error message when conversation creation fails"
+  },
+  "errorContactingSeller": "Error contacting seller",
+  "@errorContactingSeller": {
+    "description": "Error message when contacting seller fails"
+  },
+  "contactSeller": "Contact Seller",
+  "@contactSeller": {
+    "description": "Button text to contact seller"
+  },
+  "creatingConversation": "Creating conversation...",
+  "@creatingConversation": {
+    "description": "Text shown while creating conversation"
+  },
+  "description": "Description",
+  "@description": {
+    "description": "Description section title"
+  },
+  "features": "Features",
+  "@features": {
+    "description": "Features section title"
+  },
+  "agentInfo": "Agent Information",
+  "@agentInfo": {
+    "description": "Agent information section title"
+  },
+  "realEstateAgent": "Real Estate Agent",
+  "@realEstateAgent": {
+    "description": "Real estate agent label"
+  },
+  "views": "views",
+  "@views": {
+    "description": "Views count label"
+  },
+  "listedOn": "Listed on",
+  "@listedOn": {
+    "description": "Listed date label"
+  },
+  "bedrooms": "Bedrooms",
+  "@bedrooms": {
+    "description": "Bedrooms label"
+  },
+  "bathrooms": "Bathrooms",
+  "@bathrooms": {
+    "description": "Bathrooms label"
+  },
+  "sqm": "sqm",
+  "@sqm": {
+    "description": "Square meters label"
+  },
+  "balcony": "Balcony",
+  "@balcony": {
+    "description": "Balcony feature"
+  },
+  "garden": "Garden",
+  "@garden": {
+    "description": "Garden feature"
+  },
+  "parking": "Parking",
+  "@parking": {
+    "description": "Parking feature"
+  },
+  "pool": "Pool",
+  "@pool": {
+    "description": "Pool feature"
+  },
+  "gym": "Gym",
+  "@gym": {
+    "description": "Gym feature"
+  },
+  "security": "Security",
+  "@security": {
+    "description": "Security feature"
+  },
+  "elevator": "Elevator",
+  "@elevator": {
+    "description": "Elevator feature"
+  },
+  "ac": "AC",
+  "@ac": {
+    "description": "Air conditioning feature"
+  },
+  "furnished": "Furnished",
+  "@furnished": {
+    "description": "Furnished feature"
+  },
+  "newMessageFrom": "New message from",
+  "@newMessageFrom": {
+    "description": "New message notification prefix"
+  },
+  "newConversationStarted": "New conversation started",
+  "@newConversationStarted": {
+    "description": "New conversation notification title"
+  },
+  "about": "About",
+  "@about": {
+    "description": "About prefix for property"
+  },
+  "view": "View",
+  "@view": {
+    "description": "View button text"
+  },
+  "testNotification": "Test Notification",
+  "@testNotification": {
+    "description": "Test notification button text"
+  },
+  "verification": "Verification",
+  "@verification": {
+    "description": "Verification screen title"
+  },
+  "verificationInfo": "Verification Information",
+  "@verificationInfo": {
+    "description": "Verification information section title"
+  },
+  "verificationDescription": "To become a verified seller, please upload your ID card and business license. This helps us verify your identity and build trust with potential buyers.",
+  "@verificationDescription": {
+    "description": "Verification description text"
+  },
+  "uploadIdCard": "Upload ID Card",
+  "@uploadIdCard": {
+    "description": "Upload ID card section title"
+  },
+  "uploadBusinessLicense": "Upload Business License",
+  "@uploadBusinessLicense": {
+    "description": "Upload business license section title"
+  },
+  "tapToUploadIdCard": "Tap to upload ID card",
+  "@tapToUploadIdCard": {
+    "description": "Tap to upload ID card placeholder"
+  },
+  "tapToUploadLicense": "Tap to upload business license",
+  "@tapToUploadLicense": {
+    "description": "Tap to upload business license placeholder"
+  },
+  "submitVerification": "Submit for Verification",
+  "@submitVerification": {
+    "description": "Submit verification button text"
+  },
+  "verificationSuccess": "You are now a verified seller!",
+  "@verificationSuccess": {
+    "description": "Verification success dialog title"
+  },
+  "verificationSuccessMessage": "Your documents have been verified. You can now enjoy all the benefits of being a verified seller.",
+  "@verificationSuccessMessage": {
+    "description": "Verification success dialog message"
+  },
+  "continueText": "Continue",
+  "@continueText": {
+    "description": "Continue button text"
+  },
+  "alreadyVerified": "You are already verified!",
+  "@alreadyVerified": {
+    "description": "Already verified screen title"
+  },
+  "alreadyVerifiedMessage": "Your account has been verified. You can enjoy all the benefits of being a verified seller.",
+  "@alreadyVerifiedMessage": {
+    "description": "Already verified screen message"
+  },
+  "backToProfile": "Back to Profile",
+  "@backToProfile": {
+    "description": "Back to profile button text"
+  },
+  "getVerified": "Get Verified",
+  "@getVerified": {
+    "description": "Get verified button text"
+  },
+  "privacyNotice": "Your documents are encrypted and stored securely. We only use them for verification purposes.",
+  "@privacyNotice": {
+    "description": "Privacy notice text"
+  },
+  "pleaseUploadBothDocuments": "Please upload both documents",
+  "@pleaseUploadBothDocuments": {
+    "description": "Error message when documents are missing"
+  },
+  "verificationError": "Verification failed. Please try again.",
+  "@verificationError": {
+    "description": "Verification error message"
+  },
+  "errorPickingImage": "Error picking image",
+  "@errorPickingImage": {
+    "description": "Error message when image picking fails"
+  },
+  "camera": "Camera",
+  "@camera": {
+    "description": "Camera option in image picker"
+  },
+  "gallery": "Gallery",
+  "@gallery": {
+    "description": "Gallery option in image picker"
+  },
+  "analytics": "Analytics",
+  "@analytics": {
+    "description": "Analytics screen title"
+  },
+  "viewAnalytics": "View Analytics",
+  "@viewAnalytics": {
+    "description": "View analytics button text"
+  },
+  "performanceOverview": "Performance Overview",
+  "@performanceOverview": {
+    "description": "Performance overview section title"
+  },
+  "topPerformingListing": "Top Performing Listing",
+  "@topPerformingListing": {
+    "description": "Top performing listing card title"
+  },
+  "averageEngagement": "Average Engagement",
+  "@averageEngagement": {
+    "description": "Average engagement card title"
+  },
+  "totalViews": "Total Views",
+  "@totalViews": {
+    "description": "Total views card title"
+  },
+  "totalContacts": "Total Contacts",
+  "@totalContacts": {
+    "description": "Total contacts card title"
+  },
+  "dailyViews": "Daily Views (Last 7 Days)",
+  "@dailyViews": {
+    "description": "Daily views chart title"
+  },
+  "propertyTypePerformance": "Property Type Performance",
+  "@propertyTypePerformance": {
+    "description": "Property type performance chart title"
+  },
+  "detailedMetrics": "Detailed Metrics",
+  "@detailedMetrics": {
+    "description": "Detailed metrics section title"
+  },
+  "totalListings": "Total Listings",
+  "@totalListings": {
+    "description": "Total listings metric"
+  },
+  "averageViewsPerListing": "Average Views per Listing",
+  "@averageViewsPerListing": {
+    "description": "Average views per listing metric"
+  },
+  "contactConversionRate": "Contact Conversion Rate",
+  "@contactConversionRate": {
+    "description": "Contact conversion rate metric"
+  },
+  "errorLoadingAnalytics": "Error loading analytics data",
+  "@errorLoadingAnalytics": {
+    "description": "Error message when analytics fail to load"
+  },
+  "adminDashboard": "Admin Dashboard",
+  "@adminDashboard": {
+    "description": "Admin dashboard title"
+  },
+  "users": "Users",
+  "@users": {
+    "description": "Users tab label"
+  },
+  "properties": "Properties",
+  "@properties": {
+    "description": "Properties tab label"
+  },
+  "payments": "Payments",
+  "@payments": {
+    "description": "Payments tab label"
+  },
+  "totalUsers": "Total Users",
+  "@totalUsers": {
+    "description": "Total users stat card"
+  },
+  "totalProperties": "Total Properties",
+  "@totalProperties": {
+    "description": "Total properties stat card"
+  },
+  "totalPayments": "Total Payments",
+  "@totalPayments": {
+    "description": "Total payments stat card"
+  },
+  "totalRevenue": "Total Revenue",
+  "@totalRevenue": {
+    "description": "Total revenue stat card"
+  },
+  "name": "Name",
+  "@name": {
+    "description": "Name column header"
+  },
+  "email": "Email",
+  "@email": {
+    "description": "Email column header"
+  },
+  "phone": "Phone",
+  "@phone": {
+    "description": "Phone column header"
+  },
+  "verified": "Verified",
+  "@verified": {
+    "description": "Verified column header"
+  },
+  "active": "Active",
+  "@active": {
+    "description": "Active column header"
+  },
+  "listings": "Listings",
+  "@listings": {
+    "description": "Listings column header"
+  },
+  "actions": "Actions",
+  "@actions": {
+    "description": "Actions column header"
+  },
+  "title": "Title",
+  "@title": {
+    "description": "Title column header"
+  },
+  "owner": "Owner",
+  "@owner": {
+    "description": "Owner column header"
+  },
+  "price": "Price",
+  "@price": {
+    "description": "Price column header"
+  },
+  "city": "City",
+  "@city": {
+    "description": "City column header"
+  },
+  "status": "Status",
+  "@status": {
+    "description": "Status column header"
+  },
+  "views": "Views",
+  "@views": {
+    "description": "Views column header"
+  },
+  "user": "User",
+  "@user": {
+    "description": "User column header"
+  },
+  "type": "Type",
+  "@type": {
+    "description": "Type column header"
+  },
+  "amount": "Amount",
+  "@amount": {
+    "description": "Amount column header"
+  },
+  "date": "Date",
+  "@date": {
+    "description": "Date column header"
+  },
+  "description": "Description",
+  "@description": {
+    "description": "Description column header"
+  },
+  "errorLoadingAdminData": "Error loading admin data",
+  "@errorLoadingAdminData": {
+    "description": "Error message when admin data fails to load"
+  },
+  "premiumListings": "Premium Listings",
+  "@premiumListings": {
+    "description": "Premium listings tab label"
+  },
+  "sortBy": "Sort by:",
+  "@sortBy": {
+    "description": "Sort by label"
+  },
+  "expiryDate": "Expiry Date",
+  "@expiryDate": {
+    "description": "Expiry date column header"
+  },
+  "purchaseDate": "Purchase Date",
+  "@purchaseDate": {
+    "description": "Purchase date column header"
+  },
+  "packagePrice": "Package Price",
+  "@packagePrice": {
+    "description": "Package price column header"
+  },
+  "propertyTitle": "Property",
+  "@propertyTitle": {
+    "description": "Property title column header"
+  },
+  "package": "Package",
+  "@package": {
+    "description": "Package column header"
+  },
+  "expiry": "Expiry",
+  "@expiry": {
+    "description": "Expiry column header"
+  },
+  "boostedProperties": "Boosted Properties",
+  "@boostedProperties": {
+    "description": "Boosted properties section title"
+  },
+  "featuredProperties": "Featured Properties",
+  "@featuredProperties": {
+    "description": "Featured properties section title"
+  },
+  "allProperties": "All Properties",
+  "@allProperties": {
+    "description": "All properties section title"
+  },
+  "rent": "Rent",
+  "@rent": {
+    "description": "Rent action card title"
+  },
+  "savedSearches": "Saved Searches",
+  "noSavedSearches": "No Saved Searches",
+  "noSavedSearchesDescription": "Save your property searches to get notified when new matching properties are added",
+  "startSearching": "Start Searching",
+  "runSearch": "Run Search",
+  "checkNewMatches": "Check New",
+  "saveSearch": "Save Search",
+  "enterSearchName": "Enter a name for this search:",
+  "searchSavedSuccessfully": "Search saved successfully!",
+  "failedToSaveSearch": "Failed to save search",
+  "pleaseLoginToSaveSearches": "Please login to save searches",
+  "searchDeletedSuccessfully": "Search deleted successfully",
+  "failedToDeleteSearch": "Failed to delete search",
+  "deleteSavedSearch": "Delete Saved Search",
+  "areYouSureDeleteSearch": "Are you sure you want to delete \"{searchName}\"?",
+  "foundNewProperties": "Found {count} new properties matching \"{searchName}\"",
+  "delete": "Delete",
+  "sell": "Sell",
+  "@sell": {
+    "description": "Sell action card title"
+  },
+  "notificationSettings": "Notification Settings",
+  "@notificationSettings": {
+    "description": "Notification settings screen title"
+  },
+  "notificationStatus": "Notification Status",
+  "@notificationStatus": {
+    "description": "Notification status section title"
+  },
+  "notificationsEnabled": "Notifications are enabled",
+  "@notificationsEnabled": {
+    "description": "Notifications enabled status text"
+  },
+  "notificationsDisabled": "Notifications are disabled",
+  "@notificationsDisabled": {
+    "description": "Notifications disabled status text"
+  },
+  "enableNotifications": "Enable Notifications",
+  "@enableNotifications": {
+    "description": "Enable notifications toggle label"
+  },
+  "enableNotificationsSubtitle": "Receive notifications for new properties and messages",
+  "@enableNotificationsSubtitle": {
+    "description": "Enable notifications toggle subtitle"
+  },
+  "firebaseCloudMessaging": "Firebase Cloud Messaging",
+  "@firebaseCloudMessaging": {
+    "description": "FCM section title"
+  },
+  "fcmEnabled": "FCM is enabled and working",
+  "@fcmEnabled": {
+    "description": "FCM enabled status text"
+  },
+  "fcmDisabled": "FCM is disabled or not available",
+  "@fcmDisabled": {
+    "description": "FCM disabled status text"
+  },
+  "fcmToken": "FCM Token",
+  "@fcmToken": {
+    "description": "FCM token label"
+  },
+  "fcmTokenDescription": "This token is used to send push notifications to your device",
+  "@fcmTokenDescription": {
+    "description": "FCM token description"
+  },
+  "fcmTokenNotAvailable": "FCM token is not available",
+  "@fcmTokenNotAvailable": {
+    "description": "FCM token not available text"
+  },
+  "notificationTypes": "Notification Types",
+  "@notificationTypes": {
+    "description": "Notification types section title"
+  },
+  "newListingsNotifications": "New Listings",
+  "@newListingsNotifications": {
+    "description": "New listings notifications label"
+  },
+  "newListingsNotificationsSubtitle": "Get notified when new properties match your saved searches",
+  "@newListingsNotificationsSubtitle": {
+    "description": "New listings notifications subtitle"
+  },
+  "chatNotifications": "Chat Messages",
+  "@chatNotifications": {
+    "description": "Chat notifications label"
+  },
+  "chatNotificationsSubtitle": "Get notified when you receive new messages",
+  "@chatNotificationsSubtitle": {
+    "description": "Chat notifications subtitle"
+  },
+  "priceDropNotifications": "Price Drops",
+  "@priceDropNotifications": {
+    "description": "Price drop notifications label"
+  },
+  "priceDropNotificationsSubtitle": "Get notified when prices drop on properties you're watching",
+  "@priceDropNotificationsSubtitle": {
+    "description": "Price drop notifications subtitle"
+  },
+  "testNotifications": "Test Notifications",
+  "@testNotifications": {
+    "description": "Test notifications section title"
+  },
+  "testNotificationsDescription": "Test your notification setup by sending a test notification",
+  "@testNotificationsDescription": {
+    "description": "Test notifications description"
+  },
+  "sendTestNotification": "Send Test",
+  "@sendTestNotification": {
+    "description": "Send test notification button text"
+  },
+  "testNotificationSent": "Test notification sent!",
+  "@testNotificationSent": {
+    "description": "Test notification sent message"
+  },
+  "clearAllNotifications": "Clear All",
+  "@clearAllNotifications": {
+    "description": "Clear all notifications button text"
+  },
+  "notificationsCleared": "All notifications cleared",
+  "@notificationsCleared": {
+    "description": "Notifications cleared message"
+  },
+  "lastCheckTime": "Last Check Time",
+  "@lastCheckTime": {
+    "description": "Last check time section title"
+  },
+  "lastCheckTimeDescription": "The last time the app checked for new matching properties",
+  "@lastCheckTimeDescription": {
+    "description": "Last check time description"
+  }
+}

@@ -1,0 +1,792 @@
+import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/api_client.dart';
+import '../services/property_cache_service.dart';
+import '../config/env_config.dart';
+
+enum PropertyType { apartment, house, villa, townhouse, studio, penthouse, commercial, land }
+enum PropertyStatus { forSale, forRent, sold, rented }
+enum PropertyCondition { newConstruction, excellent, good, fair, needsRenovation }
+
+extension PropertyTypeExtension on PropertyType {
+  String get typeDisplayName {
+    switch (this) {
+      case PropertyType.apartment:
+        return 'Apartment';
+      case PropertyType.house:
+        return 'House';
+      case PropertyType.villa:
+        return 'Villa';
+      case PropertyType.townhouse:
+        return 'Townhouse';
+      case PropertyType.studio:
+        return 'Studio';
+      case PropertyType.penthouse:
+        return 'Penthouse';
+      case PropertyType.commercial:
+        return 'Commercial';
+      case PropertyType.land:
+        return 'Land';
+    }
+  }
+}
+
+extension PropertyStatusExtension on PropertyStatus {
+  String get statusDisplayName {
+    switch (this) {
+      case PropertyStatus.forSale:
+        return 'For Sale';
+      case PropertyStatus.forRent:
+        return 'For Rent';
+      case PropertyStatus.sold:
+        return 'Sold';
+      case PropertyStatus.rented:
+        return 'Rented';
+    }
+  }
+}
+
+extension PropertyConditionExtension on PropertyCondition {
+  String get conditionDisplayName {
+    switch (this) {
+      case PropertyCondition.newConstruction:
+        return 'New Construction';
+      case PropertyCondition.excellent:
+        return 'Excellent';
+      case PropertyCondition.good:
+        return 'Good';
+      case PropertyCondition.fair:
+        return 'Fair';
+      case PropertyCondition.needsRenovation:
+        return 'Needs Renovation';
+    }
+  }
+}
+
+class Property {
+  final String id;
+  final String userId; // Added userId field
+  final String title;
+  final String description;
+  final double price;
+  final int sizeSqm;
+  final String city;
+  final String neighborhood;
+  final String address;
+  final int bedrooms;
+  final int bathrooms;
+  final int floors;
+  final int yearBuilt;
+  final PropertyType type;
+  final PropertyStatus status;
+  final PropertyCondition condition;
+  
+  // Features
+  final bool hasBalcony;
+  final bool hasGarden;
+  final bool hasParking;
+  final bool hasPool;
+  final bool hasGym;
+  final bool hasSecurity;
+  final bool hasElevator;
+  final bool hasAC;
+  final bool hasHeating;
+  final bool hasFurnished;
+  final bool hasPetFriendly;
+  final bool hasNearbySchools;
+  final bool hasNearbyHospitals;
+  final bool hasNearbyShopping;
+  final bool hasPublicTransport;
+  
+  // Additional details
+  final double monthlyRent; // For rent properties
+  final double dailyRent; // For daily rent properties
+  final double deposit; // Security deposit
+  final String contactPhone;
+  final String contactEmail;
+  final String agentName;
+  final List<String> imageUrls;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final int views;
+  final bool isFeatured;
+  final bool isVerified;
+  final bool isBoosted;
+  final String? boostPackageName;
+  final DateTime? boostExpiresAt;
+
+  Property({
+    required this.id,
+    required this.userId, // Added userId parameter
+    required this.title,
+    required this.description,
+    required this.price,
+    required this.sizeSqm,
+    required this.city,
+    required this.neighborhood,
+    required this.address,
+    required this.bedrooms,
+    required this.bathrooms,
+    required this.floors,
+    required this.yearBuilt,
+    required this.type,
+    required this.status,
+    required this.condition,
+    this.hasBalcony = false,
+    this.hasGarden = false,
+    this.hasParking = false,
+    this.hasPool = false,
+    this.hasGym = false,
+    this.hasSecurity = false,
+    this.hasElevator = false,
+    this.hasAC = false,
+    this.hasHeating = false,
+    this.hasFurnished = false,
+    this.hasPetFriendly = false,
+    this.hasNearbySchools = false,
+    this.hasNearbyHospitals = false,
+    this.hasNearbyShopping = false,
+    this.hasPublicTransport = false,
+    this.monthlyRent = 0.0,
+    this.dailyRent = 0.0,
+    this.deposit = 0.0,
+    required this.contactPhone,
+    required this.contactEmail,
+    required this.agentName,
+    this.imageUrls = const [],
+    required this.createdAt,
+    required this.updatedAt,
+    this.views = 0,
+    this.isFeatured = false,
+    this.isVerified = false,
+    this.isBoosted = false,
+    this.boostPackageName,
+    this.boostExpiresAt,
+  });
+
+  String get displayPrice {
+    if (status == PropertyStatus.forRent) {
+      if (dailyRent > 0) {
+        return '${dailyRent.toStringAsFixed(0)} LYD/day';
+      } else if (monthlyRent > 0) {
+        return '${monthlyRent.toStringAsFixed(0)} LYD/month';
+      }
+    }
+    return '${price.toStringAsFixed(0)} LYD';
+  }
+
+  bool get isBoostActive {
+    if (!isBoosted || boostExpiresAt == null) return false;
+    return DateTime.now().isBefore(boostExpiresAt!);
+  }
+
+  String? get boostStatusText {
+    if (!isBoosted) return null;
+    if (isBoostActive) {
+      final remaining = boostExpiresAt!.difference(DateTime.now());
+      if (remaining.inHours > 0) {
+        return 'Boosted (${remaining.inHours}h left)';
+      } else {
+        return 'Boosted (${remaining.inMinutes}m left)';
+      }
+    } else {
+      return 'Boost expired';
+    }
+  }
+
+  factory Property.fromJson(Map<String, dynamic> json) {
+    return Property(
+      id: json['id']?.toString() ?? '',
+      userId: json['userId'] ?? json['user_id'] ?? '', // Added userId parsing
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      price: (json['price'] ?? 0).toDouble(),
+      sizeSqm: json['size_sqm'] ?? json['sizeSqm'] ?? 0,
+      city: json['city'] ?? '',
+      neighborhood: json['neighborhood'] ?? '',
+      address: json['address'] ?? '',
+      bedrooms: json['bedrooms'] ?? 0,
+      bathrooms: json['bathrooms'] ?? 0,
+      floors: json['floors'] ?? 1,
+      yearBuilt: json['year_built'] ?? json['yearBuilt'] ?? 0,
+      type: _parsePropertyType(json['type']),
+      status: _parsePropertyStatus(json['status']),
+      condition: _parsePropertyCondition(json['condition']),
+      hasBalcony: json['has_balcony'] ?? json['hasBalcony'] ?? false,
+      hasGarden: json['has_garden'] ?? json['hasGarden'] ?? false,
+      hasParking: json['has_parking'] ?? json['hasParking'] ?? false,
+      hasPool: json['has_pool'] ?? json['hasPool'] ?? false,
+      hasGym: json['has_gym'] ?? json['hasGym'] ?? false,
+      hasSecurity: json['has_security'] ?? json['hasSecurity'] ?? false,
+      hasElevator: json['has_elevator'] ?? json['hasElevator'] ?? false,
+      hasAC: json['has_ac'] ?? json['hasAC'] ?? false,
+      hasHeating: json['has_heating'] ?? json['hasHeating'] ?? false,
+      hasFurnished: json['has_furnished'] ?? json['hasFurnished'] ?? false,
+      hasPetFriendly: json['has_pet_friendly'] ?? json['hasPetFriendly'] ?? false,
+      hasNearbySchools: json['has_nearby_schools'] ?? json['hasNearbySchools'] ?? false,
+      hasNearbyHospitals: json['has_nearby_hospitals'] ?? json['hasNearbyHospitals'] ?? false,
+      hasNearbyShopping: json['has_nearby_shopping'] ?? json['hasNearbyShopping'] ?? false,
+      hasPublicTransport: json['has_public_transport'] ?? json['hasPublicTransport'] ?? false,
+      monthlyRent: (json['monthly_rent'] ?? json['monthlyRent'] ?? 0).toDouble(),
+      dailyRent: (json['daily_rent'] ?? json['dailyRent'] ?? 0).toDouble(),
+      deposit: (json['deposit'] ?? 0).toDouble(),
+      contactPhone: json['contact_phone'] ?? json['contactPhone'] ?? '',
+      contactEmail: json['contact_email'] ?? json['contactEmail'] ?? '',
+      agentName: json['agent_name'] ?? json['agentName'] ?? '',
+      imageUrls: (json['image_urls'] ?? json['imageUrls'] ?? []).cast<String>(),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'])
+          : json['createdAt'] != null 
+              ? DateTime.parse(json['createdAt'])
+              : DateTime.now(),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at'])
+          : json['updatedAt'] != null 
+              ? DateTime.parse(json['updatedAt'])
+              : DateTime.now(),
+      views: json['views'] ?? 0,
+      isFeatured: json['is_featured'] ?? json['isFeatured'] ?? false,
+      isVerified: json['is_verified'] ?? json['isVerified'] ?? false,
+      isBoosted: json['is_boosted'] ?? json['isBoosted'] ?? false,
+      boostPackageName: json['boost_package_name'] ?? json['boostPackageName'],
+      boostExpiresAt: json['boost_expires_at'] != null
+          ? DateTime.parse(json['boost_expires_at'])
+          : json['boostExpiresAt'] != null
+              ? DateTime.parse(json['boostExpiresAt'])
+              : null,
+    );
+  }
+
+  factory Property.fromFirestore(String id, Map<String, dynamic> data) {
+    return Property(
+      id: id,
+      userId: data['userId'] ?? '', // Added userId parsing
+      title: data['title'] ?? '',
+      description: data['description'] ?? '',
+      price: (data['price'] ?? 0).toDouble(),
+      sizeSqm: data['sizeSqm'] ?? 0,
+      city: data['city'] ?? '',
+      neighborhood: data['neighborhood'] ?? '',
+      address: data['address'] ?? '',
+      bedrooms: data['bedrooms'] ?? 0,
+      bathrooms: data['bathrooms'] ?? 0,
+      floors: data['floors'] ?? 1,
+      yearBuilt: data['yearBuilt'] ?? 0,
+      type: _parsePropertyType(data['type']),
+      status: _parsePropertyStatus(data['status']),
+      condition: _parsePropertyCondition(data['condition']),
+      hasBalcony: data['hasBalcony'] ?? false,
+      hasGarden: data['hasGarden'] ?? false,
+      hasParking: data['hasParking'] ?? false,
+      hasPool: data['hasPool'] ?? false,
+      hasGym: data['hasGym'] ?? false,
+      hasSecurity: data['hasSecurity'] ?? false,
+      hasElevator: data['hasElevator'] ?? false,
+      hasAC: data['hasAC'] ?? false,
+      hasHeating: data['hasHeating'] ?? false,
+      hasFurnished: data['hasFurnished'] ?? false,
+      hasPetFriendly: data['hasPetFriendly'] ?? false,
+      hasNearbySchools: data['hasNearbySchools'] ?? false,
+      hasNearbyHospitals: data['hasNearbyHospitals'] ?? false,
+      hasNearbyShopping: data['hasNearbyShopping'] ?? false,
+      hasPublicTransport: data['hasPublicTransport'] ?? false,
+      monthlyRent: (data['monthlyRent'] ?? 0).toDouble(),
+      dailyRent: (data['dailyRent'] ?? 0).toDouble(),
+      deposit: (data['deposit'] ?? 0).toDouble(),
+      contactPhone: data['contactPhone'] ?? '',
+      contactEmail: data['contactEmail'] ?? '',
+      agentName: data['agentName'] ?? '',
+      imageUrls: (data['imageUrls'] ?? []).cast<String>(),
+      createdAt: data['createdAt'] != null 
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      updatedAt: data['updatedAt'] != null 
+          ? (data['updatedAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      views: data['views'] ?? 0,
+      isFeatured: data['isFeatured'] ?? false,
+      isVerified: data['isVerified'] ?? false,
+      isBoosted: data['isBoosted'] ?? false,
+      boostPackageName: data['boostPackageName'],
+      boostExpiresAt: data['boostExpiresAt'] != null
+          ? (data['boostExpiresAt'] as Timestamp).toDate()
+          : null,
+    );
+  }
+
+  static PropertyType _parsePropertyType(dynamic type) {
+    if (type == null) return PropertyType.apartment;
+    final typeString = type.toString().toLowerCase();
+    switch (typeString) {
+      case 'apartment': return PropertyType.apartment;
+      case 'house': return PropertyType.house;
+      case 'villa': return PropertyType.villa;
+      case 'townhouse': return PropertyType.townhouse;
+      case 'studio': return PropertyType.studio;
+      case 'penthouse': return PropertyType.penthouse;
+      case 'commercial': return PropertyType.commercial;
+      case 'land': return PropertyType.land;
+      default: return PropertyType.apartment;
+    }
+  }
+
+  static PropertyStatus _parsePropertyStatus(dynamic status) {
+    if (status == null) return PropertyStatus.forSale;
+    final statusString = status.toString().toLowerCase();
+    switch (statusString) {
+      case 'for_sale': case 'forsale': return PropertyStatus.forSale;
+      case 'for_rent': case 'forrent': return PropertyStatus.forRent;
+      case 'sold': return PropertyStatus.sold;
+      case 'rented': return PropertyStatus.rented;
+      default: return PropertyStatus.forSale;
+    }
+  }
+
+  static PropertyCondition _parsePropertyCondition(dynamic condition) {
+    if (condition == null) return PropertyCondition.good;
+    final conditionString = condition.toString().toLowerCase();
+    switch (conditionString) {
+      case 'new_construction': case 'newconstruction': return PropertyCondition.newConstruction;
+      case 'excellent': return PropertyCondition.excellent;
+      case 'good': return PropertyCondition.good;
+      case 'fair': return PropertyCondition.fair;
+      case 'needs_renovation': case 'needsrenovation': return PropertyCondition.needsRenovation;
+      default: return PropertyCondition.good;
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId, // Added userId to JSON
+      'title': title,
+      'description': description,
+      'price': price,
+      'monthlyRent': monthlyRent,
+      'dailyRent': dailyRent,
+      'sizeSqm': sizeSqm,
+      'city': city,
+      'neighborhood': neighborhood,
+      'address': address,
+      'bedrooms': bedrooms,
+      'bathrooms': bathrooms,
+      'floors': floors,
+      'yearBuilt': yearBuilt,
+      'type': type.name,
+      'status': status.name,
+      'condition': condition.name,
+      'deposit': deposit,
+      'contactPhone': contactPhone,
+      'contactEmail': contactEmail,
+      'agentName': agentName,
+      'imageUrls': imageUrls,
+      'hasBalcony': hasBalcony,
+      'hasGarden': hasGarden,
+      'hasParking': hasParking,
+      'hasPool': hasPool,
+      'hasGym': hasGym,
+      'hasSecurity': hasSecurity,
+      'hasElevator': hasElevator,
+      'hasAC': hasAC,
+      'hasHeating': hasHeating,
+      'hasFurnished': hasFurnished,
+      'hasPetFriendly': hasPetFriendly,
+      'hasNearbySchools': hasNearbySchools,
+      'hasNearbyHospitals': hasNearbyHospitals,
+      'hasNearbyShopping': hasNearbyShopping,
+      'hasPublicTransport': hasPublicTransport,
+      'views': views,
+      'isFeatured': isFeatured,
+      'isVerified': isVerified,
+      'isBoosted': isBoosted,
+      'boostPackageName': boostPackageName,
+      'boostExpiresAt': boostExpiresAt?.toIso8601String(),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+}
+
+class PropertyService {
+  static final List<Property> _properties = [
+    Property(
+      id: '7',
+      userId: 'user_007',
+      title: 'Luxury Mediterranean Villa',
+      description: 'Stunning Mediterranean villa with panoramic ocean views. Features private pool, spacious terraces, and premium finishes throughout.',
+      price: 850000,
+      sizeSqm: 400,
+      city: 'Malibu',
+      neighborhood: 'Malibu Colony',
+      address: '200 Ocean Drive, Malibu, CA 90265',
+      bedrooms: 5,
+      bathrooms: 4,
+      floors: 2,
+      yearBuilt: 2019,
+      type: PropertyType.villa,
+      status: PropertyStatus.forSale,
+      condition: PropertyCondition.excellent,
+      hasBalcony: true,
+      hasGarden: true,
+      hasParking: true,
+      hasPool: true,
+      hasGym: true,
+      hasSecurity: true,
+      hasElevator: false,
+      hasAC: true,
+      hasHeating: true,
+      hasFurnished: true,
+      hasPetFriendly: true,
+      hasNearbySchools: true,
+      hasNearbyHospitals: true,
+      hasNearbyShopping: true,
+      hasPublicTransport: false,
+      monthlyRent: 0.0,
+      dailyRent: 0.0,
+      deposit: 0.0,
+      contactPhone: '+1-310-555-1234',
+      contactEmail: 'agent7@dary.com',
+      agentName: 'Luxury Coastal Properties',
+      imageUrls: ['https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=Luxury+Villa'],
+      createdAt: DateTime(2024, 3, 15),
+      updatedAt: DateTime(2024, 3, 25),
+      views: 156,
+      isFeatured: true,
+      isVerified: true,
+    ),
+    Property(
+      id: '10',
+      userId: 'user_010',
+      title: 'new villa',
+      description: 'Brand new modern villa with contemporary design and premium amenities.',
+      price: 600000,
+      sizeSqm: 350,
+      city: 'Tripoli',
+      neighborhood: 'Al-Andalus',
+      address: '123 New Villa Street, Tripoli',
+      bedrooms: 4,
+      bathrooms: 3,
+      floors: 2,
+      yearBuilt: 2024,
+      type: PropertyType.villa,
+      status: PropertyStatus.forSale,
+      condition: PropertyCondition.excellent,
+      hasBalcony: true,
+      hasGarden: true,
+      hasParking: true,
+      hasPool: true,
+      hasGym: false,
+      hasSecurity: true,
+      hasElevator: false,
+      hasAC: true,
+      hasHeating: true,
+      hasFurnished: false,
+      hasPetFriendly: true,
+      hasNearbySchools: true,
+      hasNearbyHospitals: true,
+      hasNearbyShopping: true,
+      hasPublicTransport: true,
+      monthlyRent: 0.0,
+      dailyRent: 0.0,
+      deposit: 0.0,
+      contactPhone: '+218-21-555-0100',
+      contactEmail: 'newvilla@dary.com',
+      agentName: 'New Villa Properties',
+      imageUrls: ['https://via.placeholder.com/400x300/10B981/FFFFFF?text=New+Villa'],
+      createdAt: DateTime(2024, 12, 1),
+      updatedAt: DateTime(2024, 12, 1),
+      views: 25,
+      isFeatured: false,
+      isVerified: true,
+      isBoosted: true,
+      boostPackageName: 'Premium Boost - 1 Week',
+      boostExpiresAt: DateTime.now().add(const Duration(days: 7)),
+    ),
+    Property(
+      id: '8',
+      userId: 'user_008',
+      title: 'Modern Studio Apartment',
+      description: 'Contemporary studio apartment in downtown area. Perfect for young professionals with modern amenities and city views.',
+      price: 180000,
+      sizeSqm: 45,
+      city: 'San Francisco',
+      neighborhood: 'SOMA',
+      address: '300 Market Street, San Francisco, CA 94105',
+      bedrooms: 0,
+      bathrooms: 1,
+      floors: 1,
+      yearBuilt: 2020,
+      type: PropertyType.studio,
+      status: PropertyStatus.forSale,
+      condition: PropertyCondition.excellent,
+      hasBalcony: true,
+      hasGarden: false,
+      hasParking: false,
+      hasPool: false,
+      hasGym: true,
+      hasSecurity: true,
+      hasElevator: true,
+      hasAC: true,
+      hasHeating: true,
+      hasFurnished: true,
+      hasPetFriendly: false,
+      hasNearbySchools: false,
+      hasNearbyHospitals: true,
+      hasNearbyShopping: true,
+      hasPublicTransport: true,
+      monthlyRent: 0.0,
+      dailyRent: 0.0,
+      deposit: 0.0,
+      contactPhone: '+1-415-555-1234',
+      contactEmail: 'agent8@dary.com',
+      agentName: 'Urban Living Realty',
+      imageUrls: ['https://via.placeholder.com/400x300/4ECDC4/FFFFFF?text=Modern+Studio'],
+      createdAt: DateTime(2024, 3, 20),
+      updatedAt: DateTime(2024, 3, 30),
+      views: 89,
+      isFeatured: false,
+      isVerified: true,
+    ),
+    Property(
+      id: '9',
+      userId: 'user_009',
+      title: 'Historic Townhouse',
+      description: 'Beautiful historic townhouse with modern updates. Features original architectural details, updated kitchen, and private garden.',
+      price: 420000,
+      sizeSqm: 180,
+      city: 'Boston',
+      neighborhood: 'Beacon Hill',
+      address: '101 Charles Street, Boston, MA 02114',
+      bedrooms: 3,
+      bathrooms: 2,
+      floors: 3,
+      yearBuilt: 1890,
+      type: PropertyType.townhouse,
+      status: PropertyStatus.forRent,
+      condition: PropertyCondition.good,
+      hasBalcony: true,
+      hasGarden: true,
+      hasParking: false,
+      hasPool: false,
+      hasGym: false,
+      hasSecurity: false,
+      hasElevator: false,
+      hasAC: true,
+      hasHeating: true,
+      hasFurnished: false,
+      hasPetFriendly: true,
+      hasNearbySchools: true,
+      hasNearbyHospitals: true,
+      hasNearbyShopping: true,
+      hasPublicTransport: true,
+      monthlyRent: 2800.0,
+      deposit: 5600.0,
+      contactPhone: '+1-617-555-1234',
+      contactEmail: 'agent9@dary.com',
+      agentName: 'Historic Homes Co.',
+      imageUrls: ['https://via.placeholder.com/400x300/95A5A6/FFFFFF?text=Historic+Townhouse'],
+      createdAt: DateTime(2024, 2, 10),
+      updatedAt: DateTime(2024, 3, 12),
+      views: 134,
+      isVerified: true,
+    ),
+  ];
+
+  static List<Property> get properties => _properties;
+
+  static void boostProperty(String propertyId, String packageName, int durationDays) {
+    final index = _properties.indexWhere((property) => property.id == propertyId);
+    if (index != -1) {
+      final property = _properties[index];
+      final boostExpiresAt = DateTime.now().add(Duration(days: durationDays));
+      
+      _properties[index] = Property(
+        id: property.id,
+        userId: property.userId, // Added userId
+        title: property.title,
+        description: property.description,
+        price: property.price,
+        sizeSqm: property.sizeSqm,
+        city: property.city,
+        neighborhood: property.neighborhood,
+        address: property.address,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        floors: property.floors,
+        yearBuilt: property.yearBuilt,
+        type: property.type,
+        status: property.status,
+        condition: property.condition,
+        hasBalcony: property.hasBalcony,
+        hasGarden: property.hasGarden,
+        hasParking: property.hasParking,
+        hasPool: property.hasPool,
+        hasGym: property.hasGym,
+        hasSecurity: property.hasSecurity,
+        hasElevator: property.hasElevator,
+        hasAC: property.hasAC,
+        hasHeating: property.hasHeating,
+        hasFurnished: property.hasFurnished,
+        hasPetFriendly: property.hasPetFriendly,
+        hasNearbySchools: property.hasNearbySchools,
+        hasNearbyHospitals: property.hasNearbyHospitals,
+        hasNearbyShopping: property.hasNearbyShopping,
+        hasPublicTransport: property.hasPublicTransport,
+        monthlyRent: property.monthlyRent,
+        dailyRent: property.dailyRent,
+        deposit: property.deposit,
+        contactPhone: property.contactPhone,
+        contactEmail: property.contactEmail,
+        agentName: property.agentName,
+        imageUrls: property.imageUrls,
+        createdAt: property.createdAt,
+        updatedAt: DateTime.now(),
+        views: property.views,
+        isFeatured: property.isFeatured,
+        isVerified: property.isVerified,
+        isBoosted: true,
+        boostPackageName: packageName,
+        boostExpiresAt: boostExpiresAt,
+      );
+    }
+  }
+
+  static List<Property> getSortedProperties() {
+    final sortedProperties = List<Property>.from(_properties);
+    
+    // Sort by priority: Boosted > Featured > Verified > Regular
+    sortedProperties.sort((a, b) {
+      // First priority: Active boosts
+      if (a.isBoostActive && !b.isBoostActive) return -1;
+      if (!a.isBoostActive && b.isBoostActive) return 1;
+      
+      // Second priority: Featured
+      if (a.isFeatured && !b.isFeatured) return -1;
+      if (!a.isFeatured && b.isFeatured) return 1;
+      
+      // Third priority: Verified
+      if (a.isVerified && !b.isVerified) return -1;
+      if (!a.isVerified && b.isVerified) return 1;
+      
+      // Fourth priority: Views (higher views first)
+      return b.views.compareTo(a.views);
+    });
+    
+    return sortedProperties;
+  }
+
+  // Search and filter methods
+  static List<Property> searchProperties(String query) {
+    if (query.isEmpty) return _properties;
+    
+    return _properties.where((property) {
+      return property.title.toLowerCase().contains(query.toLowerCase()) ||
+             property.description.toLowerCase().contains(query.toLowerCase()) ||
+             property.city.toLowerCase().contains(query.toLowerCase()) ||
+             property.neighborhood.toLowerCase().contains(query.toLowerCase()) ||
+             property.type.typeDisplayName.toLowerCase().contains(query.toLowerCase());
+    }).toList();
+  }
+
+  static List<Property> filterByType(PropertyType type) {
+    return _properties.where((property) => property.type == type).toList();
+  }
+
+  static List<Property> filterByStatus(PropertyStatus status) {
+    return _properties.where((property) => property.status == status).toList();
+  }
+
+  static List<Property> filterByCity(String city) {
+    return _properties.where((property) => property.city.toLowerCase() == city.toLowerCase()).toList();
+  }
+
+  static List<Property> filterByPriceRange(double minPrice, double maxPrice) {
+    return _properties.where((property) {
+      double propertyPrice = property.status == PropertyStatus.forRent ? property.monthlyRent : property.price;
+      return propertyPrice >= minPrice && propertyPrice <= maxPrice;
+    }).toList();
+  }
+
+  static List<Property> getFeaturedProperties() {
+    return _properties.where((property) => property.isFeatured).toList();
+  }
+
+  static List<Property> getVerifiedProperties() {
+    return _properties.where((property) => property.isVerified).toList();
+  }
+
+  static Future<List<Property>> fetchProperties({String? token}) async {
+    final cacheService = PropertyCacheService();
+    
+    // Check if mock data mode is enabled
+    if (EnvConfig.useMockData) {
+      if (kDebugMode) {
+        debugPrint('🎭 Using mock data for properties (useMockData: true)');
+      }
+      // Update cache with mock data for offline use
+      await cacheService.updateCache(_properties);
+      return _properties;
+    }
+    
+    // Try to get cached data first
+    final cachedProperties = cacheService.getCachedProperties();
+    if (cachedProperties.isNotEmpty) {
+      if (kDebugMode) {
+        debugPrint('📦 Using cached properties: ${cachedProperties.length} items');
+      }
+    }
+    
+    try {
+      // Try to fetch from API
+      if (kDebugMode) {
+        debugPrint('🌐 Fetching properties from API (useMockData: false)');
+      }
+      final response = await apiClient.get('/properties', token: token);
+      
+      List<Property> apiProperties = [];
+      
+      if (response['data'] != null && response['data'] is List) {
+        final List<dynamic> propertiesData = response['data'];
+        apiProperties = propertiesData.map((data) => Property.fromJson(data)).toList();
+      } else if (response['properties'] != null && response['properties'] is List) {
+        final List<dynamic> propertiesData = response['properties'];
+        apiProperties = propertiesData.map((data) => Property.fromJson(data)).toList();
+      } else {
+        // If response format is unexpected, fall back to cached or mock data
+        if (kDebugMode) {
+          debugPrint('⚠️ Unexpected API response format, using cached data');
+        }
+        return cachedProperties.isNotEmpty ? cachedProperties : _properties;
+      }
+      
+      // Update cache with fresh API data
+      await cacheService.updateCache(apiProperties);
+      
+      if (kDebugMode) {
+        debugPrint('✅ Successfully fetched ${apiProperties.length} properties from API');
+      }
+      
+      return apiProperties;
+      
+    } catch (e) {
+      // If API call fails, return cached data or fall back to mock data
+      if (kDebugMode) {
+        debugPrint('⚠️ API call failed, using cached data: $e');
+      }
+      
+      if (cachedProperties.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint('📦 Returning ${cachedProperties.length} cached properties');
+        }
+        return cachedProperties;
+      } else {
+        if (kDebugMode) {
+          debugPrint('📦 No cached data available, using mock data');
+        }
+        // Update cache with mock data for next time
+        await cacheService.updateCache(_properties);
+        return _properties;
+      }
+    }
+  }
+}
