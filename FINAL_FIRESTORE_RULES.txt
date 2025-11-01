@@ -1,0 +1,80 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Config collection - public read
+    match /config/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // Properties - public read (for homepage), authenticated write
+    match /properties/{propertyId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Packages - public read, authenticated write
+    match /packages/{packageId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Users - authenticated users can read/write
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Users favorites - authenticated users can read/write
+    match /users/{userId}/favorites/{favoriteId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Wallet - authenticated users can read/write
+    match /wallet/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Wallet transactions - authenticated users can read/write
+    match /wallet/{userId}/transactions/{transactionId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Saved searches - authenticated users can read/write
+    match /saved_searches/{searchId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Conversations - authenticated users can read/write (app filters)
+    match /conversations/{conversationId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Messages - authenticated users can read/write
+    match /conversations/{conversationId}/messages/{messageId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Analytics - authenticated users or public can read/write
+    match /analytics/{document} {
+      allow read, write: if request.auth != null || true;
+    }
+    
+    // Analytics clicks - authenticated users or public can read/write
+    match /analytics/{document}/clicks/{clickId} {
+      allow read, write: if request.auth != null || true;
+    }
+    
+    // User wallet cache - authenticated users can read/write
+    match /user_wallet_cache/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // User wallet cache transactions - authenticated users can read/write
+    match /user_wallet_cache/{userId}/cached_transactions/{transactionId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+

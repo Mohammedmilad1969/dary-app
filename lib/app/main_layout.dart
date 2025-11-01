@@ -5,7 +5,9 @@ import '../services/language_service.dart';
 import '../widgets/language_toggle_button.dart';
 import '../features/chat/chat_service.dart';
 import '../providers/auth_provider.dart';
+import '../features/chat/chat_notification_service.dart';
 import '../features/auth/login_screen.dart';
+import '../services/theme_service.dart';
 
 class MainLayout extends StatelessWidget {
   final Widget child;
@@ -21,47 +23,48 @@ class MainLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer3<LanguageService, ChatService, AuthProvider>(
       builder: (context, languageService, chatService, authProvider, _) {
+        // Provide current user id to chat service so it can distinguish incoming messages
+        chatService.setCurrentUserId(authProvider.currentUser?.id);
+        // Provide context for in-app chat notifications
+        ChatNotificationService().setContext(context);
+        if (authProvider.isAuthenticated && authProvider.currentUser?.id != null) {
+          chatService.startListeningToUserConversations(authProvider.currentUser!.id);
+        } else {
+          chatService.stopListeningToUserConversations();
+        }
         final totalUnreadCount = authProvider.isAuthenticated ? chatService.getTotalUnreadCount() : 0;
         
         return Scaffold(
           body: child,
-          bottomNavigationBar: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            currentIndex: _getCurrentIndex(currentLocation),
-            onTap: (index) => _onTabTapped(context, index, authProvider),
-            selectedItemColor: Colors.green,
-            unselectedItemColor: Colors.grey,
-            items: [
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.home),
-                label: 'Home',
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 1,
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(context, 0, Icons.home, 'Home'),
+                    _buildNavItem(context, 1, Icons.add_home, 'Add Property'),
+                    _buildNavItem(context, 2, Icons.chat, 'Messages', badgeCount: totalUnreadCount),
+                    _buildNavItem(context, 3, Icons.account_balance_wallet, 'Wallet'),
+                    _buildNavItem(context, 4, Icons.person, 'Profile'),
+                  ],
+                ),
               ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.add_home),
-                label: 'Add Property',
-              ),
-              BottomNavigationBarItem(
-                icon: _buildChatIconWithBadge(totalUnreadCount),
-                label: 'Messages',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.account_balance_wallet),
-                label: 'Wallet',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.person),
-                label: 'Profile',
-              ),
-            ],
+            ),
           ),
-          floatingActionButton: _shouldShowFAB(currentLocation)
-              ? FloatingActionButton(
-                  onPressed: () => _handleAddProperty(context, authProvider),
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  child: const Icon(Icons.add),
-                )
-              : null,
+          floatingActionButton: null,
         );
       },
     );
@@ -140,19 +143,47 @@ class MainLayout extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Login Required'),
-        content: Text('Please login to access $feature'),
+        backgroundColor: Colors.white,
+        title: Text(
+          'Login Required',
+          style: ThemeService.getHeadingStyle(
+            context,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        content: Text(
+          'Please login to access $feature',
+          style: ThemeService.getBodyStyle(
+            context,
+            fontSize: 16,
+            color: Colors.black87,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: ThemeService.getBodyStyle(
+                context,
+                color: Colors.grey[600],
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
               context.go('/login');
             },
-            child: Text('Login'),
+            child: Text(
+              'Login',
+              style: ThemeService.getBodyStyle(
+                context,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -163,36 +194,64 @@ class MainLayout extends StatelessWidget {
     return location == '/';
   }
 
-  Widget _buildChatIconWithBadge(int unreadCount) {
-    return Stack(
-      children: [
-        const Icon(Icons.chat),
-        if (unreadCount > 0)
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              constraints: const BoxConstraints(
-                minWidth: 16,
-                minHeight: 16,
-              ),
-              child: Text(
-                unreadCount > 99 ? '99+' : unreadCount.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
+  Widget _buildNavItem(BuildContext context, int index, IconData icon, String label, {int badgeCount = 0}) {
+    final isSelected = _getCurrentIndex(currentLocation) == index;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    return GestureDetector(
+      onTap: () => _onTabTapped(context, index, authProvider),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.green : Colors.grey[700],
+                  size: 24,
                 ),
-                textAlign: TextAlign.center,
+                if (badgeCount > 0 && index == 2) // Messages tab
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        badgeCount > 99 ? '99+' : badgeCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: ThemeService.getBodyStyle(
+                context,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.green : Colors.grey[700],
               ),
             ),
-          ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 }

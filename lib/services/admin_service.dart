@@ -693,42 +693,63 @@ class AdminService {
           .collection('users')
           .get();
       
-      for (final userDoc in usersSnapshot.docs) {
-        final userData = userDoc.data();
-        final userId = userDoc.id;
+      // Process users in batches to avoid overwhelming the database
+      const batchSize = 5;
+      for (int i = 0; i < usersSnapshot.docs.length; i += batchSize) {
+        final batch = usersSnapshot.docs.skip(i).take(batchSize);
         
-        // Get wallet transactions for this user
-        final walletDoc = await FirebaseFirestore.instance
-            .collection('wallet')
-            .doc(userId)
-            .get();
-        
-        if (walletDoc.exists) {
-          final walletData = walletDoc.data()!;
-          final transactions = walletData['transactions'] as List<dynamic>? ?? [];
+        // Process batch concurrently
+        final batchFutures = batch.map((userDoc) async {
+          final userData = userDoc.data();
+          final userId = userDoc.id;
           
-          for (final transaction in transactions) {
-            final payment = AdminPayment(
-              id: transaction['id'] ?? '${userId}_${DateTime.now().millisecondsSinceEpoch}',
-              userId: userId,
-              userName: userData['name'] ?? 'Unknown',
-              userEmail: userData['email'] ?? '',
-              type: transaction['type'] ?? 'Unknown',
-              amount: (transaction['amount'] ?? 0).toDouble(),
-              currency: transaction['currency'] ?? 'LYD',
-              status: transaction['amount'] > 0 ? 'Completed' : 'Completed',
-              createdAt: transaction['createdAt'] != null 
-                  ? DateTime.parse(transaction['createdAt'])
-                  : DateTime.now(),
-              description: transaction['description'] ?? '',
-            );
-            payments.add(payment);
+          // Get wallet transactions for this user
+          final walletDoc = await FirebaseFirestore.instance
+              .collection('wallet')
+              .doc(userId)
+              .get();
+          
+          if (walletDoc.exists) {
+            // Get transactions from subcollection
+            final transactionsSnapshot = await FirebaseFirestore.instance
+                .collection('wallet')
+                .doc(userId)
+                .collection('transactions')
+                .get();
+            
+            return transactionsSnapshot.docs.map((transactionDoc) {
+              final transactionData = transactionDoc.data();
+              return AdminPayment(
+                id: transactionDoc.id,
+                userId: userId,
+                userName: userData['name'] ?? 'Unknown',
+                userEmail: userData['email'] ?? '',
+                type: transactionData['type'] ?? 'Unknown',
+                amount: (transactionData['amount'] ?? 0).toDouble(),
+                currency: 'LYD', // Default currency
+                status: 'Completed', // All transactions are completed
+                createdAt: transactionData['createdAt'] != null 
+                    ? (transactionData['createdAt'] as Timestamp).toDate()
+                    : DateTime.now(),
+                description: transactionData['description'] ?? '',
+              );
+            }).toList();
           }
+          return <AdminPayment>[];
+        });
+        
+        final batchResults = await Future.wait(batchFutures);
+        for (final batchPayments in batchResults) {
+          payments.addAll(batchPayments);
         }
       }
       
       // Sort by creation date (newest first)
       payments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      
+      if (kDebugMode) {
+        debugPrint('🔍 AdminService: Returning ${payments.length} payments');
+      }
       
       return payments;
     } catch (e) {

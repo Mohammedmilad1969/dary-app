@@ -22,15 +22,23 @@ dependencies:
   http: ^1.1.0
   fl_chart: ^0.68.0
   cached_network_image: ^3.3.0
+  google_fonts: ^6.1.0
   # Firebase dependencies (web-compatible)
   firebase_core: ^2.24.2
   cloud_firestore: ^4.13.6
+  # firebase_auth_web removed due to compatibility issues - using google_sign_in instead
+  google_sign_in: ^6.2.1  # Google Sign-In
   # firebase_storage: ^11.5.6  # Web compatibility issues
   # firebase_auth: ^4.15.3     # Web compatibility issues
   # Notification dependencies (web-compatible)
   flutter_local_notifications: ^17.2.2
   permission_handler: ^11.3.1
   supabase_flutter: ^2.0.0
+  url_launcher: ^6.3.0
+  share_plus: ^7.2.1
+  video_player: ^2.8.2
+  google_generative_ai: ^0.4.4
+  cloud_functions: ^4.7.6
   
 
 dev_dependencies:
@@ -41,3 +49,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/splash_video.MP4

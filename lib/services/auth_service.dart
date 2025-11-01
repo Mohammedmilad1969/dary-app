@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_profile.dart';
 import '../app/app_router.dart';
 import '../config/firebase_config.dart';
@@ -144,6 +145,38 @@ class AuthService extends ChangeNotifier {
       debugPrint('Error initializing auth: $e');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Login with identifier (email or phone) and password
+  Future<UserProfile?> loginWithIdentifier(String identifier, String password) async {
+    // Check if identifier is email or phone
+    if (identifier.contains('@')) {
+      return await login(identifier, password);
+    } else {
+      // Phone login - get email from phone number
+      // First try to find user by phone in Firestore
+      try {
+        final usersQuery = await _firestore
+            .collection('users')
+            .where('phone', isEqualTo: identifier)
+            .limit(1)
+            .get();
+        
+        if (usersQuery.docs.isNotEmpty) {
+          final userDoc = usersQuery.docs.first;
+          final userData = userDoc.data();
+          final email = userData['email'] as String?;
+          if (email != null) {
+            return await login(email, password);
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('❌ Error finding user by phone: $e');
+        }
+      }
+      throw AuthException('User not found');
     }
   }
 
@@ -662,6 +695,193 @@ class AuthService extends ChangeNotifier {
         debugPrint('❌ AuthService: Failed to verify user $email: $e');
       }
       throw Exception('Failed to verify user: $e');
+    }
+  }
+
+  /// Sign in with Google
+  Future<bool> signInWithGoogle() async {
+    _setLoading(true);
+    
+    try {
+      // Configure Google Sign-In with OAuth client ID for web
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: ['email', 'profile'],
+        clientId: FirebaseConfig.googleWebClientId,
+      );
+
+      // Sign in with Google
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        // User cancelled the sign-in
+        if (kDebugMode) {
+          debugPrint('⚠️ Google Sign-In cancelled by user');
+        }
+        return false;
+      }
+
+      // Get authentication details
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Use Firebase REST API to sign in with Google credential
+      // Note: For web, we might need to use firebase_auth_web directly
+      if (kIsWeb) {
+        // For web, we'll store user info and create/update user in Firestore
+        final email = googleUser.email;
+        final name = googleUser.displayName ?? 'User';
+        final photoUrl = googleUser.photoUrl;
+
+        // Check if user exists in Firestore
+        final usersQuery = await _firestore
+            .collection('users')
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get();
+
+        UserProfile userProfile;
+
+        if (usersQuery.docs.isNotEmpty) {
+          // User exists, load their profile
+          final userDoc = usersQuery.docs.first;
+          final userData = userDoc.data();
+          userProfile = UserProfile(
+            id: userDoc.id,
+            name: name,
+            email: email!,
+            phone: userData['phone'],
+            profileImageUrl: photoUrl ?? userData['profileImageUrl'],
+            totalListings: userData['totalListings'] ?? 0,
+            activeListings: userData['activeListings'] ?? 0,
+            joinDate: userData['createdAt'] != null 
+                ? (userData['createdAt'] as Timestamp).toDate()
+                : DateTime.now(),
+            createdAt: userData['createdAt'] != null 
+                ? (userData['createdAt'] as Timestamp).toDate()
+                : DateTime.now(),
+            updatedAt: DateTime.now(),
+            isVerified: userData['isVerified'] ?? false,
+            isAdmin: userData['isAdmin'] ?? false,
+          );
+
+          // Update user data in Firestore
+          await _firestore.collection('users').doc(userDoc.id).update({
+            'name': name,
+            'profileImageUrl': photoUrl,
+            'updatedAt': Timestamp.now(),
+          });
+        } else {
+          // New user, create profile
+          final newUserRef = _firestore.collection('users').doc();
+          userProfile = UserProfile(
+            id: newUserRef.id,
+            name: name,
+            email: email!,
+            phone: null,
+            profileImageUrl: photoUrl,
+            totalListings: 0,
+            activeListings: 0,
+            joinDate: DateTime.now(),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            isVerified: false,
+            isAdmin: false,
+          );
+
+          // Store user in Firestore
+          await _storeUserInFirestore(userProfile);
+        }
+
+        // Generate session token
+        final sessionToken = _generateSessionToken(email);
+
+        // Save session
+        await _saveUserSession(userProfile, sessionToken);
+
+        // Update state
+        _currentUser = userProfile;
+        _sessionToken = sessionToken;
+        _isLoggedIn = true;
+
+        notifyListeners();
+        AppRouter.refresh();
+
+        if (kDebugMode) {
+          debugPrint('✅ Google Sign-In successful');
+        }
+
+        return true;
+      } else {
+        // For mobile platforms, similar flow but might use different auth
+        throw UnimplementedError('Google Sign-In for mobile not fully implemented');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Google Sign-In error: $e');
+      }
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Update user profile
+  Future<bool> updateProfile({
+    required String name,
+    String? phone,
+    String? profileImageUrl,
+  }) async {
+    _setLoading(true);
+    
+    try {
+      if (_currentUser == null) {
+        throw AuthException('No user logged in');
+      }
+
+      // Update user in Firestore
+      final userData = <String, dynamic>{
+        'name': name,
+        'updatedAt': Timestamp.now(),
+      };
+
+      if (phone != null) {
+        userData['phone'] = phone;
+      }
+
+      if (profileImageUrl != null) {
+        userData['profileImageUrl'] = profileImageUrl;
+      }
+
+      await _firestore
+          .collection('users')
+          .doc(_currentUser!.id)
+          .update(userData);
+
+      // Update local user profile
+      _currentUser = _currentUser!.copyWith(
+        name: name,
+        phone: phone ?? _currentUser!.phone,
+        profileImageUrl: profileImageUrl ?? _currentUser!.profileImageUrl,
+      );
+
+      // Update stored session
+      if (_sessionToken != null) {
+        await _saveUserSession(_currentUser!, _sessionToken!);
+      }
+
+      notifyListeners();
+
+      if (kDebugMode) {
+        debugPrint('✅ Profile updated successfully');
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error updating profile: $e');
+      }
+      return false;
+    } finally {
+      _setLoading(false);
     }
   }
 }

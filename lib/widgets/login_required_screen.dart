@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../services/theme_service.dart';
 
 class LoginRequiredScreen extends StatelessWidget {
   final String featureName;
@@ -38,19 +39,21 @@ class LoginRequiredScreen extends StatelessWidget {
               const SizedBox(height: 24),
               Text(
                 'Login Required',
-                style: TextStyle(
+                style: ThemeService.getHeadingStyle(
+                  context,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey[700],
+                  color: Colors.black87,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 description ?? 'Please login to access $featureName',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: ThemeService.getBodyStyle(
+                  context,
                   fontSize: 16,
-                  color: Colors.grey[600],
+                  color: Colors.black87,
                 ),
               ),
               const SizedBox(height: 32),
@@ -61,12 +64,24 @@ class LoginRequiredScreen extends StatelessWidget {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
-                child: const Text('Login'),
+                child: Text(
+                  'Login',
+                  style: ThemeService.getBodyStyle(
+                    context,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => context.go('/'),
-                child: const Text('Back to Home'),
+                child: Text(
+                  'Back to Home',
+                  style: ThemeService.getBodyStyle(
+                    context,
+                    color: Colors.green,
+                  ),
+                ),
               ),
             ],
           ),

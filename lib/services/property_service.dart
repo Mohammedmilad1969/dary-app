@@ -29,13 +29,31 @@ class PropertyService extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
+    if (_isLoading != loading) {
+      _isLoading = loading;
+      notifyListeners();
+    }
   }
 
   void _setErrorMessage(String? message) {
-    _errorMessage = message;
-    notifyListeners();
+    if (_errorMessage != message) {
+      _errorMessage = message;
+      notifyListeners();
+    }
+  }
+
+  /// Helper method to check if two property lists are equal
+  bool _arePropertiesEqual(List<Property> list1, List<Property> list2) {
+    if (list1.length != list2.length) return false;
+    
+    for (int i = 0; i < list1.length; i++) {
+      if (list1[i].id != list2[i].id || 
+          list1[i].isBoosted != list2[i].isBoosted ||
+          list1[i].isFeatured != list2[i].isFeatured) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Initialize the property service
@@ -70,24 +88,33 @@ class PropertyService extends ChangeNotifier {
   }
 
   /// Start listening to properties stream from Firestore
-  void _startPropertiesStream(PersistenceService persistence, {String? userId}) {
+  void _startPropertiesStream(PersistenceService persistence, {String? userId, bool showUnpublished = false}) {
     _propertiesSubscription?.cancel();
     
     Query query = _firestore.collection('properties');
     
-    // Filter by userId if provided
+    // Filter by userId if provided (user's own properties - show all including unpublished)
     if (userId != null) {
       query = query.where('userId', isEqualTo: userId);
     }
+    // Note: For public view, we filter by isPublished in memory since Firestore
+    // doesn't allow multiple where clauses on different fields
     
     _propertiesSubscription = query
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
+      var properties = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return Property.fromFirestore(doc.id, data);
       }).toList();
+      
+      // Filter by isPublished for public view (if not showing user's own properties)
+      if (userId == null && !showUnpublished) {
+        properties = properties.where((p) => p.isPublished).toList();
+      }
+      
+      return properties;
     }).listen(
       (properties) {
         // Create a map of properties from Firestore for easy lookup
@@ -119,7 +146,12 @@ class PropertyService extends ChangeNotifier {
         
         _properties = mergedProperties;
         persistence.cacheProperties(_properties);
-        notifyListeners();
+        
+        // Only notify listeners if there are actual changes
+        if (mergedProperties.length != _properties.length || 
+            !_arePropertiesEqual(mergedProperties, _properties)) {
+          notifyListeners();
+        }
         
         if (kDebugMode) {
           debugPrint('🔄 Properties updated: ${_properties.length} properties${userId != null ? ' for user: $userId' : ''}');
@@ -146,12 +178,14 @@ class PropertyService extends ChangeNotifier {
         'description': property.description,
         'price': property.price,
         'monthlyRent': property.monthlyRent,
+        'dailyRent': property.dailyRent,
         'sizeSqm': property.sizeSqm,
         'city': property.city,
         'neighborhood': property.neighborhood,
         'address': property.address,
         'bedrooms': property.bedrooms,
         'bathrooms': property.bathrooms,
+        'kitchens': property.kitchens,
         'floors': property.floors,
         'yearBuilt': property.yearBuilt,
         'type': property.type.name,
@@ -185,6 +219,8 @@ class PropertyService extends ChangeNotifier {
         'boostExpiresAt': property.boostExpiresAt != null 
             ? Timestamp.fromDate(property.boostExpiresAt!) 
             : null,
+        'boostPrice': property.boostPrice,
+        'isPublished': property.isPublished,
         'createdAt': Timestamp.fromDate(property.createdAt),
         'updatedAt': Timestamp.fromDate(property.updatedAt),
       });
@@ -192,6 +228,9 @@ class PropertyService extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint('✅ Property created with ID: ${docRef.id}');
       }
+
+      // Update user's totalListings count
+      await _incrementUserPropertyCount(property.userId);
 
       return docRef.id;
     } catch (e) {
@@ -216,12 +255,14 @@ class PropertyService extends ChangeNotifier {
         'description': property.description,
         'price': property.price,
         'monthlyRent': property.monthlyRent,
+        'dailyRent': property.dailyRent,
         'sizeSqm': property.sizeSqm,
         'city': property.city,
         'neighborhood': property.neighborhood,
         'address': property.address,
         'bedrooms': property.bedrooms,
         'bathrooms': property.bathrooms,
+        'kitchens': property.kitchens,
         'floors': property.floors,
         'yearBuilt': property.yearBuilt,
         'type': property.type.name,
@@ -255,6 +296,7 @@ class PropertyService extends ChangeNotifier {
         'boostExpiresAt': property.boostExpiresAt != null 
             ? Timestamp.fromDate(property.boostExpiresAt!) 
             : null,
+        'boostPrice': property.boostPrice,
         'updatedAt': Timestamp.fromDate(DateTime.now()),
       });
 
@@ -280,7 +322,22 @@ class PropertyService extends ChangeNotifier {
     _setErrorMessage(null);
 
     try {
+      // Get property first to get userId
+      final propertyDoc = await _firestore.collection('properties').doc(propertyId).get();
+      
+      if (!propertyDoc.exists) {
+        throw Exception('Property not found');
+      }
+
+      final userId = propertyDoc.data()?['userId'] as String?;
+      
+      // Delete the property
       await _firestore.collection('properties').doc(propertyId).delete();
+
+      // Decrement user's property count
+      if (userId != null) {
+        await _decrementUserPropertyCount(userId);
+      }
 
       if (kDebugMode) {
         debugPrint('✅ Property deleted: $propertyId');
@@ -291,6 +348,60 @@ class PropertyService extends ChangeNotifier {
       _setErrorMessage('Failed to delete property: $e');
       if (kDebugMode) {
         debugPrint('❌ Error deleting property: $e');
+      }
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Unpublish a property (hide it from public view)
+  Future<bool> unpublishProperty(String propertyId) async {
+    _setLoading(true);
+    _setErrorMessage(null);
+
+    try {
+      await _firestore.collection('properties').doc(propertyId).update({
+        'isPublished': false,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+
+      if (kDebugMode) {
+        debugPrint('✅ Property unpublished: $propertyId');
+      }
+
+      return true;
+    } catch (e) {
+      _setErrorMessage('Failed to unpublish property: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Error unpublishing property: $e');
+      }
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Publish a property (make it visible in public view)
+  Future<bool> publishProperty(String propertyId) async {
+    _setLoading(true);
+    _setErrorMessage(null);
+
+    try {
+      await _firestore.collection('properties').doc(propertyId).update({
+        'isPublished': true,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+
+      if (kDebugMode) {
+        debugPrint('✅ Property published: $propertyId');
+      }
+
+      return true;
+    } catch (e) {
+      _setErrorMessage('Failed to publish property: $e');
+      if (kDebugMode) {
+        debugPrint('❌ Error publishing property: $e');
       }
       return false;
     } finally {
@@ -436,6 +547,9 @@ class PropertyService extends ChangeNotifier {
       await _firestore.collection('properties').doc(propertyId).update({
         'views': FieldValue.increment(1),
       });
+      if (kDebugMode) {
+        debugPrint('👁️ View tracked for property: $propertyId');
+      }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Error incrementing views: $e');
@@ -443,8 +557,128 @@ class PropertyService extends ChangeNotifier {
     }
   }
 
+  /// Track contact clicks for analytics
+  Future<void> trackContactClick(String propertyId) async {
+    try {
+      // Store contact click in analytics collection
+      await _firestore.collection('analytics').doc('contact_clicks').collection('clicks').add({
+        'propertyId': propertyId,
+        'timestamp': FieldValue.serverTimestamp(),
+        'date': DateTime.now().toIso8601String().split('T')[0], // YYYY-MM-DD format
+      });
+      
+      if (kDebugMode) {
+        debugPrint('📞 Contact click tracked for property: $propertyId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error tracking contact click: $e');
+      }
+    }
+  }
+
+  /// Get view statistics for a property
+  Future<Map<String, dynamic>> getPropertyViewStats(String propertyId) async {
+    try {
+      // Get the property document to get current view count
+      final propertyDoc = await _firestore.collection('properties').doc(propertyId).get();
+      
+      if (!propertyDoc.exists) {
+        return {'views': 0, 'contactClicks': 0};
+      }
+      
+      final propertyData = propertyDoc.data()!;
+      final views = (propertyData['views'] as num? ?? 0).toInt();
+      
+      // Get contact clicks count from analytics collection
+      final contactClicksQuery = await _firestore
+          .collection('analytics')
+          .doc('contact_clicks')
+          .collection('clicks')
+          .where('propertyId', isEqualTo: propertyId)
+          .get();
+      
+      final contactClicks = contactClicksQuery.docs.length;
+      
+      return {
+        'views': views,
+        'contactClicks': contactClicks,
+        'lastUpdated': DateTime.now().toIso8601String(),
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error getting property view stats: $e');
+      }
+      return {'views': 0, 'contactClicks': 0, 'error': e.toString()};
+    }
+  }
+
+  /// Get view statistics for all properties of a user
+  Future<Map<String, dynamic>> getUserPropertyViewStats(String userId) async {
+    try {
+      // Get all properties for the user
+      final propertiesQuery = await _firestore
+          .collection('properties')
+          .where('userId', isEqualTo: userId)
+          .get();
+      
+      int totalViews = 0;
+      int totalContactClicks = 0;
+      List<Map<String, dynamic>> propertyStats = [];
+      
+      for (final doc in propertiesQuery.docs) {
+        final propertyData = doc.data();
+        final propertyId = doc.id;
+        final views = (propertyData['views'] as num? ?? 0).toInt();
+        final title = propertyData['title'] ?? 'Untitled Property';
+        
+        // Get contact clicks for this property
+        final contactClicksQuery = await _firestore
+            .collection('analytics')
+            .doc('contact_clicks')
+            .collection('clicks')
+            .where('propertyId', isEqualTo: propertyId)
+            .get();
+        
+        final contactClicks = contactClicksQuery.docs.length;
+        
+        totalViews += views;
+        totalContactClicks += contactClicks;
+        
+        propertyStats.add({
+          'propertyId': propertyId,
+          'title': title,
+          'views': views,
+          'contactClicks': contactClicks,
+        });
+      }
+      
+      // Sort by views (highest first)
+      propertyStats.sort((a, b) => (b['views'] as int).compareTo(a['views'] as int));
+      
+      return {
+        'totalViews': totalViews,
+        'totalContactClicks': totalContactClicks,
+        'totalProperties': propertiesQuery.docs.length,
+        'propertyStats': propertyStats,
+        'lastUpdated': DateTime.now().toIso8601String(),
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error getting user property view stats: $e');
+      }
+      return {
+        'totalViews': 0,
+        'totalContactClicks': 0,
+        'totalProperties': 0,
+        'propertyStats': <Map<String, dynamic>>[],
+        'error': e.toString(),
+      };
+    }
+  }
+
   /// Boost a property
-  Future<bool> boostProperty(String propertyId, String packageName, int durationDays, {PersistenceService? persistenceService}) async {
+  Future<bool> boostProperty(String propertyId, String packageName, double packagePrice, int durationDays, {PersistenceService? persistenceService}) async {
     try {
       final boostExpiresAt = DateTime.now().add(Duration(days: durationDays));
       
@@ -470,6 +704,7 @@ class PropertyService extends ChangeNotifier {
         address: property.address,
         bedrooms: property.bedrooms,
         bathrooms: property.bathrooms,
+        kitchens: property.kitchens,
         floors: property.floors,
         yearBuilt: property.yearBuilt,
         type: property.type,
@@ -503,6 +738,7 @@ class PropertyService extends ChangeNotifier {
         isVerified: property.isVerified,
         isBoosted: true,
         boostPackageName: packageName,
+        boostPrice: packagePrice,
         boostExpiresAt: boostExpiresAt,
       );
       
@@ -512,21 +748,34 @@ class PropertyService extends ChangeNotifier {
       // Update the property in the list
       _properties[propertyIndex] = boostedProperty;
       
-      // Update Firebase
+      // Update Firebase - CRITICAL: Always update by property ID, never by title
+      // This ensures each property has independent boost status
       await _firestore.collection('properties').doc(propertyId).update({
         'isBoosted': true,
         'boostPackageName': packageName,
+        'boostPrice': packagePrice,
         'boostExpiresAt': Timestamp.fromDate(boostExpiresAt),
         'updatedAt': Timestamp.fromDate(DateTime.now()),
       });
+      
+      if (kDebugMode) {
+        debugPrint('✅ Boost updated for property ID: $propertyId (title: ${property.title})');
+      }
 
       // Cache boosted property info locally for persistence
+      // CRITICAL: Use property ID as key, never title
       final persistence = persistenceService ?? PersistenceService();
       final boostedProperties = await persistence.loadBoostedProperties();
+      
+      // Remove any expired boosts from cache
+      _cleanExpiredBoosts(boostedProperties);
+      
+      // Add new boost using property ID as key
       boostedProperties[propertyId] = {
         'packageName': packageName,
         'expiresAt': boostExpiresAt.toIso8601String(),
         'boostedAt': DateTime.now().toIso8601String(),
+        'propertyId': propertyId, // Store ID to ensure correct matching
       };
       await persistence.cacheBoostedProperties(boostedProperties);
 
@@ -554,6 +803,121 @@ class PropertyService extends ChangeNotifier {
         debugPrint('❌ Error boosting property: $e');
       }
       return false;
+    }
+  }
+
+  /// Clean expired boosts from cache
+  /// This prevents expired boost data from being applied to properties
+  /// Removes any boosts where expiresAt is in the past
+  void _cleanExpiredBoosts(Map<String, Map<String, dynamic>> boostedProperties) {
+    final now = DateTime.now();
+    final expiredKeys = <String>[];
+    
+    for (final entry in boostedProperties.entries) {
+      final boostData = entry.value;
+      final expiresAtStr = boostData['expiresAt'] as String?;
+      
+      if (expiresAtStr != null) {
+        try {
+          final expiresAt = DateTime.parse(expiresAtStr);
+          if (expiresAt.isBefore(now)) {
+            expiredKeys.add(entry.key);
+          }
+        } catch (e) {
+          // Invalid date format, remove it
+          expiredKeys.add(entry.key);
+        }
+      }
+    }
+    
+    // Remove expired entries
+    for (final key in expiredKeys) {
+      boostedProperties.remove(key);
+    }
+    
+    if (kDebugMode && expiredKeys.isNotEmpty) {
+      debugPrint('🧹 Cleaned ${expiredKeys.length} expired boosts from cache');
+    }
+  }
+
+  /// Increment user's property count in Firestore
+  Future<void> _incrementUserPropertyCount(String userId) async {
+    try {
+      final userRef = _firestore.collection('users').doc(userId);
+      await userRef.update({
+        'totalListings': FieldValue.increment(1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (kDebugMode) {
+        debugPrint('✅ Updated user property count for: $userId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error incrementing user property count: $e');
+      }
+      // Don't throw - property creation still succeeded
+    }
+  }
+
+  /// Decrement user's property count in Firestore
+  Future<void> _decrementUserPropertyCount(String userId) async {
+    try {
+      final userRef = _firestore.collection('users').doc(userId);
+      await userRef.update({
+        'totalListings': FieldValue.increment(-1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (kDebugMode) {
+        debugPrint('✅ Decremented user property count for: $userId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error decrementing user property count: $e');
+      }
+      // Don't throw - property deletion still succeeded
+    }
+  }
+
+  /// Get the actual number of properties for a user from Firestore
+  Future<int> getUserPropertyCount(String userId) async {
+    try {
+      final propertiesSnapshot = await _firestore
+          .collection('properties')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      return propertiesSnapshot.docs.length;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error getting user property count: $e');
+      }
+      return 0;
+    }
+  }
+
+  /// Sync user's property count from actual properties in Firestore
+  /// This ensures the count matches the actual number of properties
+  Future<void> syncUserPropertyCount(String userId) async {
+    try {
+      // Get actual count of properties for this user
+      final actualCount = await getUserPropertyCount(userId);
+
+      // Update user document with actual count
+      final userRef = _firestore.collection('users').doc(userId);
+      await userRef.update({
+        'totalListings': actualCount,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (kDebugMode) {
+        debugPrint('✅ Synced user property count: $userId has $actualCount properties');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error syncing user property count: $e');
+      }
     }
   }
 

@@ -19,12 +19,16 @@ import 'services/wallet_service.dart';
 import 'services/paywall_service.dart';
 import 'services/persistence_service.dart';
 import 'services/user_preferences_service.dart';
+import 'services/theme_service.dart';
 import 'config/env_config.dart';
 import 'services/api_client.dart';
 
 void main() async {
   // Initialize services
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Preload fonts for better performance
+  await ThemeService.preloadFonts();
   
   // Initialize Supabase
   await Supabase.initialize(
@@ -55,6 +59,10 @@ void main() async {
   final propertyCacheService = PropertyCacheService();
   await propertyCacheService.initialize();
   
+  // Initialize paywall service
+  final paywallService = PaywallService();
+  await paywallService.initialize();
+  
   // Print environment configuration in debug mode
   EnvConfig.printConfig();
   
@@ -84,16 +92,8 @@ class DaryApp extends StatelessWidget {
         builder: (context, languageService, authProvider, child) {
           return MaterialApp.router(
             title: 'Dary',
-            theme: ThemeData(
-              useMaterial3: true,
-              colorSchemeSeed: Colors.green,
-              brightness: Brightness.light,
-            ),
-            darkTheme: ThemeData(
-              useMaterial3: true,
-              colorSchemeSeed: Colors.green,
-              brightness: Brightness.dark,
-            ),
+            theme: ThemeService.getLightTheme(context),
+            themeMode: ThemeMode.light,
             routerConfig: AppRouter.router,
             locale: languageService.currentLocale,
             localizationsDelegates: const [

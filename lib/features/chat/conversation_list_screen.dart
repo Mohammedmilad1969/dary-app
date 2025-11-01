@@ -10,6 +10,7 @@ import 'chat_models.dart';
 import 'chat_service.dart';
 import 'chat_widgets.dart';
 import 'chat_screen.dart';
+import '../../services/theme_service.dart';
 
 class ConversationListScreen extends StatefulWidget {
   const ConversationListScreen({super.key});
@@ -30,15 +31,25 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
   }
 
   Future<void> _loadConversations() async {
+    if (!mounted) return;
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUser = authProvider.currentUser;
+    
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final conversations = await _chatService.fetchConversations();
-      setState(() {
-        _conversations = conversations;
-      });
+      final conversations = await _chatService.fetchConversations(
+        userId: currentUser?.id,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _conversations = conversations;
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -49,9 +60,11 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -68,6 +81,31 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       // Refresh conversations when returning from chat
       _loadConversations();
     });
+  }
+
+  Future<void> _deleteConversation(String conversationId) async {
+    try {
+      await _chatService.deleteConversation(conversationId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Conversation deleted'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        _loadConversations();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting conversation: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _testNotification() {
@@ -113,10 +151,19 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n?.messages ?? 'Messages'),
+        title: Text(
+          l10n?.messages ?? 'Messages',
+          style: ThemeService.getHeadingStyle(
+            context,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: false, // Remove back button
         actions: [
           LanguageToggleButton(languageService: languageService),
         ],
@@ -153,10 +200,48 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
               itemCount: conversations.length,
               itemBuilder: (context, index) {
                 final conversation = conversations[index];
-                return ConversationListItem(
-                  conversation: conversation,
-                  currentUserId: currentUser?.id,
-                  onTap: () => _navigateToChat(conversation),
+                return Dismissible(
+                  key: Key(conversation.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    color: Colors.red,
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  confirmDismiss: (direction) async {
+                    return await showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Delete Conversation'),
+                          content: const Text('Are you sure you want to delete this conversation?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  onDismissed: (direction) {
+                    _deleteConversation(conversation.id);
+                  },
+                  child: ConversationListItem(
+                    conversation: conversation,
+                    currentUserId: currentUser?.id,
+                    onTap: () => _navigateToChat(conversation),
+                  ),
                 );
               },
             ),

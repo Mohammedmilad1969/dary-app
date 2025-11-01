@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:video_player/video_player.dart';
 import '../providers/auth_provider.dart';
-import '../services/language_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,48 +13,155 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> 
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
+class _SplashScreenState extends State<SplashScreen> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+  bool _hasError = false;
+  bool _isProceeding = false;
+  Timer? _timeoutTimer;
+  DateTime? _startTime;
 
   @override
   void initState() {
     super.initState();
+    _startTime = DateTime.now();
     
-    // Initialize animations
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
+    // Start maximum timeout timer - always proceed after 3 seconds max
+    _timeoutTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && !_isProceeding) {
+        if (kDebugMode) {
+          debugPrint('⚠️ SplashScreen: Maximum timeout reached, proceeding...');
+        }
+        _proceedToNext();
+      }
+    });
     
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
-    ));
-    
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.2, 0.8, curve: Curves.elasticOut),
-    ));
+    _initializeVideo();
+  }
 
-    // Start animation and session check
+  Future<void> _initializeVideo() async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🎬 SplashScreen: Initializing video...');
+        if (kIsWeb) {
+          debugPrint('🌐 Platform: Web');
+        } else {
+          debugPrint('📱 Platform: ${defaultTargetPlatform.toString().replaceAll('TargetPlatform.', '')}');
+        }
+      }
+      
+      // Use asset path - works on iOS, Android, and Web
+      _controller = VideoPlayerController.asset('assets/splash_video.MP4');
+      
+      // Platform-specific timeout settings
+      // Web needs more time for asset loading, mobile is usually faster
+      final timeoutDuration = kIsWeb 
+          ? const Duration(seconds: 6)  // Web: longer for asset loading
+          : const Duration(seconds: 4);  // iOS/Android: faster native asset access
+      
+      if (kDebugMode) {
+        debugPrint('⏱️ SplashScreen: Timeout set to ${timeoutDuration.inSeconds} seconds');
+      }
+      
+      // Initialize with timeout
+      await _controller!.initialize().timeout(
+        timeoutDuration,
+        onTimeout: () {
+          if (kDebugMode) {
+            debugPrint('⏱️ SplashScreen: Video initialization timeout after ${timeoutDuration.inSeconds}s');
+          }
+          throw Exception('Video initialization timeout after ${timeoutDuration.inSeconds}s');
+        },
+      ).catchError((error) {
+        if (kDebugMode) {
+          debugPrint('❌ SplashScreen: Video initialization error: $error');
+        }
+        throw error;
+      });
+      
+      if (mounted && !_hasError && !_isProceeding) {
+        // Check if video actually initialized
+        if (_controller!.value.hasError) {
+          if (kDebugMode) {
+            debugPrint('❌ SplashScreen: Video has error: ${_controller!.value.errorDescription}');
+          }
+          throw Exception(_controller!.value.errorDescription ?? 'Video initialization failed');
+        }
+        
+        setState(() {
+          _isInitialized = true;
+        });
+        
+        if (kDebugMode) {
+          debugPrint('✅ SplashScreen: Video initialized successfully');
+          debugPrint('📹 Video size: ${_controller!.value.size}');
+          debugPrint('⏱️ Video duration: ${_controller!.value.duration}');
+        }
+        
+        // Set video to loop continuously
+        _controller!.setLooping(true);
+        
+        // Platform-specific video settings
+        // On iOS, we might need to set volume or other properties
+        if (!kIsWeb) {
+          // For mobile platforms, ensure proper video settings
+          await _controller!.setVolume(1.0); // Full volume (mute if you don't want sound)
+        }
+        
+        // No need to listen for completion since video loops
+        // The timeout timer will handle proceeding to next screen
+        
+        // Play the video
+        await _controller!.play();
+        
+        if (kDebugMode) {
+          debugPrint('▶️ SplashScreen: Video playback started');
+          debugPrint('🔊 SplashScreen: Video volume: ${_controller!.value.volume}');
+          debugPrint('🔁 SplashScreen: Video looping: ${_controller!.value.isLooping}');
+        }
+      }
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('❌ SplashScreen: Error initializing video: $e');
+        debugPrint('📍 Stack trace: $stackTrace');
+      }
+      _hasError = true;
+      
+      // Clean up controller if it exists
+      _controller?.dispose();
+      _controller = null;
+      
+      // If video fails, proceed after minimum duration
+      if (mounted && !_isProceeding) {
+        final elapsed = DateTime.now().difference(_startTime!);
+        if (elapsed.inMilliseconds < 1500) {
+          // Wait minimum 1.5 seconds for splash
+          Future.delayed(Duration(milliseconds: 1500 - elapsed.inMilliseconds), () {
+            if (mounted && !_isProceeding) {
+              _proceedToNext();
+            }
+          });
+        } else {
+          _proceedToNext();
+        }
+      }
+    }
+  }
+
+  // Video listener removed since video loops continuously
+  // The timeout timer handles navigation to next screen
+
+  void _proceedToNext() {
+    if (_isProceeding) return; // Prevent multiple calls
+    _isProceeding = true;
+    _timeoutTimer?.cancel();
     _startSplashSequence();
   }
 
   Future<void> _startSplashSequence() async {
-    // Start the animation
-    _animationController.forward();
-    
-    // Wait for minimum splash duration (for better UX)
-    await Future.delayed(const Duration(milliseconds: 1500));
+    if (kDebugMode) {
+      debugPrint('🚀 SplashScreen: Starting splash sequence...');
+    }
     
     // Check authentication session
     await _checkAuthenticationSession();
@@ -107,118 +215,36 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _timeoutTimer?.cancel();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // App Logo/Icon with Animation
-            AnimatedBuilder(
-              animation: _animationController,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.home,
-                        size: 60,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // App Name with Animation
-            AnimatedBuilder(
-              animation: _fadeAnimation,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Dary',
-                        style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Properties',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white.withOpacity(0.8),
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            
-            const SizedBox(height: 48),
-            
-            // Loading Indicator
-            AnimatedBuilder(
-              animation: _fadeAnimation,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Column(
-                    children: [
-                      const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Checking session...',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+      backgroundColor: Colors.black,
+      body: SizedBox.expand(
+        child: _controller != null && 
+            _controller!.value.isInitialized && 
+            !_controller!.value.hasError &&
+            _isInitialized
+            ? FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _controller!.value.size.width > 0 
+                      ? _controller!.value.size.width 
+                      : MediaQuery.of(context).size.width,
+                  height: _controller!.value.size.height > 0 
+                      ? _controller!.value.size.height 
+                      : MediaQuery.of(context).size.height,
+                  child: VideoPlayer(_controller!),
+                ),
+              )
+            : Container(
+                // Black screen while video loads or if video fails
+                color: Colors.black,
+              ),
       ),
     );
   }

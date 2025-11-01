@@ -12,6 +12,7 @@ import '../../widgets/payment_modal.dart';
 import '../../widgets/login_required_screen.dart';
 import '../../services/wallet_service.dart' as wallet_service;
 import '../../services/persistence_service.dart';
+import '../../services/theme_service.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -71,13 +72,26 @@ class _WalletScreenState extends State<WalletScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Recharge Wallet'),
+          backgroundColor: Colors.grey[900],
+          title: Text(
+            'Recharge Wallet',
+            style: ThemeService.getHeadingStyle(
+              context,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Enter your 16-digit recharge code:',
-                style: TextStyle(fontSize: 16),
+                style: ThemeService.getBodyStyle(
+                  context,
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -87,10 +101,28 @@ class _WalletScreenState extends State<WalletScreen> {
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(16),
                 ],
-                decoration: const InputDecoration(
+                style: ThemeService.getBodyStyle(
+                  context,
+                  color: Colors.white,
+                ),
+                decoration: InputDecoration(
                   hintText: '1234567890123456',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.credit_card),
+                  hintStyle: ThemeService.getBodyStyle(
+                    context,
+                    color: Colors.grey[400],
+                  ),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey[600]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey[600]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.green),
+                  ),
+                  prefixIcon: Icon(Icons.credit_card, color: Colors.grey[400]),
+                  filled: true,
+                  fillColor: Colors.grey[800],
                 ),
                 maxLength: 16,
               ),
@@ -102,7 +134,13 @@ class _WalletScreenState extends State<WalletScreen> {
                 _codeController.clear();
                 Navigator.of(context).pop();
               },
-              child: const Text('Cancel'),
+              child: Text(
+                'Cancel',
+                style: ThemeService.getBodyStyle(
+                  context,
+                  color: Colors.white,
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: _isRecharging ? null : _processRecharge,
@@ -119,7 +157,13 @@ class _WalletScreenState extends State<WalletScreen> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Text('Recharge'),
+                  : Text(
+                      'Recharge',
+                      style: ThemeService.getBodyStyle(
+                        context,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
           ],
         );
@@ -206,12 +250,100 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   void _showCardPaymentDialog() {
+    final amounts = [20.0, 50.0, 100.0, 300.0];
+    
+    // First show amount selection dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.credit_card, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Select Amount',
+                      style: ThemeService.getBodyStyle(
+                        context,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Choose the amount you want to add to your wallet:',
+                  style: ThemeService.getBodyStyle(context),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 2.5,
+                  ),
+                  itemCount: amounts.length,
+                  itemBuilder: (context, index) {
+                    final amount = amounts[index];
+                    return ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Close amount selection
+                        _showPaymentModal(amount); // Open payment modal with selected amount
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        '${amount.toStringAsFixed(0)} LYD',
+                        style: ThemeService.getBodyStyle(
+                          context,
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPaymentModal(double amount) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return PaymentModal(
-          amount: 50.0, // Default amount for card payment
+          amount: amount,
           onPaymentComplete: (bool success) {
             if (success) {
               _refreshWallet();
@@ -233,8 +365,17 @@ class _WalletScreenState extends State<WalletScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Bank Transfer'),
-          content: const Column(
+          backgroundColor: Colors.grey[900],
+          title: Text(
+            'Bank Transfer',
+            style: ThemeService.getHeadingStyle(
+              context,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
@@ -246,13 +387,24 @@ class _WalletScreenState extends State<WalletScreen> {
               Text(
                 'Bank transfer integration coming soon!\n\nThis feature will allow you to transfer funds directly from your bank account.',
                 textAlign: TextAlign.center,
+                style: ThemeService.getBodyStyle(
+                  context,
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+              child: Text(
+                'OK',
+                style: ThemeService.getBodyStyle(
+                  context,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         );
@@ -265,8 +417,17 @@ class _WalletScreenState extends State<WalletScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Mobile Money'),
-          content: const Column(
+          backgroundColor: Colors.grey[900],
+          title: Text(
+            'Mobile Money',
+            style: ThemeService.getHeadingStyle(
+              context,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
@@ -278,13 +439,24 @@ class _WalletScreenState extends State<WalletScreen> {
               Text(
                 'Mobile money integration coming soon!\n\nThis feature will support popular mobile payment services like MomaLat.',
                 textAlign: TextAlign.center,
+                style: ThemeService.getBodyStyle(
+                  context,
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+              child: Text(
+                'OK',
+                style: ThemeService.getBodyStyle(
+                  context,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         );
@@ -316,11 +488,23 @@ class _WalletScreenState extends State<WalletScreen> {
     return Column(
       children: [
         AppBar(
-          title: Text(l10n?.wallet ?? 'Wallet'),
+          title: Text(
+            l10n?.wallet ?? 'Wallet',
+            style: ThemeService.getHeadingStyle(
+              context,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           centerTitle: true,
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
           elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
           actions: [
             LanguageToggleButton(languageService: languageService),
           ],
@@ -359,7 +543,8 @@ class _WalletScreenState extends State<WalletScreen> {
                     children: [
                             Text(
                               l10n?.currentBalance ?? 'Current Balance',
-                              style: const TextStyle(
+                              style: ThemeService.getBodyStyle(
+                                context,
                                 fontSize: 16,
                                 color: Colors.white70,
                               ),
@@ -367,7 +552,8 @@ class _WalletScreenState extends State<WalletScreen> {
                       const SizedBox(height: 8),
                       Text(
                         '$balance $currency',
-                        style: const TextStyle(
+                        style: ThemeService.getHeadingStyle(
+                          context,
                           fontSize: 36,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -381,7 +567,13 @@ class _WalletScreenState extends State<WalletScreen> {
                         child: ElevatedButton.icon(
                           onPressed: _showRechargeDialog,
                           icon: const Icon(Icons.add),
-                          label: Text(l10n?.recharge ?? 'Recharge'),
+                          label: Text(
+                            l10n?.recharge ?? 'Recharge',
+                            style: ThemeService.getBodyStyle(
+                              context,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.green,
@@ -397,7 +589,8 @@ class _WalletScreenState extends State<WalletScreen> {
                       // Payment Methods Section
                       Text(
                         'Payment Methods',
-                        style: const TextStyle(
+                        style: ThemeService.getHeadingStyle(
+                          context,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -411,7 +604,13 @@ class _WalletScreenState extends State<WalletScreen> {
                         child: ElevatedButton.icon(
                           onPressed: _showCardPaymentDialog,
                           icon: const Icon(Icons.credit_card),
-                          label: const Text('Pay with Card'),
+                          label: Text(
+                            'Pay with Card',
+                            style: ThemeService.getBodyStyle(
+                              context,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.green,
@@ -430,7 +629,13 @@ class _WalletScreenState extends State<WalletScreen> {
                         child: ElevatedButton.icon(
                           onPressed: _showBankTransferDialog,
                           icon: const Icon(Icons.account_balance),
-                          label: const Text('Bank Transfer'),
+                          label: Text(
+                            'Bank Transfer',
+                            style: ThemeService.getBodyStyle(
+                              context,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white.withOpacity(0.2),
                             foregroundColor: Colors.white,
@@ -449,7 +654,13 @@ class _WalletScreenState extends State<WalletScreen> {
                         child: ElevatedButton.icon(
                           onPressed: _showMobileMoneyDialog,
                           icon: const Icon(Icons.phone_android),
-                          label: const Text('Mobile Money'),
+                          label: Text(
+                            'Mobile Money',
+                            style: ThemeService.getBodyStyle(
+                              context,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white.withOpacity(0.2),
                             foregroundColor: Colors.white,
@@ -475,9 +686,11 @@ class _WalletScreenState extends State<WalletScreen> {
                         children: [
                                 Text(
                                   l10n?.transactionHistory ?? 'Transaction History',
-                                  style: const TextStyle(
+                                  style: ThemeService.getHeadingStyle(
+                                    context,
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
+                                    color: Colors.white,
                                   ),
                                 ),
                           TextButton(
@@ -488,7 +701,14 @@ class _WalletScreenState extends State<WalletScreen> {
                                 ),
                               );
                             },
-                            child: Text(l10n?.export ?? 'Export'),
+                            child: Text(
+                              l10n?.export ?? 'Export',
+                              style: ThemeService.getBodyStyle(
+                                context,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -553,6 +773,10 @@ class TransactionHistoryScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Transaction History'),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: const Center(
         child: Column(
@@ -595,6 +819,10 @@ class AddFundsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Add Funds'),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: const Center(
         child: Column(

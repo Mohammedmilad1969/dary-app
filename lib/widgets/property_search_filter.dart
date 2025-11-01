@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/property.dart';
 import '../providers/auth_provider.dart';
 import '../services/saved_search_service.dart';
+import '../services/theme_service.dart';
 
 class PropertySearchFilter extends StatefulWidget {
   final Function(List<Property>) onFilterChanged;
@@ -13,6 +14,20 @@ class PropertySearchFilter extends StatefulWidget {
   final VoidCallback? onCombinedFilter;
   final String? currentRentSellFilter;
   final VoidCallback? onClearAllFilters;
+  final Function(Map<String, dynamic>)? onFilterValuesChanged;
+  
+  // Initial filter values for state preservation
+  final String? initialSearchText;
+  final PropertyType? initialType;
+  final PropertyStatus? initialStatus;
+  final String? initialCity;
+  final int? initialBedrooms;
+  final int? initialBathrooms;
+  final int? initialKitchens;
+  final String? initialMinPrice;
+  final String? initialMaxPrice;
+  final String? initialMinSize;
+  final String? initialMaxSize;
 
   const PropertySearchFilter({
     super.key,
@@ -21,6 +36,18 @@ class PropertySearchFilter extends StatefulWidget {
     this.onCombinedFilter,
     this.currentRentSellFilter,
     this.onClearAllFilters,
+    this.onFilterValuesChanged,
+    this.initialSearchText,
+    this.initialType,
+    this.initialStatus,
+    this.initialCity,
+    this.initialBedrooms,
+    this.initialBathrooms,
+    this.initialKitchens,
+    this.initialMinPrice,
+    this.initialMaxPrice,
+    this.initialMinSize,
+    this.initialMaxSize,
   });
 
   @override
@@ -29,14 +56,42 @@ class PropertySearchFilter extends StatefulWidget {
 
 class _PropertySearchFilterState extends State<PropertySearchFilter> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _maxPriceController = TextEditingController();
+  final TextEditingController _minPriceController = TextEditingController();
+  final TextEditingController _minSizeController = TextEditingController();
+  final TextEditingController _maxSizeController = TextEditingController();
   Timer? _debounceTimer;
   PropertyType? _selectedType;
   PropertyStatus? _selectedStatus;
   String? _selectedCity;
-  RangeValues _priceRange = const RangeValues(0, 10000000); // Increased to 10M LYD
+  int? _selectedBedrooms;
+  int? _selectedBathrooms;
+  int? _selectedKitchens;
   bool _showFeaturedOnly = false;
-  
-  // Property Features
+
+  static const List<String> _libyanCities = [
+    'Tripoli',
+    'Benghazi',
+    'Misrata',
+    'Zawiya',
+    'Sirte',
+    'Sabha',
+    'Tobruk',
+    'Derna',
+    'Al Bayda',
+    'Al Marj',
+    'Gharyan',
+    'Zliten',
+    'Khoms',
+    'Tarhuna',
+    'Ajdabiya',
+    'Murzuq',
+    'Ghat',
+    'Ubari',
+    'Al Kufra',
+    'Al Jufra',
+  ];
+
   bool _hasBalcony = false;
   bool _hasGarden = false;
   bool _hasParking = false;
@@ -51,185 +106,228 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_onSearchChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _applyFilters();
-    });
-  }
-
-  void _onSearchChanged() {
-    // Cancel previous timer
-    _debounceTimer?.cancel();
-    
-    // If search is empty, apply filters immediately
-    if (_searchController.text.isEmpty) {
-      _applyFilters();
-    } else {
-      // Debounce search for 300ms
-      _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-        _applyFilters();
-      });
-    }
+    // Initialize with provided initial values to preserve state
+    _searchController.text = widget.initialSearchText ?? '';
+    _selectedType = widget.initialType;
+    _selectedStatus = widget.initialStatus;
+    _selectedCity = widget.initialCity;
+    _selectedBedrooms = widget.initialBedrooms;
+    _selectedBathrooms = widget.initialBathrooms;
+    _selectedKitchens = widget.initialKitchens;
+    _minPriceController.text = widget.initialMinPrice ?? '';
+    _maxPriceController.text = widget.initialMaxPrice ?? '';
+    _minSizeController.text = widget.initialMinSize ?? '';
+    _maxSizeController.text = widget.initialMaxSize ?? '';
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _maxPriceController.dispose();
+    _minPriceController.dispose();
+    _minSizeController.dispose();
+    _maxSizeController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
   }
 
-  void _applyFilters() {
-    List<Property> filteredProperties = widget.allProperties;
+  void _notifyFilterValuesChanged() {
+    if (widget.onFilterValuesChanged != null) {
+      widget.onFilterValuesChanged!({
+        'searchText': _searchController.text,
+        'type': _selectedType,
+        'status': _selectedStatus,
+        'city': _selectedCity,
+        'bedrooms': _selectedBedrooms,
+        'bathrooms': _selectedBathrooms,
+        'kitchens': _selectedKitchens,
+        'minPrice': _minPriceController.text,
+        'maxPrice': _maxPriceController.text,
+        'minSize': _minSizeController.text,
+        'maxSize': _maxSizeController.text,
+      });
+    }
+  }
+
+  Future<void> _applyFilters() async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🔍 Applying filters...');
+        debugPrint('📊 Total properties: ${widget.allProperties.length}');
+        debugPrint('🔎 Search term: "${_searchController.text}"');
+        debugPrint('🏠 Selected type: $_selectedType');
+        debugPrint('💰 Selected status: $_selectedStatus');
+        debugPrint('🏙️ Selected city: $_selectedCity');
+        debugPrint('🛏️ Selected bedrooms: $_selectedBedrooms');
+        debugPrint('🚿 Selected bathrooms: $_selectedBathrooms');
+        debugPrint('🍳 Selected kitchens: $_selectedKitchens');
+        debugPrint('📏 Size range: ${_minSizeController.text} - ${_maxSizeController.text} m²');
+        debugPrint('💰 Price range: ${_minPriceController.text} - ${_maxPriceController.text} LYD');
+      }
+
+      List<Property> propertiesToFilter = widget.allProperties;
+      
+      if (propertiesToFilter.isEmpty) {
+        if (kDebugMode) {
+          debugPrint('⚠️ No properties available in cache');
+        }
+        widget.onFilterChanged([]);
+        return;
+      }
+
+      List<Property> filtered = List<Property>.from(propertiesToFilter);
 
     // Apply Rent/Sell filter first if active
     if (widget.currentRentSellFilter != null) {
       switch (widget.currentRentSellFilter!.toLowerCase()) {
         case 'rent':
-          filteredProperties = filteredProperties.where((p) => p.status == PropertyStatus.forRent).toList();
+          filtered = filtered.where((p) => p.status == PropertyStatus.forRent).toList();
           break;
         case 'sell':
-          filteredProperties = filteredProperties.where((p) => p.status == PropertyStatus.forSale).toList();
+          filtered = filtered.where((p) => p.status == PropertyStatus.forSale).toList();
           break;
+      }
+      if (kDebugMode) {
+        debugPrint('🏠 After Rent/Sell filter: ${filtered.length} properties');
       }
     }
 
-    // Apply search filter - more flexible matching with boosted property prioritization
+    // Apply search filter with comprehensive matching
     if (_searchController.text.isNotEmpty) {
       final searchTerm = _searchController.text.toLowerCase().trim();
-      
-      // Split search term into words for better matching
       final searchWords = searchTerm.split(' ').where((word) => word.isNotEmpty).toList();
       
-      // Create a list with relevance scores for boosted properties
-      final List<MapEntry<Property, int>> propertyScores = [];
-      
-      for (final property in filteredProperties) {
-        // Create a comprehensive searchable text that includes all relevant fields
+      filtered = filtered.where((property) {
+        // Create comprehensive searchable text
         final searchableText = '${property.title} ${property.description} ${property.city} ${property.neighborhood} ${property.type.name} ${property.status.name} ${property.type.typeDisplayName}'.toLowerCase();
         
-        // Calculate relevance score
-        int score = 0;
-        bool matchesAllWords = true;
-        
-        for (final word in searchWords) {
-          bool wordMatched = false;
-          
-          // Direct match
-          if (searchableText.contains(word)) {
-            score += 10;
-            wordMatched = true;
-          }
-          
-          // Partial match for longer words (minimum 3 characters)
-          if (word.length >= 3) {
-            final partialMatch = searchableText.split(' ').any((textWord) => 
-              textWord.startsWith(word) || word.startsWith(textWord)
-            );
-            if (partialMatch) {
-              score += 5;
-              wordMatched = true;
-            }
-          }
-          
-          if (!wordMatched) {
-            matchesAllWords = false;
-            break;
-          }
-        }
-        
-        // Boost score for boosted properties (significant boost for visibility)
-        if (property.isBoosted) {
-          score += 100; // High priority boost
-        }
-        
-        // Only include properties that match all search words
-        if (matchesAllWords) {
-          propertyScores.add(MapEntry(property, score));
-        }
+        // Check if all search words are found
+        return searchWords.every((word) => searchableText.contains(word));
+      }).toList();
+      
+      if (kDebugMode) {
+        debugPrint('🔎 After search filter: ${filtered.length} properties');
       }
-      
-      // Sort by relevance score (highest first) - boosted properties will be at top
-      propertyScores.sort((a, b) => b.value.compareTo(a.value));
-      
-      // Extract properties in sorted order
-      filteredProperties = propertyScores.map((entry) => entry.key).toList();
-    } else {
-      // If search is empty, show all properties (no additional filtering needed)
     }
 
     // Apply type filter
     if (_selectedType != null) {
-      filteredProperties = filteredProperties.where((p) => p.type == _selectedType).toList();
+      filtered = filtered.where((p) => p.type == _selectedType).toList();
+      if (kDebugMode) {
+        debugPrint('🏠 After type filter: ${filtered.length} properties');
+      }
     }
 
     // Apply status filter
     if (_selectedStatus != null) {
-      filteredProperties = filteredProperties.where((p) => p.status == _selectedStatus).toList();
+      filtered = filtered.where((p) => p.status == _selectedStatus).toList();
+      if (kDebugMode) {
+        debugPrint('💰 After status filter: ${filtered.length} properties');
+      }
     }
 
     // Apply city filter
     if (_selectedCity != null && _selectedCity!.isNotEmpty) {
-      filteredProperties = filteredProperties.where((p) => p.city == _selectedCity).toList();
+      filtered = filtered.where((p) => p.city == _selectedCity).toList();
+      if (kDebugMode) {
+        debugPrint('🏙️ After city filter: ${filtered.length} properties');
+      }
+    }
+
+    // Apply bedroom filter
+    if (_selectedBedrooms != null) {
+      filtered = filtered.where((p) => p.bedrooms == _selectedBedrooms).toList();
+      if (kDebugMode) {
+        debugPrint('🛏️ After bedroom filter: ${filtered.length} properties');
+      }
+    }
+
+    // Apply bathroom filter
+    if (_selectedBathrooms != null) {
+      filtered = filtered.where((p) => p.bathrooms == _selectedBathrooms).toList();
+      if (kDebugMode) {
+        debugPrint('🚿 After bathroom filter: ${filtered.length} properties');
+      }
+    }
+
+    // Apply kitchen filter
+    if (_selectedKitchens != null) {
+      filtered = filtered.where((p) => p.kitchens == _selectedKitchens).toList();
+      if (kDebugMode) {
+        debugPrint('🍳 After kitchen filter: ${filtered.length} properties');
+      }
+    }
+
+    // Apply size range filter
+    double minSize = double.tryParse(_minSizeController.text) ?? 0;
+    double maxSize = double.tryParse(_maxSizeController.text) ?? 10000;
+    
+    filtered = filtered.where((p) {
+      return p.sizeSqm >= minSize && p.sizeSqm <= maxSize;
+    }).toList();
+
+    if (kDebugMode) {
+      debugPrint('📏 After size filter: ${filtered.length} properties');
     }
 
     // Apply price range filter
-    filteredProperties = filteredProperties.where((p) {
+    double minPrice = double.tryParse(_minPriceController.text.replaceAll(',', '')) ?? 0;
+    double maxPrice = double.tryParse(_maxPriceController.text.replaceAll(',', '')) ?? 10000000;
+
+    filtered = filtered.where((p) {
       double price = p.status == PropertyStatus.forRent ? p.monthlyRent : p.price;
-      return price >= _priceRange.start && price <= _priceRange.end;
+      return price >= minPrice && price <= maxPrice;
     }).toList();
+
+    if (kDebugMode) {
+      debugPrint('💰 After price filter: ${filtered.length} properties');
+    }
 
     // Apply featured filter
     if (_showFeaturedOnly) {
-      filteredProperties = filteredProperties.where((p) => p.isFeatured).toList();
+      filtered = filtered.where((p) => p.isFeatured).toList();
+      if (kDebugMode) {
+        debugPrint('⭐ After featured filter: ${filtered.length} properties');
+      }
     }
 
-    // Apply feature filters
-    if (_hasBalcony) {
-      filteredProperties = filteredProperties.where((p) => p.hasBalcony).toList();
-    }
-    if (_hasGarden) {
-      filteredProperties = filteredProperties.where((p) => p.hasGarden).toList();
-    }
-    if (_hasParking) {
-      filteredProperties = filteredProperties.where((p) => p.hasParking).toList();
-    }
-    if (_hasPool) {
-      filteredProperties = filteredProperties.where((p) => p.hasPool).toList();
-    }
-    if (_hasGym) {
-      filteredProperties = filteredProperties.where((p) => p.hasGym).toList();
-    }
-    if (_hasSecurity) {
-      filteredProperties = filteredProperties.where((p) => p.hasSecurity).toList();
-    }
-    if (_hasElevator) {
-      filteredProperties = filteredProperties.where((p) => p.hasElevator).toList();
-    }
-    if (_hasAC) {
-      filteredProperties = filteredProperties.where((p) => p.hasAC).toList();
-    }
-    if (_hasHeating) {
-      filteredProperties = filteredProperties.where((p) => p.hasHeating).toList();
-    }
-    if (_hasFurnished) {
-      filteredProperties = filteredProperties.where((p) => p.hasFurnished).toList();
-    }
-
-    // Sort properties with boosted ones at the top (final sort to ensure boosted properties always appear first)
-    final mutableList = List<Property>.from(filteredProperties);
-    mutableList.sort((a, b) {
-      // Boosted properties always come first
-      if (a.isBoosted && !b.isBoosted) return -1;
-      if (!a.isBoosted && b.isBoosted) return 1;
-      
-      // If both are boosted or both are not boosted, maintain original order
-      return 0;
+    // Sort with boosted properties at the top
+    // Sort by boost priority: 300 LYD > 100 LYD > 20 LYD > non-boosted
+    filtered.sort((a, b) {
+      // Both actively boosted - sort by boost amount (higher first)
+      if (a.isBoostActive && b.isBoostActive) {
+        final aBoost = a.boostAmount ?? 0.0;
+        final bBoost = b.boostAmount ?? 0.0;
+        return bBoost.compareTo(aBoost);
+      }
+      // Only a is actively boosted - a comes first
+      if (a.isBoostActive && !b.isBoostActive) {
+        return -1;
+      }
+      // Only b is actively boosted - b comes first
+      if (!a.isBoostActive && b.isBoostActive) {
+        return 1;
+      }
+      // Neither actively boosted - sort by creation date (newer first)
+      return b.createdAt.compareTo(a.createdAt);
     });
 
-    widget.onFilterChanged(mutableList);
-  }
+      if (kDebugMode) {
+        debugPrint('✅ Final filtered properties: ${filtered.length}');
+      }
 
+      if (kDebugMode) {
+        debugPrint('📤 Calling onFilterChanged with ${filtered.length} properties');
+      }
+      widget.onFilterChanged(filtered);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error in _applyFilters: $e');
+      }
+      // Return empty list on error - don't show all properties as fallback
+      widget.onFilterChanged([]);
+    }
+  }
 
   void _clearFilters() {
     setState(() {
@@ -237,7 +335,13 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
       _selectedType = null;
       _selectedStatus = null;
       _selectedCity = null;
-      _priceRange = const RangeValues(0, 2000000);
+      _selectedBedrooms = null;
+      _selectedBathrooms = null;
+      _selectedKitchens = null;
+      _minPriceController.clear();
+      _maxPriceController.clear();
+      _minSizeController.clear();
+      _maxSizeController.clear();
       _showFeaturedOnly = false;
       
       // Reset feature filters
@@ -256,586 +360,673 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
     // Notify parent to clear Rent/Sell filter as well
     widget.onClearAllFilters?.call();
     
-    // Don't call _applyFilters() here because _clearAllFilters() handles the property update
-  }
-
-  Future<void> _saveCurrentSearch() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUser = authProvider.currentUser;
-    
-    if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please login to save searches'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Show dialog to get search name
-    final nameController = TextEditingController();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Save Search'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Enter a name for this search:'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                hintText: 'e.g., "Apartments in Tripoli"',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.trim().isNotEmpty) {
-                Navigator.of(context).pop(true);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && nameController.text.trim().isNotEmpty) {
-      final savedSearchService = SavedSearchService();
-      
-      // Create filters map
-      final filters = <String, dynamic>{
-        'searchQuery': _searchController.text.trim(),
-        'priceRange': {
-          'min': _priceRange.start,
-          'max': _priceRange.end,
-        },
-        'features': <String>[],
-      };
-
-      // Add type filter
-      if (_selectedType != null) {
-        filters['type'] = _selectedType!.typeDisplayName.toLowerCase();
-      }
-
-      // Add status filter
-      if (_selectedStatus != null) {
-        filters['status'] = _selectedStatus.toString().split('.').last;
-      }
-
-      // Add city filter
-      if (_selectedCity != null && _selectedCity!.isNotEmpty) {
-        filters['city'] = _selectedCity!;
-      }
-
-      // Add feature filters
-      final features = <String>[];
-      if (_hasBalcony) features.add('hasBalcony');
-      if (_hasGarden) features.add('hasGarden');
-      if (_hasParking) features.add('hasParking');
-      if (_hasPool) features.add('hasPool');
-      if (_hasGym) features.add('hasGym');
-      if (_hasSecurity) features.add('hasSecurity');
-      if (_hasElevator) features.add('hasElevator');
-      if (_hasAC) features.add('hasAC');
-      if (_hasHeating) features.add('hasHeating');
-      if (_hasFurnished) features.add('hasFurnished');
-      filters['features'] = features;
-
-      // Save the search
-      final success = await savedSearchService.saveSearch(
-        userId: currentUser.id,
-        name: nameController.text.trim(),
-        filters: filters,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              success 
-                  ? 'Search saved successfully!'
-                  : 'Failed to save search',
-            ),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
-        );
-      }
-    }
+    // Apply filters to show all properties
+    _applyFilters();
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green[50]!, Colors.green[100]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    // Return the full advanced filters interface directly
+    return StatefulBuilder(
+      builder: (context, setModalState) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.withOpacity(0.15),
-            spreadRadius: 2,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Search Bar
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TextField(
-              controller: _searchController,
-              style: const TextStyle(color: Colors.black),
-              decoration: InputDecoration(
-                hintText: l10n?.searchProperties ?? 'Search properties...',
-                hintStyle: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 16,
-                ),
-                prefixIcon: Container(
-                  margin: const EdgeInsets.all(8),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green[600],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.search,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_searchController.text.isNotEmpty)
-                      IconButton(
-                        icon: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.clear,
-                            color: Colors.grey,
-                            size: 16,
-                          ),
-                        ),
-                        onPressed: () {
-                          _searchController.clear();
-                          _applyFilters();
-                        },
-                      ),
-                    Consumer<AuthProvider>(
-                      builder: (context, authProvider, child) {
-                        if (!authProvider.isAuthenticated) return const SizedBox.shrink();
-                        
-                        return IconButton(
-                          icon: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.green[600],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Icon(
-                              Icons.bookmark_add,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                          onPressed: _saveCurrentSearch,
-                          tooltip: 'Save Search',
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide(color: Colors.green[400]!, width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Compact Action Buttons Row
-          Row(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green[200]!),
-                  ),
-                  child: TextButton.icon(
-                    onPressed: _clearFilters,
-                    icon: Icon(Icons.clear_all, size: 18, color: Colors.green[600]),
-                    label: Text(
-                      l10n?.clearFilters ?? 'Clear Filters',
-                      style: TextStyle(
-                        color: Colors.green[600],
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green[600]!, Colors.green[700]!],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.green.withOpacity(0.3),
-                        spreadRadius: 1,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextButton.icon(
-                    onPressed: () {
-                      _showAdvancedFilters();
-                    },
-                    icon: const Icon(Icons.tune, size: 18, color: Colors.white),
-                    label: Text(
-                      l10n?.advancedFilters ?? 'Advanced',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ),
+              const Text('Advanced Filters',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const SizedBox(height: 24),
+              _buildAdvancedFiltersContent(context, setModalState),
             ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildAdvancedFiltersContent(BuildContext context, StateSetter setModalState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Property Type
+        const Text('Property Type',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<PropertyType>(
+          value: _selectedType,
+          dropdownColor: Colors.white,
+          style: const TextStyle(color: Colors.black87),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Select property type',
+            hintStyle: TextStyle(color: Colors.grey[600]),
+          ),
+          items: PropertyType.values.map((type) {
+            return DropdownMenuItem(
+              value: type,
+              child: Text(type.typeDisplayName, style: const TextStyle(color: Colors.black87)),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setModalState(() {
+              _selectedType = value;
+              _notifyFilterValuesChanged();
+            });
+          },
+        ),
+
+        const SizedBox(height: 16),
+
+        // Status
+        const Text('Property Status',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<PropertyStatus>(
+          value: _selectedStatus,
+          dropdownColor: Colors.white,
+          style: const TextStyle(color: Colors.black87),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Select status',
+            hintStyle: TextStyle(color: Colors.grey[600]),
+          ),
+          items: PropertyStatus.values.map((status) {
+            return DropdownMenuItem(
+              value: status,
+              child: Text(status.statusDisplayName, style: const TextStyle(color: Colors.black87)),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setModalState(() {
+              _selectedStatus = value;
+              _notifyFilterValuesChanged();
+            });
+          },
+        ),
+
+        const SizedBox(height: 16),
+
+        // Price Range
+        const Text('Price Range (LYD)',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _minPriceController,
+                keyboardType: TextInputType.number,
+                style: ThemeService.getBodyStyle(
+                  context,
+                  color: Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Min Price (LYD)',
+                  labelStyle: ThemeService.getBodyStyle(context),
+                  hintText: '0',
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) {},
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: TextFormField(
+                controller: _maxPriceController,
+                keyboardType: TextInputType.number,
+                style: ThemeService.getBodyStyle(
+                  context,
+                  color: Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Max Price (LYD)',
+                  labelStyle: ThemeService.getBodyStyle(context),
+                  hintText: '10000000',
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) {},
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // City
+        const Text('City',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedCity,
+          dropdownColor: Colors.white,
+          style: const TextStyle(color: Colors.black87),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Select city',
+            hintStyle: TextStyle(color: Colors.grey[600]),
+          ),
+          items: _libyanCities.map((city) {
+            return DropdownMenuItem(
+              value: city,
+              child: Text(city, style: const TextStyle(color: Colors.black87)),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setModalState(() {
+              _selectedCity = value;
+              _notifyFilterValuesChanged();
+            });
+          },
+        ),
+
+        const SizedBox(height: 16),
+
+        // Bedrooms
+        const Text('Bedrooms',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          value: _selectedBedrooms,
+          dropdownColor: Colors.white,
+          style: const TextStyle(color: Colors.black87),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Select bedrooms',
+            hintStyle: TextStyle(color: Colors.grey[600]),
+          ),
+          items: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((bedrooms) {
+            return DropdownMenuItem(
+              value: bedrooms,
+              child: Text('$bedrooms', style: const TextStyle(color: Colors.black87)),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setModalState(() {
+              _selectedBedrooms = value;
+              _notifyFilterValuesChanged();
+            });
+          },
+        ),
+
+        const SizedBox(height: 16),
+
+        // Bathrooms
+        const Text('Bathrooms',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          value: _selectedBathrooms,
+          dropdownColor: Colors.white,
+          style: const TextStyle(color: Colors.black87),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Select bathrooms',
+            hintStyle: TextStyle(color: Colors.grey[600]),
+          ),
+          items: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((bathrooms) {
+            return DropdownMenuItem(
+              value: bathrooms,
+              child: Text('$bathrooms', style: const TextStyle(color: Colors.black87)),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setModalState(() {
+              _selectedBathrooms = value;
+              _notifyFilterValuesChanged();
+            });
+          },
+        ),
+
+        const SizedBox(height: 16),
+
+        // Kitchens
+        const Text('Kitchens',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          value: _selectedKitchens,
+          dropdownColor: Colors.white,
+          style: const TextStyle(color: Colors.black87),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Select kitchens',
+            hintStyle: TextStyle(color: Colors.grey[600]),
+          ),
+          items: [1, 2, 3, 4, 5, 6].map((kitchens) {
+            return DropdownMenuItem(
+              value: kitchens,
+              child: Text('$kitchens', style: const TextStyle(color: Colors.black87)),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setModalState(() {
+              _selectedKitchens = value;
+              _notifyFilterValuesChanged();
+            });
+          },
+        ),
+
+        const SizedBox(height: 16),
+
+        // Size Range
+        const Text('Size Range (m²)',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _minSizeController,
+                keyboardType: TextInputType.number,
+                style: ThemeService.getBodyStyle(
+                  context,
+                  color: Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Min Size (m²)',
+                  labelStyle: ThemeService.getBodyStyle(context),
+                  hintText: '0',
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) {},
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: TextFormField(
+                controller: _maxSizeController,
+                keyboardType: TextInputType.number,
+                style: ThemeService.getBodyStyle(
+                  context,
+                  color: Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Max Size (m²)',
+                  labelStyle: ThemeService.getBodyStyle(context),
+                  hintText: '10000',
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) {},
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 24),
+
+        // Action buttons row
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () async {
+                  _clearFilters();
+                  if (mounted && Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.green[700],
+                  side: BorderSide(color: Colors.green[700]!),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Clear Filters'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () async {
+                  await _applyFilters();
+                  if (mounted && Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Apply Filters'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
   void _showAdvancedFilters() {
+    // This method opens the full advanced filters directly
+    Navigator.pop(context); // Close the simple search modal
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Container(
           padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           child: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              Text(
-                AppLocalizations.of(context)?.advancedFilters ?? 'Advanced Filters',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Property Type Selection
-              Text(
-                AppLocalizations.of(context)?.propertyType ?? 'Property Type',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<PropertyType>(
-                value: _selectedType,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Select property type',
-                ),
-                items: PropertyType.values.map((type) {
-                  return DropdownMenuItem(
-                    value: type,
-                    child: Text(type.typeDisplayName),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setModalState(() {
-                    _selectedType = value;
-                  });
-                },
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Status Selection
-              Text(
-                AppLocalizations.of(context)?.propertyStatus ?? 'Property Status',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<PropertyStatus>(
-                value: _selectedStatus,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Select status',
-                ),
-                items: PropertyStatus.values.map((status) {
-                  return DropdownMenuItem(
-                    value: status,
-                    child: Text(status.statusDisplayName),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setModalState(() {
-                    _selectedStatus = value;
-                  });
-                },
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Price Range
-              Text(
-                AppLocalizations.of(context)?.priceRange ?? 'Price Range',
-                style: TextStyle(
-                  fontSize: 16, 
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green[700],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green[200]!),
-                ),
-                child: Column(
+                const Text('Advanced Filters',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                const SizedBox(height: 24),
+
+                // Property Type
+                const Text('Property Type',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const SizedBox(height: 8),
+                 DropdownButtonFormField<PropertyType>(
+                   value: _selectedType,
+                   dropdownColor: Colors.white,
+                   style: const TextStyle(color: Colors.black87),
+                   decoration: InputDecoration(
+                     border: OutlineInputBorder(),
+                     hintText: 'Select property type',
+                     hintStyle: TextStyle(color: Colors.grey[600]),
+                   ),
+                   items: PropertyType.values.map((type) {
+                     return DropdownMenuItem(
+                       value: type,
+                       child: Text(type.typeDisplayName, style: const TextStyle(color: Colors.black87)),
+                     );
+                   }).toList(),
+                   onChanged: (value) {
+                     setModalState(() => _selectedType = value);
+                     _applyFilters();
+                   },
+                 ),
+
+                const SizedBox(height: 16),
+
+                // Status
+                const Text('Property Status',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const SizedBox(height: 8),
+                 DropdownButtonFormField<PropertyStatus>(
+                   value: _selectedStatus,
+                   dropdownColor: Colors.white,
+                   style: const TextStyle(color: Colors.black87),
+                   decoration: InputDecoration(
+                     border: OutlineInputBorder(),
+                     hintText: 'Select status',
+                     hintStyle: TextStyle(color: Colors.grey[600]),
+                   ),
+                   items: PropertyStatus.values.map((status) {
+                     return DropdownMenuItem(
+                       value: status,
+                       child: Text(status.statusDisplayName, style: const TextStyle(color: Colors.black87)),
+                     );
+                   }).toList(),
+                   onChanged: (value) {
+                     setModalState(() => _selectedStatus = value);
+                     _applyFilters();
+                   },
+                 ),
+
+                const SizedBox(height: 16),
+
+                // Price Range
+                const Text('Price Range (LYD)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const SizedBox(height: 8),
+                Row(
                   children: [
-                    RangeSlider(
-                      values: _priceRange,
-                      min: 0,
-                      max: 2000000,
-                      divisions: 20,
-                      labels: RangeLabels(
-                        '\$${(_priceRange.start / 1000).round()}K',
-                        '\$${(_priceRange.end / 1000).round()}K',
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minPriceController,
+                        keyboardType: TextInputType.number,
+                        style: ThemeService.getBodyStyle(
+                          context,
+                          color: Colors.black87,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Min Price (LYD)',
+                          labelStyle: ThemeService.getBodyStyle(context),
+                          hintText: '0',
+                          hintStyle: TextStyle(color: Colors.grey[600]),
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {},
                       ),
-                      activeColor: Colors.green,
-                      inactiveColor: Colors.green[200],
-                      onChanged: (values) {
-                        setModalState(() {
-                          _priceRange = values;
-                        });
-                      },
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '\$${(_priceRange.start / 1000).round()}K',
-                          style: TextStyle(
-                            color: Colors.green[700],
-                            fontWeight: FontWeight.w600,
-                          ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _maxPriceController,
+                        keyboardType: TextInputType.number,
+                        style: ThemeService.getBodyStyle(
+                          context,
+                          color: Colors.black87,
                         ),
-                        Text(
-                          '\$${(_priceRange.end / 1000).round()}K',
-                          style: TextStyle(
-                            color: Colors.green[700],
-                            fontWeight: FontWeight.w600,
-                          ),
+                        decoration: InputDecoration(
+                          labelText: 'Max Price (LYD)',
+                          labelStyle: ThemeService.getBodyStyle(context),
+                          hintText: '10000000',
+                          hintStyle: TextStyle(color: Colors.grey[600]),
+                          border: OutlineInputBorder(),
                         ),
-                      ],
+                        onChanged: (value) {},
+                      ),
                     ),
                   ],
                 ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Property Features
-              Text(
-                'Property Features',
-                style: TextStyle(
-                  fontSize: 16, 
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green[700],
+
+                const SizedBox(height: 16),
+
+                // City
+                const Text('City',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const SizedBox(height: 8),
+                 DropdownButtonFormField<String>(
+                   value: _selectedCity,
+                   dropdownColor: Colors.white,
+                   style: const TextStyle(color: Colors.black87),
+                   decoration: InputDecoration(
+                     border: OutlineInputBorder(),
+                     hintText: 'Select city',
+                     hintStyle: TextStyle(color: Colors.grey[600]),
+                   ),
+                   items: _libyanCities.map((city) {
+                     return DropdownMenuItem(
+                       value: city,
+                       child: Text(city, style: const TextStyle(color: Colors.black87)),
+                     );
+                   }).toList(),
+                   onChanged: (value) {
+                     setModalState(() => _selectedCity = value);
+                     _applyFilters();
+                   },
                 ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green[200]!),
-                ),
-                child: Column(
-                  children: [
-                    _buildFeatureSwitch('Balcony', Icons.balcony, _hasBalcony, (value) {
-                      setModalState(() {
-                        _hasBalcony = value;
-                      });
-                    }),
-                    _buildFeatureSwitch('Garden', Icons.yard, _hasGarden, (value) {
-                      setModalState(() {
-                        _hasGarden = value;
-                      });
-                    }),
-                    _buildFeatureSwitch('Parking', Icons.local_parking, _hasParking, (value) {
-                      setModalState(() {
-                        _hasParking = value;
-                      });
-                    }),
-                    _buildFeatureSwitch('Pool', Icons.pool, _hasPool, (value) {
-                      setModalState(() {
-                        _hasPool = value;
-                      });
-                    }),
-                    _buildFeatureSwitch('Gym', Icons.fitness_center, _hasGym, (value) {
-                      setModalState(() {
-                        _hasGym = value;
-                      });
-                    }),
-                    _buildFeatureSwitch('Security', Icons.security, _hasSecurity, (value) {
-                      setModalState(() {
-                        _hasSecurity = value;
-                      });
-                    }),
-                    _buildFeatureSwitch('Elevator', Icons.elevator, _hasElevator, (value) {
-                      setModalState(() {
-                        _hasElevator = value;
-                      });
-                    }),
-                    _buildFeatureSwitch('AC', Icons.ac_unit, _hasAC, (value) {
-                      setModalState(() {
-                        _hasAC = value;
-                      });
-                    }),
-                    _buildFeatureSwitch('Heating', Icons.thermostat, _hasHeating, (value) {
-                      setModalState(() {
-                        _hasHeating = value;
-                      });
-                    }),
-                    _buildFeatureSwitch('Furnished', Icons.chair, _hasFurnished, (value) {
-                      setModalState(() {
-                        _hasFurnished = value;
-                      });
-                    }),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Apply Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      // Update the main state with modal state
-                    });
-                    _applyFilters();
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+
+                const SizedBox(height: 16),
+
+                // Bedrooms
+                const Text('Bedrooms',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<int>(
+                  value: _selectedBedrooms,
+                  dropdownColor: Colors.white,
+                  style: const TextStyle(color: Colors.black87),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Select bedrooms',
+                    hintStyle: TextStyle(color: Colors.grey[600]),
                   ),
-                  child: Text(AppLocalizations.of(context)?.applyFilters ?? 'Apply Filters'),
+                  items: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((bedrooms) {
+                    return DropdownMenuItem(
+                      value: bedrooms,
+                      child: Text('$bedrooms', style: const TextStyle(color: Colors.black87)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setModalState(() => _selectedBedrooms = value);
+                    _applyFilters();
+                  },
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 16),
+
+                // Bathrooms
+                const Text('Bathrooms',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<int>(
+                  value: _selectedBathrooms,
+                  dropdownColor: Colors.white,
+                  style: const TextStyle(color: Colors.black87),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Select bathrooms',
+                    hintStyle: TextStyle(color: Colors.grey[600]),
+                  ),
+                  items: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((bathrooms) {
+                    return DropdownMenuItem(
+                      value: bathrooms,
+                      child: Text('$bathrooms', style: const TextStyle(color: Colors.black87)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setModalState(() => _selectedBathrooms = value);
+                    _applyFilters();
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Kitchens
+                const Text('Kitchens',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<int>(
+                  value: _selectedKitchens,
+                  dropdownColor: Colors.white,
+                  style: const TextStyle(color: Colors.black87),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Select kitchens',
+                    hintStyle: TextStyle(color: Colors.grey[600]),
+                  ),
+                  items: [1, 2, 3, 4, 5, 6].map((kitchens) {
+                    return DropdownMenuItem(
+                      value: kitchens,
+                      child: Text('$kitchens', style: const TextStyle(color: Colors.black87)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setModalState(() => _selectedKitchens = value);
+                    _applyFilters();
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Size Range
+                const Text('Size Range (m²)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minSizeController,
+                        keyboardType: TextInputType.number,
+                        style: ThemeService.getBodyStyle(
+                          context,
+                          color: Colors.black87,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Min Size (m²)',
+                          labelStyle: ThemeService.getBodyStyle(context),
+                          hintText: '0',
+                          hintStyle: TextStyle(color: Colors.grey[600]),
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {},
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _maxSizeController,
+                        keyboardType: TextInputType.number,
+                        style: ThemeService.getBodyStyle(
+                          context,
+                          color: Colors.black87,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Max Size (m²)',
+                          labelStyle: ThemeService.getBodyStyle(context),
+                          hintText: '10000',
+                          hintStyle: TextStyle(color: Colors.grey[600]),
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {},
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Action buttons row
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          _clearFilters();
+                          Navigator.pop(context);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.green[700],
+                          side: BorderSide(color: Colors.green[700]!),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Clear Filters'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          setState(() {});
+                          await _applyFilters();
+                          if (mounted && Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[700],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Apply Filters'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFeatureSwitch(String title, IconData icon, bool value, ValueChanged<bool> onChanged) {
-    return SwitchListTile(
-      title: Text(
-        title,
-        style: TextStyle(
-          color: Colors.green[700],
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      secondary: Icon(
-        icon, 
-        size: 20,
-        color: Colors.green[600],
-      ),
-      value: value,
-      onChanged: onChanged,
-      activeColor: Colors.green,
-      contentPadding: EdgeInsets.zero,
-      dense: true,
     );
   }
 }

@@ -17,6 +17,7 @@ class ChatNotificationService extends ChangeNotifier {
   // Notification settings
   bool _notificationsEnabled = true;
   DateTime? _lastNotificationTime;
+  BuildContext? _context;
   
   // Getters
   bool get notificationsEnabled => _notificationsEnabled;
@@ -43,9 +44,14 @@ class ChatNotificationService extends ChangeNotifier {
     }
   }
 
+  /// Provide an app-level context to use for in-app banners
+  void setContext(BuildContext context) {
+    _context = context;
+  }
+
   /// Show notification for new message
   Future<void> showNewMessageNotification({
-    required BuildContext context,
+    BuildContext? context,
     required ChatMessage message,
     required String senderName,
   }) async {
@@ -66,8 +72,9 @@ class ChatNotificationService extends ChangeNotifier {
     }
     
     // Show SnackBar notification
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    final ctx = context ?? _context;
+    if (ctx != null && ctx.mounted) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
         SnackBar(
           content: Row(
             children: [
@@ -112,7 +119,7 @@ class ChatNotificationService extends ChangeNotifier {
             textColor: Colors.white,
             onPressed: () {
               // Navigate to chat using go_router
-              context.go('/chat');
+              ctx.go('/chat');
             },
           ),
         ),

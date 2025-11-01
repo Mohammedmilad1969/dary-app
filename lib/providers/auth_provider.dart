@@ -76,13 +76,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Login with email and password
-  Future<bool> login(String email, String password) async {
+  /// Login with identifier (email/phone/username) and password
+  Future<bool> login(String identifier, String password) async {
     _setLoading(true);
     _clearError();
     
     try {
-      final user = await _authService.login(email, password);
+      final user = await _authService.loginWithIdentifier(identifier, password);
       if (user != null) {
         _currentUser = user;
         notifyListeners();
@@ -93,6 +93,29 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (e) {
       _setError('Login error: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Sign in with Google
+  Future<bool> signInWithGoogle() async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      final success = await _authService.signInWithGoogle();
+      if (success) {
+        _currentUser = await _authService.getCurrentUser();
+        notifyListeners();
+        return true;
+      } else {
+        _setError('Google Sign-In failed. Please try again.');
+        return false;
+      }
+    } catch (e) {
+      _setError('Google Sign-In error: $e');
       return false;
     } finally {
       _setLoading(false);
@@ -202,6 +225,39 @@ class AuthProvider extends ChangeNotifier {
   void _clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  /// Update user profile
+  Future<bool> updateProfile({
+    required String name,
+    String? phone,
+    String? profileImageUrl,
+  }) async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      final success = await _authService.updateProfile(
+        name: name,
+        phone: phone,
+        profileImageUrl: profileImageUrl,
+      );
+      
+      if (success) {
+        // Refresh user data to get updated profile
+        _currentUser = await _authService.getCurrentUser();
+        notifyListeners();
+        return true;
+      } else {
+        _setError('Failed to update profile.');
+        return false;
+      }
+    } catch (e) {
+      _setError('Update profile error: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
   /// Check if user has specific permission (placeholder for future use)

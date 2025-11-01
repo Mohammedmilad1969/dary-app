@@ -210,6 +210,7 @@ class PaywallService extends ChangeNotifier {
       final boostSuccess = await _propertyService.boostProperty(
         propertyId,
         package.name,
+        package.price,
         package.durationDays,
       );
 

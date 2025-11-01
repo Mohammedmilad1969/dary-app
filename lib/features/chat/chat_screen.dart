@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';
 import '../../providers/auth_provider.dart';
@@ -8,6 +9,7 @@ import '../../widgets/login_required_screen.dart';
 import 'chat_models.dart';
 import 'chat_service.dart';
 import 'chat_widgets.dart';
+import '../../services/theme_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String conversationId;
@@ -39,12 +41,19 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _loadConversation();
     _loadMessages();
+    // Start listening for real-time messages
+    _chatService.startListeningToMessages(widget.conversationId);
+    // Mark this conversation as current to suppress unread increments
+    _chatService.setCurrentConversation(widget.conversationId);
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    // Stop listening for real-time messages
+    _chatService.stopListeningToMessages();
+    _chatService.setCurrentConversation(null);
     super.dispose();
   }
 
@@ -161,6 +170,19 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _formatDayLabel(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(dt.year, dt.month, dt.day);
+    if (date == today) return 'Today';
+    if (date == today.subtract(const Duration(days: 1))) return 'Yesterday';
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -180,10 +202,30 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(l10n?.chat ?? 'Chat'),
+          title: Text(
+            l10n?.chat ?? 'Chat',
+            style: ThemeService.getHeadingStyle(
+              context,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           centerTitle: true,
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                context.go('/');
+              }
+            },
+          ),
           actions: [
             LanguageToggleButton(languageService: languageService),
           ],
@@ -197,10 +239,30 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_conversation == null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(l10n?.chat ?? 'Chat'),
+          title: Text(
+            l10n?.chat ?? 'Chat',
+            style: ThemeService.getHeadingStyle(
+              context,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           centerTitle: true,
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                context.go('/');
+              }
+            },
+          ),
           actions: [
             LanguageToggleButton(languageService: languageService),
           ],
@@ -217,7 +279,8 @@ class _ChatScreenState extends State<ChatScreen> {
               const SizedBox(height: 16),
               Text(
                 l10n?.conversationNotFound ?? 'Conversation not found',
-                style: TextStyle(
+                style: ThemeService.getBodyStyle(
+                  context,
                   fontSize: 18,
                   color: Colors.grey[600],
                 ),
@@ -268,7 +331,15 @@ class _ChatScreenState extends State<ChatScreen> {
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              context.go('/');
+            }
+          },
         ),
         actions: [
           if (_conversation!.propertyImage != null)
@@ -303,7 +374,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         const SizedBox(height: 16),
                         Text(
                           l10n?.noMessagesYet ?? 'No messages yet',
-                          style: TextStyle(
+                          style: ThemeService.getBodyStyle(
+                            context,
                             fontSize: 16,
                             color: Colors.grey[600],
                           ),
@@ -311,7 +383,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         const SizedBox(height: 8),
                         Text(
                           l10n?.startConversation ?? 'Start the conversation!',
-                          style: TextStyle(
+                          style: ThemeService.getBodyStyle(
+                            context,
                             fontSize: 14,
                             color: Colors.grey[500],
                           ),
@@ -328,13 +401,47 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isCurrentUser = message.senderId == currentUser?.id;
-                    
-                    return MessageBubble(
+                    final isLastFromCurrentUser = isCurrentUser && index == messages.length - 1;
+                    final showAvatar = index == 0 || messages[index - 1].senderId != message.senderId;
+
+                    // Insert a date divider when the day changes
+                    Widget bubble = MessageBubble(
                       message: message,
                       isCurrentUser: isCurrentUser,
-                      showAvatar: index == 0 || 
-                          messages[index - 1].senderId != message.senderId,
+                      showAvatar: showAvatar,
+                      showStatus: isLastFromCurrentUser,
                     );
+
+                    if (index == 0 || !_isSameDay(messages[index - 1].timestamp, message.timestamp)) {
+                      final dateLabel = _formatDayLabel(message.timestamp);
+                      bubble = Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                dateLabel,
+                                style: ThemeService.getBodyStyle(
+                                  context,
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          bubble,
+                        ],
+                      );
+                    }
+
+                    return bubble;
                   },
                 );
               },
@@ -345,7 +452,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
+              color: Colors.white,
               border: Border(
                 top: BorderSide(
                   color: Colors.grey[300]!,
@@ -371,6 +478,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         horizontal: 16,
                         vertical: 12,
                       ),
+                      prefixIcon: Icon(Icons.emoji_emotions_outlined, color: Colors.grey[600]),
                     ),
                     maxLines: null,
                     textCapitalization: TextCapitalization.sentences,
@@ -382,6 +490,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: BoxDecoration(
                     color: Colors.green,
                     borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withOpacity(0.25),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: IconButton(
                     onPressed: _isSending ? null : _sendMessage,

@@ -121,6 +121,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     
                     const SizedBox(height: 24),
                     
+                    // AI Assistant Bot
+                    _buildAnalyticsAssistant(l10n),
+                    
+                    const SizedBox(height: 24),
+                    
                     // Daily Views Chart
                     _buildDailyViewsChart(l10n),
                     
@@ -459,5 +464,351 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   double _getMaxViews() {
     if (_dailyViewsData.isEmpty) return 100;
     return _dailyViewsData.map((data) => data['views'] as int).reduce((a, b) => a > b ? a : b).toDouble();
+  }
+
+  Widget _buildAnalyticsAssistant(AppLocalizations? l10n) {
+    if (_performanceSummary == null) return const SizedBox.shrink();
+
+    final insights = _analyzePerformance();
+    
+    return Card(
+      elevation: 2,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.blue[50]!,
+              Colors.green[50]!,
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Bot Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.smart_toy,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Analytics Assistant',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          'AI-Powered Performance Insights',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              
+              // Insights Messages
+              ...insights.map((insight) => _buildInsightMessage(insight)).toList(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _analyzePerformance() {
+    final insights = <Map<String, dynamic>>[];
+    
+    if (_performanceSummary == null) return insights;
+    
+    final summary = _performanceSummary!;
+    final totalListings = summary.propertyTypePerformance.values.fold(0, (sum, count) => sum + count);
+    final avgViewsPerListing = totalListings > 0 ? summary.totalViews / totalListings : 0.0;
+    final engagementRate = summary.averageEngagement;
+    final contactRate = summary.totalViews > 0 
+        ? (summary.totalContactClicks / summary.totalViews * 100) 
+        : 0.0;
+
+    // Analyze performance issues
+    if (summary.totalViews == 0) {
+      insights.add({
+        'type': 'error',
+        'title': 'No Views Detected',
+        'message': 'Your properties have received no views. This might be because:\n'
+            '• Properties are not published\n'
+            '• Poor quality images or missing photos\n'
+            '• Unclear or unappealing titles\n'
+            '• Properties might be hidden or inactive',
+        'suggestions': [
+          'Check if all properties are published',
+          'Add high-quality photos to all properties',
+          'Write clear, descriptive titles',
+          'Consider boosting your properties for visibility',
+        ],
+      });
+    } else if (avgViewsPerListing < 10) {
+      insights.add({
+        'type': 'warning',
+        'title': 'Low Visibility',
+        'message': 'Your properties are getting very few views (average ${avgViewsPerListing.toStringAsFixed(1)} per listing).\n'
+            'This suggests your listings need better optimization.',
+        'suggestions': [
+          'Improve property photos quality',
+          'Write more detailed and appealing descriptions',
+          'Add more photos (at least 5-10 per property)',
+          'Consider using the boost feature to increase visibility',
+          'Verify your pricing is competitive',
+        ],
+      });
+    }
+
+    if (engagementRate < 5.0 && summary.totalViews > 0) {
+      insights.add({
+        'type': 'warning',
+        'title': 'Low Engagement Rate',
+        'message': 'Your engagement rate is ${engagementRate.toStringAsFixed(1)}%, which is below average.\n'
+            'This means people view your properties but don\'t take action.',
+        'suggestions': [
+          'Add more compelling property descriptions',
+          'Include all amenities and features',
+          'Verify contact information is correct',
+          'Consider adjusting pricing to be more competitive',
+          'Add property location details (neighborhood, nearby amenities)',
+        ],
+      });
+    }
+
+    if (contactRate < 2.0 && summary.totalViews > 0) {
+      insights.add({
+        'type': 'warning',
+        'title': 'Very Low Contact Rate',
+        'message': 'Only ${contactRate.toStringAsFixed(1)}% of viewers are contacting you.\n'
+            'This suggests properties might be overpriced or lack important information.',
+        'suggestions': [
+          'Review and adjust pricing to market rates',
+          'Add complete property information',
+          'Highlight unique selling points',
+          'Ensure contact phone number is visible',
+          'Respond quickly to inquiries when they come',
+        ],
+      });
+    }
+
+    if (totalListings == 0) {
+      insights.add({
+        'type': 'info',
+        'title': 'No Listings Yet',
+        'message': 'You don\'t have any active listings. Start by adding your first property!',
+        'suggestions': [
+          'Click "Add Property" to create your first listing',
+          'Add high-quality photos',
+          'Fill in all property details completely',
+          'Publish your property to make it visible',
+        ],
+      });
+    } else if (totalListings == 1) {
+      insights.add({
+        'type': 'info',
+        'title': 'Increase Your Exposure',
+        'message': 'Having only one listing limits your visibility. Consider adding more properties.',
+        'suggestions': [
+          'Add more properties to increase your portfolio',
+          'Each property increases your overall visibility',
+          'Diversify property types and locations',
+        ],
+      });
+    }
+
+    // Success messages
+    if (engagementRate >= 10.0 && summary.totalViews > 50) {
+      insights.add({
+        'type': 'success',
+        'title': 'Great Engagement!',
+        'message': 'Your engagement rate of ${engagementRate.toStringAsFixed(1)}% is excellent!\n'
+            'Keep up the good work by maintaining quality listings.',
+        'suggestions': [
+          'Continue maintaining high-quality listings',
+          'Keep property information updated',
+          'Add new properties regularly',
+        ],
+      });
+    }
+
+    if (contactRate >= 5.0 && summary.totalContactClicks > 0) {
+      insights.add({
+        'type': 'success',
+        'title': 'Good Contact Conversion',
+        'message': 'Your contact rate of ${contactRate.toStringAsFixed(1)}% shows good conversion.\n'
+            'Make sure to respond promptly to all inquiries.',
+        'suggestions': [
+          'Respond to inquiries within 24 hours',
+          'Keep contact information up to date',
+          'Be professional and helpful in communications',
+        ],
+      });
+    }
+
+    // If no specific issues, provide general tips
+    if (insights.isEmpty && summary.totalViews > 0) {
+      insights.add({
+        'type': 'info',
+        'title': 'Performance Tips',
+        'message': 'Your properties are performing well! Here are some tips to improve further:',
+        'suggestions': [
+          'Update property photos regularly',
+          'Keep descriptions fresh and detailed',
+          'Monitor analytics weekly',
+          'Consider boosting properties during peak times',
+          'Gather and respond to user feedback',
+        ],
+      });
+    }
+
+    return insights;
+  }
+
+  Widget _buildInsightMessage(Map<String, dynamic> insight) {
+    final type = insight['type'] as String;
+    final title = insight['title'] as String;
+    final message = insight['message'] as String;
+    final suggestions = insight['suggestions'] as List<String>;
+
+    Color borderColor;
+    Color backgroundColor;
+    IconData icon;
+
+    switch (type) {
+      case 'error':
+        borderColor = Colors.red;
+        backgroundColor = Colors.red[50]!;
+        icon = Icons.error_outline;
+        break;
+      case 'warning':
+        borderColor = Colors.orange;
+        backgroundColor = Colors.orange[50]!;
+        icon = Icons.warning;
+        break;
+      case 'success':
+        borderColor = Colors.green;
+        backgroundColor = Colors.green[50]!;
+        icon = Icons.check_circle_outline;
+        break;
+      default:
+        borderColor = Colors.blue;
+        backgroundColor = Colors.blue[50]!;
+        icon = Icons.info_outline;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: borderColor, size: 24),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: borderColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+              height: 1.4,
+            ),
+          ),
+          if (suggestions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Suggestions:',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...suggestions.map((suggestion) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '• ',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: borderColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      suggestion,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black87,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )).toList(),
+          ],
+        ],
+      ),
+    );
   }
 }

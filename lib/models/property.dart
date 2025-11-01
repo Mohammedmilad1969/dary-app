@@ -4,7 +4,7 @@ import '../services/api_client.dart';
 import '../services/property_cache_service.dart';
 import '../config/env_config.dart';
 
-enum PropertyType { apartment, house, villa, townhouse, studio, penthouse, commercial, land }
+enum PropertyType { apartment, house, villa, vacationHome, townhouse, studio, penthouse, commercial, land }
 enum PropertyStatus { forSale, forRent, sold, rented }
 enum PropertyCondition { newConstruction, excellent, good, fair, needsRenovation }
 
@@ -17,6 +17,8 @@ extension PropertyTypeExtension on PropertyType {
         return 'House';
       case PropertyType.villa:
         return 'Villa';
+      case PropertyType.vacationHome:
+        return 'Vacation Home';
       case PropertyType.townhouse:
         return 'Townhouse';
       case PropertyType.studio:
@@ -75,6 +77,7 @@ class Property {
   final String address;
   final int bedrooms;
   final int bathrooms;
+  final int kitchens;
   final int floors;
   final int yearBuilt;
   final PropertyType type;
@@ -113,7 +116,9 @@ class Property {
   final bool isVerified;
   final bool isBoosted;
   final String? boostPackageName;
+  final double? boostPrice;
   final DateTime? boostExpiresAt;
+  final bool isPublished; // Published status (visible to public)
 
   Property({
     required this.id,
@@ -127,6 +132,7 @@ class Property {
     required this.address,
     required this.bedrooms,
     required this.bathrooms,
+    required this.kitchens,
     required this.floors,
     required this.yearBuilt,
     required this.type,
@@ -161,7 +167,9 @@ class Property {
     this.isVerified = false,
     this.isBoosted = false,
     this.boostPackageName,
+    this.boostPrice,
     this.boostExpiresAt,
+    this.isPublished = true, // Default to published
   });
 
   String get displayPrice {
@@ -194,6 +202,67 @@ class Property {
     }
   }
 
+  /// Get the boost amount in LYD based on the package name
+  double? get boostAmount {
+    if (!isBoosted) return null;
+    
+    // First try to use the stored boost price
+    if (boostPrice != null) {
+      return boostPrice;
+    }
+    
+    // Fallback to package name parsing
+    if (boostPackageName == null) return null;
+    
+    // Map package names to their LYD amounts
+    final packageName = boostPackageName!.toLowerCase();
+    
+    if (packageName.contains('bronze')) {
+      return 20.0;
+    } else if (packageName.contains('silver')) {
+      return 100.0;
+    } else if (packageName.contains('gold')) {
+      return 300.0;
+    } else if (packageName.contains('20')) {
+      return 20.0;
+    } else if (packageName.contains('100')) {
+      return 100.0;
+    } else if (packageName.contains('300')) {
+      return 300.0;
+    }
+    
+    // For "Top Listing" packages, try to determine from boostExpiresAt duration
+    if (packageName.contains('top listing')) {
+      if (boostExpiresAt != null) {
+        final now = DateTime.now();
+        final duration = boostExpiresAt!.difference(now);
+        final days = duration.inDays;
+        
+        // Determine package based on duration
+        if (days >= 25) { // 30-day package
+          return 300.0;
+        } else if (days >= 5) { // 7-day package
+          return 100.0;
+        } else { // 1-day package
+          return 20.0;
+        }
+      }
+      // If no expiration date, default to cheapest
+      return 20.0;
+    }
+    
+    // Try to extract amount from package name using regex, but exclude "Top Listing"
+    if (!packageName.contains('top listing')) {
+      final regex = RegExp(r'(\d+(?:\.\d+)?)');
+      final match = regex.firstMatch(boostPackageName!);
+      if (match != null) {
+        return double.tryParse(match.group(1)!);
+      }
+    }
+    
+    return null;
+  }
+
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
       id: json['id']?.toString() ?? '',
@@ -207,6 +276,7 @@ class Property {
       address: json['address'] ?? '',
       bedrooms: json['bedrooms'] ?? 0,
       bathrooms: json['bathrooms'] ?? 0,
+      kitchens: json['kitchens'] ?? 1,
       floors: json['floors'] ?? 1,
       yearBuilt: json['year_built'] ?? json['yearBuilt'] ?? 0,
       type: _parsePropertyType(json['type']),
@@ -249,6 +319,11 @@ class Property {
       isVerified: json['is_verified'] ?? json['isVerified'] ?? false,
       isBoosted: json['is_boosted'] ?? json['isBoosted'] ?? false,
       boostPackageName: json['boost_package_name'] ?? json['boostPackageName'],
+      boostPrice: json['boost_price'] != null 
+          ? (json['boost_price'] as num).toDouble()
+          : json['boostPrice'] != null 
+              ? (json['boostPrice'] as num).toDouble()
+              : null,
       boostExpiresAt: json['boost_expires_at'] != null
           ? DateTime.parse(json['boost_expires_at'])
           : json['boostExpiresAt'] != null
@@ -270,6 +345,7 @@ class Property {
       address: data['address'] ?? '',
       bedrooms: data['bedrooms'] ?? 0,
       bathrooms: data['bathrooms'] ?? 0,
+      kitchens: data['kitchens'] ?? 1,
       floors: data['floors'] ?? 1,
       yearBuilt: data['yearBuilt'] ?? 0,
       type: _parsePropertyType(data['type']),
@@ -306,12 +382,39 @@ class Property {
       views: data['views'] ?? 0,
       isFeatured: data['isFeatured'] ?? false,
       isVerified: data['isVerified'] ?? false,
-      isBoosted: data['isBoosted'] ?? false,
-      boostPackageName: data['boostPackageName'],
-      boostExpiresAt: data['boostExpiresAt'] != null
-          ? (data['boostExpiresAt'] as Timestamp).toDate()
-          : null,
+      // Check if boost is expired - if so, treat as not boosted
+      // This ensures each property ID has independent boost status
+      isBoosted: _parseBoostData(data)['isBoosted'] as bool,
+      boostPackageName: _parseBoostData(data)['boostPackageName'] as String?,
+      boostPrice: _parseBoostData(data)['boostPrice'] as double?,
+      boostExpiresAt: _parseBoostData(data)['boostExpiresAt'] as DateTime?,
+      isPublished: data['isPublished'] ?? true, // Default to true for backward compatibility
     );
+  }
+
+  /// Parse boost data from Firestore, ensuring expired boosts are treated as inactive
+  /// This prevents properties with the same name from affecting each other's boost status
+  /// Each property ID has independent boost state - matching by ID, never by title
+  static Map<String, dynamic> _parseBoostData(Map<String, dynamic> data) {
+    final boostExpiresAtTimestamp = data['boostExpiresAt'] as Timestamp?;
+    final boostExpiresAt = boostExpiresAtTimestamp != null
+        ? boostExpiresAtTimestamp.toDate()
+        : null;
+    final isBoostedFlag = data['isBoosted'] ?? false;
+    
+    // Only consider boosted if flag is true AND boost hasn't expired
+    // This ensures expired boosts don't show as active
+    final isBoosted = isBoostedFlag && 
+        (boostExpiresAt == null || DateTime.now().isBefore(boostExpiresAt));
+    
+    return {
+      'isBoosted': isBoosted,
+      'boostPackageName': isBoosted ? data['boostPackageName'] : null,
+      'boostPrice': isBoosted && data['boostPrice'] != null
+          ? (data['boostPrice'] as num).toDouble()
+          : null,
+      'boostExpiresAt': boostExpiresAt,
+    };
   }
 
   static PropertyType _parsePropertyType(dynamic type) {
@@ -321,6 +424,8 @@ class Property {
       case 'apartment': return PropertyType.apartment;
       case 'house': return PropertyType.house;
       case 'villa': return PropertyType.villa;
+      case 'vacation_home':
+      case 'vacationhome': return PropertyType.vacationHome;
       case 'townhouse': return PropertyType.townhouse;
       case 'studio': return PropertyType.studio;
       case 'penthouse': return PropertyType.penthouse;
@@ -370,6 +475,7 @@ class Property {
       'address': address,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
+      'kitchens': kitchens,
       'floors': floors,
       'yearBuilt': yearBuilt,
       'type': type.name,
@@ -400,6 +506,8 @@ class Property {
       'isVerified': isVerified,
       'isBoosted': isBoosted,
       'boostPackageName': boostPackageName,
+      'boostPrice': boostPrice,
+      'isPublished': isPublished,
       'boostExpiresAt': boostExpiresAt?.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -421,6 +529,7 @@ class PropertyService {
       address: '200 Ocean Drive, Malibu, CA 90265',
       bedrooms: 5,
       bathrooms: 4,
+      kitchens: 1,
       floors: 2,
       yearBuilt: 2019,
       type: PropertyType.villa,
@@ -466,6 +575,7 @@ class PropertyService {
       address: '123 New Villa Street, Tripoli',
       bedrooms: 4,
       bathrooms: 3,
+      kitchens: 1,
       floors: 2,
       yearBuilt: 2024,
       type: PropertyType.villa,
@@ -514,6 +624,7 @@ class PropertyService {
       address: '300 Market Street, San Francisco, CA 94105',
       bedrooms: 0,
       bathrooms: 1,
+      kitchens: 1,
       floors: 1,
       yearBuilt: 2020,
       type: PropertyType.studio,
@@ -559,6 +670,7 @@ class PropertyService {
       address: '101 Charles Street, Boston, MA 02114',
       bedrooms: 3,
       bathrooms: 2,
+      kitchens: 1,
       floors: 3,
       yearBuilt: 1890,
       type: PropertyType.townhouse,
@@ -612,6 +724,7 @@ class PropertyService {
         address: property.address,
         bedrooms: property.bedrooms,
         bathrooms: property.bathrooms,
+        kitchens: property.kitchens,
         floors: property.floors,
         yearBuilt: property.yearBuilt,
         type: property.type,

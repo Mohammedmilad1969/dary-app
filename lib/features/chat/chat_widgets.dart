@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'chat_models.dart';
+import '../../services/theme_service.dart';
 
 /// Message bubble widget for displaying chat messages
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isCurrentUser;
   final bool showAvatar;
+  final bool showStatus; // only show status for the latest outgoing message
 
   const MessageBubble({
     super.key,
     required this.message,
     required this.isCurrentUser,
     this.showAvatar = true,
+    this.showStatus = true,
   });
 
   @override
@@ -30,22 +33,46 @@ class MessageBubble extends StatelessWidget {
           if (!isCurrentUser && showAvatar) ...[
             CircleAvatar(
               radius: 16,
-              backgroundImage: message.senderAvatar != null
-                  ? NetworkImage(message.senderAvatar!)
-                  : null,
               backgroundColor: Colors.grey[300],
-              child: message.senderAvatar == null
-                  ? Text(
+              child: message.senderAvatar != null && message.senderAvatar!.isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        message.senderAvatar!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Text(
+                            message.senderName.isNotEmpty 
+                                ? message.senderName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Text(
                       message.senderName.isNotEmpty 
                           ? message.senderName[0].toUpperCase()
                           : '?',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.black87,
                       ),
-                    )
-                  : null,
+                    ),
             ),
             const SizedBox(width: 8),
           ],
@@ -60,15 +87,27 @@ class MessageBubble extends StatelessWidget {
                 vertical: 12,
               ),
               decoration: BoxDecoration(
-                color: isCurrentUser 
-                    ? Colors.indigo 
-                    : Colors.grey[200],
+                gradient: isCurrentUser
+                    ? const LinearGradient(
+                        colors: [Color(0xFF5B6BEE), Color(0xFF4853D9)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: isCurrentUser ? null : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
                   bottomLeft: Radius.circular(isCurrentUser ? 18 : 4),
                   bottomRight: Radius.circular(isCurrentUser ? 4 : 18),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,7 +115,8 @@ class MessageBubble extends StatelessWidget {
                   if (!isCurrentUser && showAvatar)
                     Text(
                       message.senderName,
-                      style: TextStyle(
+                      style: ThemeService.getBodyStyle(
+                        context,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey[600],
@@ -87,10 +127,11 @@ class MessageBubble extends StatelessWidget {
                   
                   Text(
                     message.content,
-                    style: TextStyle(
+                    style: ThemeService.getBodyStyle(
+                      context,
                       fontSize: 16,
-                      color: isCurrentUser 
-                          ? Colors.white 
+                      color: isCurrentUser
+                          ? Colors.white
                           : Colors.black87,
                     ),
                   ),
@@ -102,14 +143,15 @@ class MessageBubble extends StatelessWidget {
                     children: [
                       Text(
                         _formatTime(message.timestamp),
-                        style: TextStyle(
+                        style: ThemeService.getBodyStyle(
+                          context,
                           fontSize: 12,
-                          color: isCurrentUser 
-                              ? Colors.white70 
+                          color: isCurrentUser
+                              ? Colors.white70
                               : Colors.grey[600],
                         ),
                       ),
-                      if (isCurrentUser) ...[
+                      if (isCurrentUser && showStatus) ...[
                         const SizedBox(width: 4),
                         _buildStatusIcon(),
                       ],
@@ -124,22 +166,46 @@ class MessageBubble extends StatelessWidget {
             const SizedBox(width: 8),
             CircleAvatar(
               radius: 16,
-              backgroundImage: message.senderAvatar != null
-                  ? NetworkImage(message.senderAvatar!)
-                  : null,
               backgroundColor: Colors.grey[300],
-              child: message.senderAvatar == null
-                  ? Text(
+              child: message.senderAvatar != null && message.senderAvatar!.isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        message.senderAvatar!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Text(
+                            message.senderName.isNotEmpty 
+                                ? message.senderName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Text(
                       message.senderName.isNotEmpty 
                           ? message.senderName[0].toUpperCase()
                           : '?',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.black87,
                       ),
-                    )
-                  : null,
+                    ),
             ),
           ],
         ],
@@ -235,12 +301,37 @@ class ConversationListItem extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundImage: otherParticipant.avatar != null
-                ? NetworkImage(otherParticipant.avatar!)
-                : null,
             backgroundColor: Colors.grey[300],
-            child: otherParticipant.avatar == null
-                ? Text(
+            child: otherParticipant.avatar != null && otherParticipant.avatar!.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(
+                      otherParticipant.avatar!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Text(
+                          otherParticipant.name.isNotEmpty 
+                              ? otherParticipant.name[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                : Text(
                     otherParticipant.name.isNotEmpty 
                         ? otherParticipant.name[0].toUpperCase()
                         : '?',
@@ -249,8 +340,7 @@ class ConversationListItem extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
-                  )
-                : null,
+                  ),
           ),
           if (conversation.unreadCount > 0)
             Positioned(

@@ -3,12 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/admin_service.dart';
 import '../../services/property_service.dart';
 import '../../services/persistence_service.dart';
 import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';
+import '../../services/theme_service.dart';
 import 'firebase_auth_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -33,13 +35,11 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   // Search and filter controllers
   final TextEditingController _userSearchController = TextEditingController();
   final TextEditingController _propertySearchController = TextEditingController();
-  final TextEditingController _paymentSearchController = TextEditingController();
   final TextEditingController _transactionSearchController = TextEditingController();
   
   // Filter states
   String _userFilter = 'all';
   String _propertyFilter = 'all';
-  String _paymentFilter = 'all';
   String _transactionFilter = 'all';
   DateTime? _transactionStartDate;
   DateTime? _transactionEndDate;
@@ -53,7 +53,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadAdminData();
   }
 
@@ -62,7 +62,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     _tabController.dispose();
     _userSearchController.dispose();
     _propertySearchController.dispose();
-    _paymentSearchController.dispose();
     _transactionSearchController.dispose();
     super.dispose();
   }
@@ -351,8 +350,10 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
             TextField(
               controller: daysController,
               keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.black87),
               decoration: const InputDecoration(
                 labelText: 'Days to extend',
+                labelStyle: TextStyle(color: Colors.black87),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -593,38 +594,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         break;
       case 'low_price':
         filtered = filtered.where((property) => property.price < 100000).toList();
-        break;
-    }
-    
-    return filtered;
-  }
-
-  List<AdminPayment> _getFilteredPayments() {
-    List<AdminPayment> filtered = _payments;
-    
-    // Apply search filter
-    if (_paymentSearchController.text.isNotEmpty) {
-      final searchTerm = _paymentSearchController.text.toLowerCase();
-      filtered = filtered.where((payment) => 
-        payment.userName.toLowerCase().contains(searchTerm) ||
-        payment.userEmail.toLowerCase().contains(searchTerm) ||
-        payment.type.toLowerCase().contains(searchTerm)
-      ).toList();
-    }
-    
-    // Apply status filter
-    switch (_paymentFilter) {
-      case 'completed':
-        filtered = filtered.where((payment) => payment.status.toLowerCase() == 'completed').toList();
-        break;
-      case 'pending':
-        filtered = filtered.where((payment) => payment.status.toLowerCase() == 'pending').toList();
-        break;
-      case 'failed':
-        filtered = filtered.where((payment) => payment.status.toLowerCase() == 'failed').toList();
-        break;
-      case 'high_amount':
-        filtered = filtered.where((payment) => payment.amount > 1000).toList();
         break;
     }
     
@@ -890,21 +859,45 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     if (authProvider.currentUser?.isAdmin != true) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(l10n?.adminDashboard ?? 'Admin Dashboard'),
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          title: Text(
+            l10n?.adminDashboard ?? 'Admin Dashboard',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.go('/profile'),
           ),
         ),
-        body: const Center(
-          child: Text('Access denied. Admin privileges required.'),
+        body: Center(
+          child: Text(
+            'Access denied. Admin privileges required.',
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.white,
+            ),
+          ),
         ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n?.adminDashboard ?? 'Admin Dashboard'),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+        title: Text(
+          l10n?.adminDashboard ?? 'Admin Dashboard',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/profile'),
@@ -992,7 +985,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                         children: [
                           _buildUsersTab(l10n),
                           _buildPropertiesTab(l10n),
-                          _buildPaymentsTab(l10n),
                           _buildPremiumListingsTab(l10n),
                           _buildTransactionsTab(l10n),
                           _buildFirebaseAuthTab(l10n),
@@ -1006,32 +998,15 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       bottomNavigationBar: TabBar(
         controller: _tabController,
         isScrollable: true,
-        tabAlignment: TabAlignment.start,
+        indicatorColor: Colors.green,
+        labelColor: Colors.green,
+        unselectedLabelColor: Colors.grey[400],
         tabs: [
-          Tab(
-            icon: const Icon(Icons.people),
-            text: l10n?.users ?? 'Users',
-          ),
-          Tab(
-            icon: const Icon(Icons.home),
-            text: l10n?.properties ?? 'Properties',
-          ),
-          Tab(
-            icon: const Icon(Icons.payment),
-            text: l10n?.payments ?? 'Payments',
-          ),
-          Tab(
-            icon: const Icon(Icons.star),
-            text: l10n?.premiumListings ?? 'Premium Listings',
-          ),
-          Tab(
-            icon: const Icon(Icons.account_balance_wallet),
-            text: 'Transactions',
-          ),
-          Tab(
-            icon: const Icon(Icons.security),
-            text: 'Firebase Auth',
-          ),
+          Tab(icon: Icon(Icons.people), text: l10n?.users ?? 'Users'),
+          Tab(icon: Icon(Icons.home), text: l10n?.properties ?? 'Properties'),
+          Tab(icon: Icon(Icons.star), text: l10n?.premiumListings ?? 'Premium Listings'),
+          Tab(icon: Icon(Icons.account_balance_wallet), text: 'Transactions'),
+          Tab(icon: Icon(Icons.security), text: 'Firebase Auth'),
         ],
       ),
     );
@@ -1122,6 +1097,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
+                color: Colors.black87,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1147,12 +1123,14 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                 children: [
                   TextField(
                     controller: _userSearchController,
+                    style: const TextStyle(color: Colors.black87),
                     decoration: InputDecoration(
                       hintText: 'Search users...',
-                      prefixIcon: const Icon(Icons.search),
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       suffixIcon: _userSearchController.text.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear),
+                              icon: const Icon(Icons.clear, color: Colors.grey),
                               onPressed: () {
                                 _userSearchController.clear();
                                 setState(() {});
@@ -1161,6 +1139,15 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                           : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.grey),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.grey),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.green),
                       ),
                     ),
                     onChanged: (value) => setState(() {}),
@@ -1171,16 +1158,25 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           value: _userFilter,
+                          dropdownColor: Colors.white,
+                          style: const TextStyle(color: Colors.black87),
                           decoration: const InputDecoration(
                             labelText: 'Filter',
+                            labelStyle: TextStyle(color: Colors.grey),
                             border: OutlineInputBorder(),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Colors.grey),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Colors.green),
+                            ),
                           ),
-                          items: const [
-                            DropdownMenuItem(value: 'all', child: Text('All Users')),
-                            DropdownMenuItem(value: 'verified', child: Text('Verified')),
-                            DropdownMenuItem(value: 'unverified', child: Text('Unverified')),
-                            DropdownMenuItem(value: 'active', child: Text('Active')),
-                            DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+                          items: [
+                            DropdownMenuItem(value: 'all', child: Text('All Users', style: TextStyle(color: Colors.black87))),
+                            DropdownMenuItem(value: 'verified', child: Text('Verified', style: TextStyle(color: Colors.black87))),
+                            DropdownMenuItem(value: 'unverified', child: Text('Unverified', style: TextStyle(color: Colors.black87))),
+                            DropdownMenuItem(value: 'active', child: Text('Active', style: TextStyle(color: Colors.black87))),
+                            DropdownMenuItem(value: 'inactive', child: Text('Inactive', style: TextStyle(color: Colors.black87))),
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -1194,7 +1190,10 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                         ElevatedButton.icon(
                           onPressed: _bulkVerifyUsers,
                           icon: const Icon(Icons.verified_user),
-                          label: Text('Verify ${_selectedUsers.length}'),
+                          label: Text(
+                            'Verify ${_selectedUsers.length}',
+                            style: const TextStyle(color: Colors.white),
+                          ),
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                         ),
                         const SizedBox(width: 8),
@@ -1202,7 +1201,10 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                       ElevatedButton.icon(
                         onPressed: _exportUsers,
                         icon: const Icon(Icons.download),
-                        label: const Text('Export'),
+                        label: const Text(
+                          'Export',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -1232,7 +1234,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                             },
                             title: Text(
                               user.name,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
                             ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1247,7 +1249,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                                 ),
                                 Text(
                                   '${l10n?.listings ?? 'Listings'}: ${user.activeListings}/${user.totalListings}',
-                                  style: const TextStyle(fontSize: 12),
+                                  style: const TextStyle(fontSize: 12, color: Colors.black87),
                                 ),
                               ],
                             ),
@@ -1302,13 +1304,13 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                   : SingleChildScrollView(
                       child: DataTable(
                         columns: [
-                          DataColumn(label: Text(l10n?.name ?? 'Name')),
-                          DataColumn(label: Text(l10n?.email ?? 'Email')),
-                          DataColumn(label: Text(l10n?.phone ?? 'Phone')),
-                          DataColumn(label: Text(l10n?.verified ?? 'Verified')),
-                          DataColumn(label: Text(l10n?.active ?? 'Active')),
-                          DataColumn(label: Text(l10n?.listings ?? 'Listings')),
-                          DataColumn(label: Text(l10n?.actions ?? 'Actions')),
+                          DataColumn(label: Text(l10n?.name ?? 'Name', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.email ?? 'Email', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.phone ?? 'Phone', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.verified ?? 'Verified', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.active ?? 'Active', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.listings ?? 'Listings', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.actions ?? 'Actions', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
                         ],
                         rows: filteredUsers.map((user) {
                           return DataRow(
@@ -1323,9 +1325,9 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                               });
                             },
                             cells: [
-                              DataCell(Text(user.name)),
-                              DataCell(Text(user.email)),
-                              DataCell(Text(user.phone)),
+                              DataCell(Text(user.name, style: const TextStyle(color: Colors.black87))),
+                              DataCell(Text(user.email, style: const TextStyle(color: Colors.black87))),
+                              DataCell(Text(user.phone, style: const TextStyle(color: Colors.black87))),
                               DataCell(
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -1336,7 +1338,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                                       size: 16,
                                     ),
                                     const SizedBox(width: 4),
-                                    Text(user.isVerified ? 'Yes' : 'No'),
+                                    Text(user.isVerified ? 'Yes' : 'No', style: const TextStyle(color: Colors.black87)),
                                   ],
                                 ),
                               ),
@@ -1350,11 +1352,11 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                                       size: 16,
                                     ),
                                     const SizedBox(width: 4),
-                                    Text(user.isActive ? 'Yes' : 'No'),
+                                    Text(user.isActive ? 'Yes' : 'No', style: const TextStyle(color: Colors.black87)),
                                   ],
                                 ),
                               ),
-                              DataCell(Text('${user.activeListings}/${user.totalListings}')),
+                              DataCell(Text('${user.activeListings}/${user.totalListings}', style: const TextStyle(color: Colors.black87))),
                               DataCell(
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -1423,7 +1425,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                           Expanded(
                             child: Text(
                               property.title,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1442,23 +1444,23 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                       ),
                       Text(
                         '${l10n?.price ?? 'Price'}: ${property.price.toStringAsFixed(0)} LYD',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: const TextStyle(fontSize: 12, color: Colors.black87),
                       ),
                       Text(
                         '${l10n?.city ?? 'City'}: ${property.city}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: const TextStyle(fontSize: 12, color: Colors.black87),
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           Text(
                             '${l10n?.status ?? 'Status'}: ${property.status}',
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: 12, color: Colors.black87),
                           ),
                           const SizedBox(width: 16),
                           Text(
                             '${l10n?.views ?? 'Views'}: ${property.views}',
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: 12, color: Colors.black87),
                           ),
                           const Spacer(),
                           if (property.isActive)
@@ -1483,14 +1485,14 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         } else {
           return DataTable(
             columns: [
-              DataColumn(label: Text(l10n?.title ?? 'Title')),
-              DataColumn(label: Text(l10n?.owner ?? 'Owner')),
-              DataColumn(label: Text(l10n?.price ?? 'Price')),
-              DataColumn(label: Text(l10n?.city ?? 'City')),
-              DataColumn(label: Text(l10n?.status ?? 'Status')),
-              DataColumn(label: Text(l10n?.views ?? 'Views')),
-              DataColumn(label: Text(l10n?.active ?? 'Active')),
-              DataColumn(label: Text(l10n?.actions ?? 'Actions')),
+              DataColumn(label: Text(l10n?.title ?? 'Title', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+              DataColumn(label: Text(l10n?.owner ?? 'Owner', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+              DataColumn(label: Text(l10n?.price ?? 'Price', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+              DataColumn(label: Text(l10n?.city ?? 'City', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+              DataColumn(label: Text(l10n?.status ?? 'Status', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+              DataColumn(label: Text(l10n?.views ?? 'Views', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+              DataColumn(label: Text(l10n?.active ?? 'Active', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+              DataColumn(label: Text(l10n?.actions ?? 'Actions', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
             ],
             rows: _properties.map((property) {
               return DataRow(
@@ -1500,13 +1502,14 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                       property.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.black87),
                     ),
                   ),
-                  DataCell(Text(property.ownerName)),
-                  DataCell(Text('${property.price.toStringAsFixed(0)} LYD')),
-                  DataCell(Text(property.city)),
-                  DataCell(Text(property.status)),
-                  DataCell(Text('${property.views}')),
+                  DataCell(Text(property.ownerName, style: const TextStyle(color: Colors.black87))),
+                  DataCell(Text('${property.price.toStringAsFixed(0)} LYD', style: const TextStyle(color: Colors.black87))),
+                  DataCell(Text(property.city, style: const TextStyle(color: Colors.black87))),
+                  DataCell(Text(property.status, style: const TextStyle(color: Colors.black87))),
+                  DataCell(Text('${property.views}', style: const TextStyle(color: Colors.black87))),
                   DataCell(
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1517,7 +1520,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                           size: 16,
                         ),
                         const SizedBox(width: 4),
-                        Text(property.isActive ? 'Yes' : 'No'),
+                        Text(property.isActive ? 'Yes' : 'No', style: const TextStyle(color: Colors.black87)),
                       ],
                     ),
                   ),
@@ -1537,151 +1540,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                           tooltip: 'Delete',
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          );
-        }
-      },
-    );
-  }
-
-  Widget _buildPaymentsTab(AppLocalizations? l10n) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
-        
-        if (isMobile) {
-          return ListView.builder(
-            itemCount: _payments.length,
-            itemBuilder: (context, index) {
-              final payment = _payments[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              payment.userName,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(payment.status),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              payment.status,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        payment.userEmail,
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        '${l10n?.type ?? 'Type'}: ${payment.type}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(
-                            '${l10n?.amount ?? 'Amount'}: ${payment.amount.toStringAsFixed(0)} ${payment.currency}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          const Spacer(),
-                          Text(
-                            '${payment.createdAt.day}/${payment.createdAt.month}/${payment.createdAt.year}',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                      if (payment.description != null && payment.description!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          payment.description!,
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        } else {
-          return DataTable(
-            columns: [
-              DataColumn(label: Text(l10n?.user ?? 'User')),
-              DataColumn(label: Text(l10n?.type ?? 'Type')),
-              DataColumn(label: Text(l10n?.amount ?? 'Amount')),
-              DataColumn(label: Text(l10n?.status ?? 'Status')),
-              DataColumn(label: Text(l10n?.date ?? 'Date')),
-              DataColumn(label: Text(l10n?.description ?? 'Description')),
-            ],
-            rows: _payments.map((payment) {
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          payment.userName,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          payment.userEmail,
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                  DataCell(Text(payment.type)),
-                  DataCell(Text('${payment.amount.toStringAsFixed(0)} ${payment.currency}')),
-                  DataCell(
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(payment.status),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        payment.status,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  DataCell(Text('${payment.createdAt.day}/${payment.createdAt.month}/${payment.createdAt.year}')),
-                  DataCell(
-                    Text(
-                      payment.description ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -1987,6 +1845,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     final filteredTransactions = _getFilteredTransactions();
     final analytics = _getTransactionAnalytics();
     
+    
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 600;
@@ -2060,12 +1919,14 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                 children: [
                   TextField(
                     controller: _transactionSearchController,
+                    style: const TextStyle(color: Colors.black87),
                     decoration: InputDecoration(
                       hintText: 'Search transactions...',
-                      prefixIcon: const Icon(Icons.search),
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       suffixIcon: _transactionSearchController.text.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear),
+                              icon: const Icon(Icons.clear, color: Colors.grey),
                               onPressed: () {
                                 _transactionSearchController.clear();
                                 setState(() {});
@@ -2187,96 +2048,159 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
             
             // Transactions List
             Expanded(
-              child: isMobile
-                  ? ListView.builder(
+              child: filteredTransactions.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.account_balance_wallet_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No transactions found',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Transactions will appear here when users make payments or recharge their wallets.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          if (kDebugMode) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              'Debug: Total payments loaded: ${_payments.length}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )
+                  : isMobile
+                      ? ListView.builder(
                       itemCount: filteredTransactions.length,
                       itemBuilder: (context, index) {
                         final transaction = filteredTransactions[index];
                         return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: CheckboxListTile(
-                            value: _selectedTransactions.contains(transaction.id),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  _selectedTransactions.add(transaction.id);
-                                } else {
-                                  _selectedTransactions.remove(transaction.id);
-                                }
-                              });
-                            },
+                          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          child: ListTile(
+                            dense: true,
+                            leading: Checkbox(
+                              value: _selectedTransactions.contains(transaction.id),
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  if (value == true) {
+                                    _selectedTransactions.add(transaction.id);
+                                  } else {
+                                    _selectedTransactions.remove(transaction.id);
+                                  }
+                                });
+                              },
+                            ),
                             title: Text(
                               transaction.userName,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  transaction.userEmail,
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                Text(
-                                  '${transaction.type} - ${transaction.amount.toStringAsFixed(0)} ${transaction.currency}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                Text(
-                                  '${transaction.createdAt.day}/${transaction.createdAt.month}/${transaction.createdAt.year}',
-                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                ),
-                                if (transaction.description != null && transaction.description!.isNotEmpty)
-                                  Text(
-                                    transaction.description!,
-                                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                              ],
+                            subtitle: Text(
+                              '${transaction.type} - ${transaction.amount.toStringAsFixed(0)} ${transaction.currency}',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
                             ),
-                            secondary: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: _getStatusColor(transaction.status),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     transaction.status,
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontSize: 10,
+                                      fontSize: 9,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Icon(
-                                  transaction.type.toLowerCase().contains('recharge') 
-                                      ? Icons.add_circle 
-                                      : Icons.remove_circle,
-                                  color: transaction.type.toLowerCase().contains('recharge') 
-                                      ? Colors.green 
-                                      : Colors.red,
-                                  size: 16,
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(Icons.refresh, color: Colors.orange, size: 16),
+                                  onPressed: () async {
+                                    await _processRefund(transaction);
+                                  },
+                                  tooltip: 'Refund Transaction',
                                 ),
                               ],
                             ),
+                            onTap: () {
+                              // Show transaction details in a dialog
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  backgroundColor: Colors.white,
+                                  title: Text(
+                                    'Transaction Details',
+                                    style: const TextStyle(color: Colors.black87),
+                                  ),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('User: ${transaction.userName}', style: const TextStyle(color: Colors.black87)),
+                                      Text('Email: ${transaction.userEmail}', style: const TextStyle(color: Colors.black87)),
+                                      Text('Type: ${transaction.type}', style: const TextStyle(color: Colors.black87)),
+                                      Text('Amount: ${transaction.amount} ${transaction.currency}', style: const TextStyle(color: Colors.black87)),
+                                      Text('Date: ${transaction.createdAt.day}/${transaction.createdAt.month}/${transaction.createdAt.year}', style: const TextStyle(color: Colors.black87)),
+                                      if (transaction.description != null && transaction.description!.isNotEmpty)
+                                        Text('Description: ${transaction.description}', style: const TextStyle(color: Colors.black87)),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Close', style: TextStyle(color: Colors.green)),
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        Navigator.pop(context);
+                                        await _processRefund(transaction);
+                                      },
+                                      child: const Text('Refund', style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         );
                       },
                     )
                   : SingleChildScrollView(
                       child: DataTable(
+                        headingRowHeight: 40,
+                        dataRowHeight: 50,
                         columns: [
-                          DataColumn(label: Text(l10n?.user ?? 'User')),
-                          DataColumn(label: Text(l10n?.type ?? 'Type')),
-                          DataColumn(label: Text(l10n?.amount ?? 'Amount')),
-                          DataColumn(label: Text(l10n?.status ?? 'Status')),
-                          DataColumn(label: Text(l10n?.date ?? 'Date')),
-                          DataColumn(label: Text(l10n?.description ?? 'Description')),
-                          DataColumn(label: Text(l10n?.actions ?? 'Actions')),
+                          DataColumn(label: Text(l10n?.user ?? 'User', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.type ?? 'Type', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.amount ?? 'Amount', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.status ?? 'Status', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.date ?? 'Date', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.description ?? 'Description', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(l10n?.actions ?? 'Actions', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
                         ],
                         rows: filteredTransactions.map((transaction) {
                           return DataRow(
@@ -2298,11 +2222,11 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                                   children: [
                                     Text(
                                       transaction.userName,
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 12),
                                     ),
                                     Text(
                                       transaction.userEmail,
-                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                      style: const TextStyle(fontSize: 10, color: Colors.grey),
                                     ),
                                   ],
                                 ),
@@ -2318,10 +2242,10 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                                       color: transaction.type.toLowerCase().contains('recharge') 
                                           ? Colors.green 
                                           : Colors.red,
-                                      size: 16,
+                                      size: 14,
                                     ),
                                     const SizedBox(width: 4),
-                                    Text(transaction.type),
+                                    Text(transaction.type, style: const TextStyle(color: Colors.black87, fontSize: 12)),
                                   ],
                                 ),
                               ),
@@ -2330,6 +2254,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                                   '${transaction.amount.toStringAsFixed(0)} ${transaction.currency}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 12,
                                     color: transaction.type.toLowerCase().contains('recharge') 
                                         ? Colors.green 
                                         : Colors.red,
@@ -2338,27 +2263,28 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                               ),
                               DataCell(
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: _getStatusColor(transaction.status),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     transaction.status,
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontSize: 12,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
                               ),
-                              DataCell(Text('${transaction.createdAt.day}/${transaction.createdAt.month}/${transaction.createdAt.year}')),
+                              DataCell(Text('${transaction.createdAt.day}/${transaction.createdAt.month}/${transaction.createdAt.year}', style: const TextStyle(color: Colors.black87, fontSize: 12))),
                               DataCell(
                                 Text(
                                   transaction.description ?? '',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.black87, fontSize: 12),
                                 ),
                               ),
                               DataCell(
@@ -2377,14 +2303,9 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                                             child: const Text('Cancel'),
                                           ),
                                           TextButton(
-                                            onPressed: () {
+                                            onPressed: () async {
                                               Navigator.pop(context);
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text('Refunded ${transaction.amount} ${transaction.currency}'),
-                                                  backgroundColor: Colors.orange,
-                                                ),
-                                              );
+                                              await _processRefund(transaction);
                                             },
                                             child: const Text('Refund'),
                                             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -2406,6 +2327,92 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         );
       },
     );
+  }
+
+  /// Process a refund for a transaction
+  Future<void> _processRefund(AdminPayment transaction) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Get current wallet balance
+      final walletDoc = await FirebaseFirestore.instance
+          .collection('wallet')
+          .doc(transaction.userId)
+          .get();
+
+      if (!walletDoc.exists) {
+        throw Exception('User wallet not found');
+      }
+
+      final walletData = walletDoc.data()!;
+      final currentBalance = (walletData['balance'] ?? 0).toDouble();
+
+      // Calculate refund amount (negative of original transaction)
+      final refundAmount = -transaction.amount;
+      final newBalance = currentBalance + refundAmount;
+
+      // Create refund transaction
+      final refundTransactionData = {
+        'amount': refundAmount,
+        'type': 'refund',
+        'description': 'Refund for transaction: ${transaction.description}',
+        'metadata': {
+          'originalTransactionId': transaction.id,
+          'refundedBy': 'admin',
+          'refundedAt': Timestamp.now(),
+        },
+        'createdAt': Timestamp.now(),
+      };
+
+      // Add refund transaction to subcollection
+      await FirebaseFirestore.instance
+          .collection('wallet')
+          .doc(transaction.userId)
+          .collection('transactions')
+          .add(refundTransactionData);
+
+      // Update wallet balance
+      await FirebaseFirestore.instance
+          .collection('wallet')
+          .doc(transaction.userId)
+          .update({
+        'balance': newBalance,
+        'updatedAt': Timestamp.now(),
+      });
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully refunded ${transaction.amount} ${transaction.currency} to ${transaction.userName}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Refresh admin data to show updated transactions
+      await _loadAdminData();
+
+    } catch (e) {
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to process refund: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildFirebaseAuthTab(AppLocalizations? l10n) {

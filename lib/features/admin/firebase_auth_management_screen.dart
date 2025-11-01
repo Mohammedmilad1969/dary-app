@@ -22,23 +22,29 @@ class _FirebaseAuthManagementScreenState extends State<FirebaseAuthManagementScr
   }
 
   Future<void> _loadUsers() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
 
     try {
       final users = await FirebaseAuthHelper.getUsersNotInFirebaseAuth();
-      setState(() {
-        _users = users;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _users = users;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error loading users: $e');
       }
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

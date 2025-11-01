@@ -13,6 +13,7 @@ class UserProfile {
   final DateTime joinDate;
   final int totalListings;
   final int activeListings;
+  final int propertyLimit; // Total property slots allowed
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isVerified;
@@ -27,6 +28,7 @@ class UserProfile {
     required this.joinDate,
     required this.totalListings,
     required this.activeListings,
+    this.propertyLimit = 5, // Default free tier: 5 properties
     required this.createdAt,
     required this.updatedAt,
     this.isVerified = false,
@@ -42,6 +44,7 @@ class UserProfile {
     DateTime? joinDate,
     int? totalListings,
     int? activeListings,
+    int? propertyLimit,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isVerified,
@@ -56,12 +59,31 @@ class UserProfile {
       joinDate: joinDate ?? this.joinDate,
       totalListings: totalListings ?? this.totalListings,
       activeListings: activeListings ?? this.activeListings,
+      propertyLimit: propertyLimit ?? this.propertyLimit,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isVerified: isVerified ?? this.isVerified,
       isAdmin: isAdmin ?? this.isAdmin,
     );
   }
+
+  /// Check if user can add more properties
+  bool get canAddProperty {
+    // Debug logging
+    if (kDebugMode) {
+      debugPrint('🔍 Property Limit Check:');
+      debugPrint('   Total Listings: $totalListings');
+      debugPrint('   Property Limit: $propertyLimit');
+      debugPrint('   Can Add: ${totalListings < propertyLimit}');
+    }
+    return totalListings < propertyLimit;
+  }
+  
+  /// Get remaining property slots
+  int get remainingSlots => (propertyLimit - totalListings).clamp(0, propertyLimit);
+  
+  /// Get used property slots
+  int get usedSlots => totalListings;
 }
 
 class UserListing {
@@ -72,6 +94,7 @@ class UserListing {
   final String imageUrl;
   final DateTime createdAt;
   final bool isActive;
+  final bool isPublished;
   final int views;
   final bool isBoosted;
   final String? boostPackageName;
@@ -85,6 +108,7 @@ class UserListing {
     required this.imageUrl,
     required this.createdAt,
     required this.isActive,
+    this.isPublished = true,
     required this.views,
     this.isBoosted = false,
     this.boostPackageName,
@@ -99,6 +123,7 @@ class UserListing {
     String? imageUrl,
     DateTime? createdAt,
     bool? isActive,
+    bool? isPublished,
     int? views,
     bool? isBoosted,
     String? boostPackageName,
@@ -112,6 +137,7 @@ class UserListing {
       imageUrl: imageUrl ?? this.imageUrl,
       createdAt: createdAt ?? this.createdAt,
       isActive: isActive ?? this.isActive,
+      isPublished: isPublished ?? this.isPublished,
       views: views ?? this.views,
       isBoosted: isBoosted ?? this.isBoosted,
       boostPackageName: boostPackageName ?? this.boostPackageName,
@@ -176,6 +202,7 @@ class ProfileService {
           imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
           createdAt: property.createdAt,
           isActive: property.status == PropertyStatus.forSale || property.status == PropertyStatus.forRent,
+          isPublished: property.isPublished,
           views: property.views,
           isBoosted: property.isBoosted,
           boostPackageName: property.boostPackageName,
