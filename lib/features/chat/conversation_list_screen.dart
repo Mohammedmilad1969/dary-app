@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';

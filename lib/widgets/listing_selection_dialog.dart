@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import '../models/user_profile.dart';
 
 class ListingSelectionDialog extends StatefulWidget {

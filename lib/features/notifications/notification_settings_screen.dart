@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../../services/notification_service.dart';
 import '../../services/language_service.dart';

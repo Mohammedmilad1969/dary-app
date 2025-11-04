@@ -4,7 +4,7 @@ import 'dart:io' if (dart.library.html) '../utils/file_stub.dart' show File;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../models/property.dart';
 import '../services/language_service.dart';
@@ -16,6 +16,7 @@ import '../services/image_upload_service.dart';
 import '../services/theme_service.dart';
 import '../widgets/property_limit_modal.dart';
 import '../services/wallet_service.dart';
+import '../utils/text_input_formatters.dart';
 
 // Libya timezone (GMT+2) and current date
 const libyaTimeZone = Duration(hours: 2);
@@ -155,7 +156,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       _floorsController.text = property.floors.toString();
     }
     if (property.yearBuilt > 0) {
-      _yearBuiltController.text = property.yearBuilt.toString();
+      _selectedYearBuilt = property.yearBuilt;
     }
     
     // Set rent fields if applicable
@@ -639,8 +640,10 @@ final Map<String, List<String>> _cityNeighborhoods = {
   final _bedroomsController = TextEditingController();
   final _bathroomsController = TextEditingController();
   final _floorsController = TextEditingController();
-  final _yearBuiltController = TextEditingController();
   final _monthlyRentController = TextEditingController();
+  
+  // Year built selection (1950-2050)
+  int? _selectedYearBuilt;
   final _dailyRentController = TextEditingController();
   final _depositController = TextEditingController();
   final _landSizeController = TextEditingController();
@@ -699,7 +702,6 @@ final Map<String, List<String>> _cityNeighborhoods = {
     _bedroomsController.dispose();
     _bathroomsController.dispose();
     _floorsController.dispose();
-    _yearBuiltController.dispose();
     _monthlyRentController.dispose();
     _dailyRentController.dispose();
     _depositController.dispose();
@@ -967,7 +969,7 @@ final Map<String, List<String>> _cityNeighborhoods = {
           floors: (_selectedType != PropertyType.apartment && _selectedType != PropertyType.land)
               ? (int.tryParse(_floorsController.text) ?? 1)
               : 1,
-          yearBuilt: int.tryParse(_yearBuiltController.text) ?? 0,
+          yearBuilt: _selectedYearBuilt ?? 0,
           type: _selectedType,
           status: _selectedStatus,
           condition: _selectedCondition,
@@ -1230,7 +1232,7 @@ final Map<String, List<String>> _cityNeighborhoods = {
     _bedroomsController.clear();
     _bathroomsController.clear();
     _floorsController.clear();
-    _yearBuiltController.clear();
+    _selectedYearBuilt = null;
     _monthlyRentController.clear();
     _dailyRentController.clear();
     _depositController.clear();
@@ -1392,6 +1394,7 @@ final Map<String, List<String>> _cityNeighborhoods = {
                                 context,
                                 color: Colors.black87,
                               ),
+                              inputFormatters: [BasicTextFormatter()],
                               decoration: InputDecoration(
                                 labelText: l10n?.propertyTitle ?? 'Property Title',
                                 labelStyle: ThemeService.getBodyStyle(context),
@@ -1415,6 +1418,7 @@ final Map<String, List<String>> _cityNeighborhoods = {
                                 context,
                                 color: Colors.black87,
                               ),
+                              inputFormatters: [BasicTextFormatter()],
                               decoration: InputDecoration(
                                 labelText: l10n?.description ?? 'Description',
                                 labelStyle: ThemeService.getBodyStyle(context),
@@ -1515,6 +1519,7 @@ final Map<String, List<String>> _cityNeighborhoods = {
                               context,
                               color: Colors.black87,
                             ),
+                            inputFormatters: [PriceFormatter()],
                             decoration: InputDecoration(
                               labelText: 'Price (LYD)',
                               labelStyle: ThemeService.getBodyStyle(context),
@@ -1702,6 +1707,7 @@ final Map<String, List<String>> _cityNeighborhoods = {
                                           context,
                                           color: Colors.black87,
                                         ),
+                                        inputFormatters: [PriceFormatter()],
                                         decoration: InputDecoration(
                                           labelText: 'Monthly Rent (LYD)',
                                           labelStyle: ThemeService.getBodyStyle(context),
@@ -1729,6 +1735,7 @@ final Map<String, List<String>> _cityNeighborhoods = {
                                               context,
                                               color: Colors.black87,
                                             ),
+                                            inputFormatters: [PriceFormatter()],
                                             decoration: InputDecoration(
                                               labelText: 'Daily Rent (LYD)',
                                               labelStyle: ThemeService.getBodyStyle(context),
@@ -1777,6 +1784,7 @@ final Map<String, List<String>> _cityNeighborhoods = {
                                   context,
                                   color: Colors.black87,
                                 ),
+                                inputFormatters: [PriceFormatter()],
                                 decoration: InputDecoration(
                                   labelText: 'Security Deposit (LYD)',
                                   labelStyle: ThemeService.getBodyStyle(context),
@@ -1814,6 +1822,7 @@ final Map<String, List<String>> _cityNeighborhoods = {
                                 context,
                                 color: Colors.black87,
                               ),
+                              inputFormatters: [BasicTextFormatter()],
                               decoration: InputDecoration(
                                 labelText: 'Address',
                                 labelStyle: ThemeService.getBodyStyle(context),
@@ -2139,8 +2148,8 @@ final Map<String, List<String>> _cityNeighborhoods = {
                         child: Row(
                           children: [
                             Expanded(
-                              child: TextFormField(
-                                controller: _yearBuiltController,
+                              child: DropdownButtonFormField<int>(
+                                value: _selectedYearBuilt,
                                 style: ThemeService.getBodyStyle(
                                   context,
                                   color: Colors.black87,
@@ -2148,17 +2157,24 @@ final Map<String, List<String>> _cityNeighborhoods = {
                                 decoration: InputDecoration(
                                   labelText: 'Year Built',
                                   labelStyle: ThemeService.getBodyStyle(context),
-                                  hintText: 'e.g., 2020',
-                                  hintStyle: ThemeService.getBodyStyle(context),
                                   prefixIcon: const Icon(Icons.calendar_today),
                                 ),
-                                keyboardType: TextInputType.number,
+                                hint: const Text('Select year'),
+                                items: List.generate(101, (index) {
+                                  final year = 1950 + index;
+                                  return DropdownMenuItem<int>(
+                                    value: year,
+                                    child: Text(year.toString()),
+                                  );
+                                }),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedYearBuilt = value;
+                                  });
+                                },
                                 validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter year built';
-                                  }
-                                  if (int.tryParse(value) == null) {
-                                    return 'Please enter a valid year';
+                                  if (value == null) {
+                                    return 'Please select year built';
                                   }
                                   return null;
                                 },

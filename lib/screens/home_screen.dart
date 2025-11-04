@@ -11,7 +11,9 @@ import 'package:dary/widgets/language_toggle_button.dart';
 import 'package:dary/models/property.dart';
 import 'package:dary/features/paywall/paywall_screens.dart';
 import 'package:dary/widgets/home_chatbot.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
+import '../utils/text_input_formatters.dart';
+import '../utils/app_animations.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,6 +41,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String _filterMaxPrice = '';
   String _filterMinSize = '';
   String _filterMaxSize = '';
+  
+  // Sorting state
+  bool? _priceSortAscending; // null = no sort, false = descending (high to low), true = ascending (low to high)
+  bool? _dateSortAscending; // null = no sort, false = descending (latest first), true = ascending (oldest first)
+  
+  // Grid view state
+  bool _isGridView = false; // false = 1 column (list), true = 2 columns (grid)
   
   // Scroll controller for header animation
   late ScrollController _scrollController;
@@ -112,7 +121,22 @@ class _HomeScreenState extends State<HomeScreen> {
         return bBoostAmount.compareTo(aBoostAmount);
       }
       
-      // Among non-actively boosted properties, sort by creation date (newest first)
+      // Apply sorting based on selected sort type
+      if (_priceSortAscending != null) {
+        // Price sorting - extract numeric price value
+        double aPrice = a.status == PropertyStatus.forRent
+            ? (a.monthlyRent > 0 ? a.monthlyRent : (a.dailyRent > 0 ? a.dailyRent * 30 : 0))
+            : a.price;
+        double bPrice = b.status == PropertyStatus.forRent
+            ? (b.monthlyRent > 0 ? b.monthlyRent : (b.dailyRent > 0 ? b.dailyRent * 30 : 0))
+            : b.price;
+        return _priceSortAscending! ? aPrice.compareTo(bPrice) : bPrice.compareTo(aPrice);
+      } else if (_dateSortAscending != null) {
+        // Date sorting
+        return _dateSortAscending! ? a.createdAt.compareTo(b.createdAt) : b.createdAt.compareTo(a.createdAt);
+      }
+      
+      // Default: Among non-actively boosted properties, sort by creation date (newest first)
       return b.createdAt.compareTo(a.createdAt);
     });
 
@@ -168,7 +192,21 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!a.isBoostActive && b.isBoostActive) {
         return 1;
       }
-      // Neither actively boosted - sort by creation date (newer first)
+      // Neither actively boosted - apply sorting based on selected sort type
+      if (_priceSortAscending != null) {
+        // Price sorting - extract numeric price value
+        double aPrice = a.status == PropertyStatus.forRent
+            ? (a.monthlyRent > 0 ? a.monthlyRent : (a.dailyRent > 0 ? a.dailyRent * 30 : 0))
+            : a.price;
+        double bPrice = b.status == PropertyStatus.forRent
+            ? (b.monthlyRent > 0 ? b.monthlyRent : (b.dailyRent > 0 ? b.dailyRent * 30 : 0))
+            : b.price;
+        return _priceSortAscending! ? aPrice.compareTo(bPrice) : bPrice.compareTo(aPrice);
+      } else if (_dateSortAscending != null) {
+        // Date sorting
+        return _dateSortAscending! ? a.createdAt.compareTo(b.createdAt) : b.createdAt.compareTo(a.createdAt);
+      }
+      // Default: Neither actively boosted - sort by creation date (newer first)
       return b.createdAt.compareTo(a.createdAt);
     });
     
@@ -238,7 +276,21 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!a.isBoostActive && b.isBoostActive) {
         return 1;
       }
-      // Neither actively boosted - sort by creation date (newer first)
+      // Neither actively boosted - apply sorting based on selected sort type
+      if (_priceSortAscending != null) {
+        // Price sorting - extract numeric price value
+        double aPrice = a.status == PropertyStatus.forRent
+            ? (a.monthlyRent > 0 ? a.monthlyRent : (a.dailyRent > 0 ? a.dailyRent * 30 : 0))
+            : a.price;
+        double bPrice = b.status == PropertyStatus.forRent
+            ? (b.monthlyRent > 0 ? b.monthlyRent : (b.dailyRent > 0 ? b.dailyRent * 30 : 0))
+            : b.price;
+        return _priceSortAscending! ? aPrice.compareTo(bPrice) : bPrice.compareTo(aPrice);
+      } else if (_dateSortAscending != null) {
+        // Date sorting
+        return _dateSortAscending! ? a.createdAt.compareTo(b.createdAt) : b.createdAt.compareTo(a.createdAt);
+      }
+      // Default: Neither actively boosted - sort by creation date (newer first)
       return b.createdAt.compareTo(a.createdAt);
     });
     
@@ -301,9 +353,242 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedFilterType = null;
       _searchQuery = '';
       _filtersApplied = false; // Reset the flag when clearing filters
+      _priceSortAscending = null; // Clear price sort
+      _dateSortAscending = null; // Clear date sort
     });
     _searchController.clear();
     _applySearchAndFilters();
+  }
+  
+  // Build featured properties list (1 column) or grid (2 columns)
+  Widget _buildFeaturedPropertiesList() {
+    if (_featuredProperties.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+    
+    if (_isGridView) {
+      // 2-column grid view
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.68, // Better aspect ratio for displaying all data correctly
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              if (index >= _featuredProperties.length) return null;
+              
+              return StaggeredAnimation(
+                index: index,
+                child: PropertyCard(
+                  property: _featuredProperties[index],
+                ),
+              );
+            },
+            childCount: _featuredProperties.length,
+          ),
+        ),
+      );
+    } else {
+      // 1-column list view
+      return SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            if (index >= _featuredProperties.length) return null;
+            
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: StaggeredAnimation(
+                index: index,
+                child: PropertyCard(
+                  property: _featuredProperties[index],
+                ),
+              ),
+            );
+          },
+          childCount: _featuredProperties.length,
+        ),
+      );
+    }
+  }
+
+  // Build properties list (1 column) or grid (2 columns)
+  Widget _buildPropertiesList() {
+    final nonFeaturedProperties = _filteredProperties.where((property) => !property.isBoostActive).toList();
+    
+    if (_isGridView) {
+      // 2-column grid view
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.68, // Better aspect ratio for displaying all data correctly
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              if (index >= nonFeaturedProperties.length) return null;
+              
+              return StaggeredAnimation(
+                index: index,
+                child: PropertyCard(
+                  property: nonFeaturedProperties[index],
+                ),
+              );
+            },
+            childCount: nonFeaturedProperties.length,
+          ),
+        ),
+      );
+    } else {
+      // 1-column list view
+      return SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            if (index >= nonFeaturedProperties.length) return null;
+            
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: StaggeredAnimation(
+                index: index,
+                child: PropertyCard(
+                  property: nonFeaturedProperties[index],
+                ),
+              ),
+            );
+          },
+          childCount: nonFeaturedProperties.length,
+        ),
+      );
+    }
+  }
+  
+  // Build sort button
+  Widget _buildSortButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return ScaleAnimation(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.green[50] : Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? Colors.green : Colors.grey[300]!,
+            width: isActive ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                icon,
+                key: ValueKey(isActive),
+                color: isActive ? Colors.green[700] : Colors.grey[600],
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? Colors.green[700] : Colors.grey[700],
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Build sort button (old version kept for reference but not used)
+  Widget _buildSortButtonOld({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.green[50] : Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? Colors.green : Colors.grey[300]!,
+            width: isActive ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isActive ? Colors.green[700] : Colors.grey[600],
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? Colors.green[700] : Colors.grey[700],
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Build grid view toggle button
+  Widget _buildGridViewButton({
+    required bool isGridView,
+    required VoidCallback onTap,
+  }) {
+    return ScaleAnimation(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isGridView ? Colors.green[50] : Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isGridView ? Colors.green : Colors.grey[300]!,
+            width: isGridView ? 2 : 1,
+          ),
+        ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Icon(
+            isGridView ? Icons.view_module : Icons.view_list,
+            key: ValueKey(isGridView),
+            color: isGridView ? Colors.green[700] : Colors.grey[600],
+            size: 24,
+          ),
+        ),
+      ),
+    );
   }
 
   void _showUpgradeModal() {
@@ -350,13 +635,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     return Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Loading indicator
+                          // Loading indicator with animation
                           if (_isLoading) ...[
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(20),
-                                child: CircularProgressIndicator(),
+                            FadeInAnimation(
+                              duration: const Duration(milliseconds: 300),
+                              child: const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(20),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 3,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -425,24 +717,47 @@ class _HomeScreenState extends State<HomeScreen> {
                           
                           // Search and Filter Section
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(18),
                             decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey[200]!),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.grey[50]!,
+                                  Colors.white,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.grey[300]!, width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 // Search Bar
                                 Container(
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.grey[300]!),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: Colors.grey[300]!, width: 1.5),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.grey.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
                                   child: TextField(
                                     controller: _searchController,
                                     style: const TextStyle(color: Colors.black87),
+                                    inputFormatters: [BasicTextFormatter()],
                                     decoration: InputDecoration(
                                       hintText: 'Search properties...',
                                       hintStyle: TextStyle(color: Colors.grey[500]),
@@ -507,15 +822,82 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.green,
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      elevation: 3,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(14),
                                       ),
                                     ),
                                   ),
                                 ),
                               ],
                             ),
+                          ),
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Sort and Grid View Buttons
+                          Row(
+                            children: [
+                              // Price Sort Button
+                              Expanded(
+                                child: _buildSortButton(
+                                  icon: Icons.swap_vert,
+                                  label: _priceSortAscending == null 
+                                    ? 'Price' 
+                                    : (_priceSortAscending! ? 'Price ↑' : 'Price ↓'),
+                                  isActive: _priceSortAscending != null,
+                                  onTap: () {
+                                    setState(() {
+                                      if (_priceSortAscending == null) {
+                                        _priceSortAscending = false; // Start with high to low
+                                        _dateSortAscending = null; // Clear date sort
+                                      } else if (_priceSortAscending == false) {
+                                        _priceSortAscending = true; // Switch to low to high
+                                      } else {
+                                        _priceSortAscending = null; // Clear sort
+                                      }
+                                    });
+                                    _applySearchAndFilters();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Date Sort Button
+                              Expanded(
+                                child: _buildSortButton(
+                                  icon: Icons.sort,
+                                  label: _dateSortAscending == null 
+                                    ? 'Date' 
+                                    : (_dateSortAscending! ? 'Oldest ↑' : 'Latest ↓'),
+                                  isActive: _dateSortAscending != null,
+                                  onTap: () {
+                                    setState(() {
+                                      if (_dateSortAscending == null) {
+                                        _dateSortAscending = false; // Start with latest first
+                                        _priceSortAscending = null; // Clear price sort
+                                      } else if (_dateSortAscending == false) {
+                                        _dateSortAscending = true; // Switch to oldest first
+                                      } else {
+                                        _dateSortAscending = null; // Clear sort
+                                      }
+                                    });
+                                    _applySearchAndFilters();
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Grid View Toggle Button
+                              _buildGridViewButton(
+                                isGridView: _isGridView,
+                                onTap: () {
+                                  setState(() {
+                                    _isGridView = !_isGridView;
+                                  });
+                                },
+                              ),
+                            ],
                           ),
                           
                           const SizedBox(height: 24),
@@ -551,7 +933,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (_featuredProperties.isNotEmpty) ...[
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 12),
                     child: _buildSectionHeader(
                       title: l10n?.featuredProperties ?? 'Featured Properties',
                       icon: Icons.featured_play_list,
@@ -559,19 +941,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        child: PropertyCard(
-                          property: _featuredProperties[index],
-                        ),
-                      );
-                    },
-                    childCount: _featuredProperties.length,
-                  ),
-                ),
+                _buildFeaturedPropertiesList(),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
               
@@ -622,23 +992,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               if (_filteredProperties.isNotEmpty)
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      // Get non-featured properties to avoid duplication
-                      final nonFeaturedProperties = _filteredProperties.where((property) => !property.isBoostActive).toList();
-                      if (index >= nonFeaturedProperties.length) return null;
-                      
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        child: PropertyCard(
-                          property: nonFeaturedProperties[index],
-                        ),
-                      );
-                    },
-                    childCount: _filteredProperties.where((property) => !property.isBoostActive).length,
-                  ),
-                ),
+                _buildPropertiesList(),
               
               // Extra space for bottom navigation
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -677,9 +1031,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       // Top row with logo and actions
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           // Logo Section
                           Row(
@@ -808,64 +1164,69 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      const Spacer(), // Push content to center
-                      
                       // Welcome Section in the center of the header
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            // Welcome Icon
-                            Container(
-                              padding: const EdgeInsets.all(15),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(15),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Welcome Icon
+                              Container(
+                                padding: const EdgeInsets.all(15),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Icon(
+                                  authProvider.isAuthenticated ? Icons.person : Icons.home,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
                               ),
-                              child: Icon(
-                                authProvider.isAuthenticated ? Icons.person : Icons.home,
-                                color: Colors.white,
-                                size: 30,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    authProvider.isAuthenticated 
-                                        ? 'Welcome back!' 
-                                        : 'Find Your Dream Home',
-                                    style: ThemeService.getHeadingStyle(
-                                      context,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                              const SizedBox(width: 16),
+                              Flexible(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      authProvider.isAuthenticated 
+                                          ? 'Welcome back!' 
+                                          : 'Find Your Dream Home',
+                                      style: ThemeService.getHeadingStyle(
+                                        context,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    authProvider.isAuthenticated
-                                        ? 'Discover amazing properties'
-                                        : 'Browse thousands of properties',
-                                    style: ThemeService.getBodyStyle(
-                                      context,
-                                      color: Colors.white.withOpacity(0.9),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      authProvider.isAuthenticated
+                                          ? 'Discover amazing properties'
+                                          : 'Browse thousands of properties',
+                                      style: ThemeService.getBodyStyle(
+                                        context,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                      const Spacer(), // Push content to center
                     ],
                   ),
                 ),
@@ -885,9 +1246,11 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isActive,
     required Color color,
   }) {
-    return GestureDetector(
+    return ScaleAnimation(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isActive ? color.withOpacity(0.1) : Colors.grey[50],
@@ -906,17 +1269,39 @@ class _HomeScreenState extends State<HomeScreen> {
           ] : null,
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isActive ? color : Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
+                gradient: isActive
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [color, color.withOpacity(0.8)],
+                      )
+                    : null,
+                color: isActive ? null : Colors.grey[200],
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: isActive
+                    ? [
+                        BoxShadow(
+                          color: color.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : null,
               ),
-              child: Icon(
-                icon,
-                color: isActive ? Colors.white : Colors.grey[600],
-                size: 24,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Icon(
+                  icon,
+                  key: ValueKey(isActive),
+                  color: isActive ? Colors.white : Colors.grey[600],
+                  size: 26,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -924,7 +1309,7 @@ class _HomeScreenState extends State<HomeScreen> {
               title,
               style: ThemeService.getHeadingStyle(
                 context,
-                fontSize: 16,
+                fontSize: 17,
                 fontWeight: FontWeight.bold,
                 color: isActive ? color : Colors.grey[700],
               ),
@@ -952,54 +1337,66 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
     required Color color,
   }) {
-    return GestureDetector(
+    return ScaleAnimation(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              color.withOpacity(0.1),
-              color.withOpacity(0.05),
+              color.withOpacity(0.15),
+              color.withOpacity(0.08),
             ],
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.4), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: color.withOpacity(0.2),
+              spreadRadius: 0,
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [color, color.withOpacity(0.8)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Icon(
                 icon,
                 color: Colors.white,
-                size: 24,
+                size: 26,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     title,
                     style: ThemeService.getHeadingStyle(
                       context,
-                      fontSize: 16,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: color,
                     ),
@@ -1009,8 +1406,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle,
                     style: ThemeService.getBodyStyle(
                       context,
-                      color: Colors.grey[600],
-                      fontSize: 12,
+                      color: Colors.grey[700],
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -1019,7 +1416,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(
               Icons.arrow_forward_ios,
               color: color,
-              size: 16,
+              size: 18,
             ),
           ],
         ),
@@ -1035,15 +1432,23 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withOpacity(0.15),
+                color.withOpacity(0.08),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
           ),
           child: Icon(
             icon,
             color: color,
-            size: 20,
+            size: 22,
           ),
         ),
         const SizedBox(width: 12),
@@ -1051,7 +1456,7 @@ class _HomeScreenState extends State<HomeScreen> {
           title,
           style: ThemeService.getHeadingStyle(
             context,
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
           ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/language_service.dart';
@@ -10,6 +10,7 @@ import 'chat_models.dart';
 import 'chat_service.dart';
 import 'chat_widgets.dart';
 import '../../services/theme_service.dart';
+import '../../utils/text_input_formatters.dart';
 
 class ChatScreen extends StatefulWidget {
   final String conversationId;
@@ -466,6 +467,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: TextField(
                     controller: _messageController,
                     style: const TextStyle(color: Colors.black),
+                    inputFormatters: [BasicTextFormatter()],
                     decoration: InputDecoration(
                       hintText: l10n?.typeMessage ?? 'Type a message...',
                       border: OutlineInputBorder(

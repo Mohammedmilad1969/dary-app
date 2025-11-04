@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 import '../services/wallet_service.dart' as wallet_service;
 
@@ -240,7 +241,7 @@ class _PropertyLimitModalState extends State<PropertyLimitModal> {
                                     ),
                                   ),
                                   Text(
-                                    '${package.price.toStringAsFixed(0)} LYD',
+                                    '${NumberFormat('#,###').format(package.price)} LYD',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -323,7 +324,7 @@ class _PropertyLimitModalState extends State<PropertyLimitModal> {
                                   ),
                                 ),
                                 Text(
-                                  '${selectedPackage.price.toStringAsFixed(0)} LYD',
+                                  '${NumberFormat('#,###').format(selectedPackage.price)} LYD',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -420,7 +421,7 @@ class _PropertyLimitModalState extends State<PropertyLimitModal> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Insufficient balance. You need ${totalPrice.toStringAsFixed(0)} LYD but have ${currentBalance.toStringAsFixed(0)} LYD'),
+          content: Text('Insufficient balance. You need ${NumberFormat('#,###').format(totalPrice)} LYD but have ${NumberFormat('#,###').format(currentBalance)} LYD'),
           backgroundColor: Colors.red,
         ),
       );

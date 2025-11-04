@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../services/chatbot_service.dart';
 import '../services/language_service.dart';
+import '../models/property.dart';
+import '../screens/property_detail_screen.dart';
+import '../utils/text_input_formatters.dart';
 
 /// Floating chatbot widget for homepage
 class HomeChatbot extends StatefulWidget {
@@ -84,9 +87,10 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
       if (mounted) {
         setState(() {
           _messages.add(ChatMessage(
-            text: response,
+            text: response.text,
             isUser: false,
             timestamp: DateTime.now(),
+            properties: response.properties,
           ));
           _isLoading = false;
         });
@@ -235,6 +239,7 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
                           Expanded(
                             child: TextField(
                               controller: _messageController,
+                              inputFormatters: [BasicTextFormatter()],
                               decoration: InputDecoration(
                                 hintText: 'Type a message...',
                                 hintStyle: TextStyle(color: Colors.grey[500]),
@@ -317,62 +322,173 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
   Widget _buildMessageBubble(ChatMessage message) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment:
-            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: message.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          if (!message.isUser) ...[
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green[100],
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(
-                Icons.smart_toy,
-                color: Colors.green[700],
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: message.isUser
-                    ? Colors.green[600]
-                    : Colors.grey[200],
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: Radius.circular(message.isUser ? 20 : 4),
-                  bottomRight: Radius.circular(message.isUser ? 4 : 20),
+          Row(
+            mainAxisAlignment:
+                message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!message.isUser) ...[
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green[100],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    Icons.smart_toy,
+                    color: Colors.green[700],
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: message.isUser
+                        ? Colors.green[600]
+                        : Colors.grey[200],
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(20),
+                      topRight: const Radius.circular(20),
+                      bottomLeft: Radius.circular(message.isUser ? 20 : 4),
+                      bottomRight: Radius.circular(message.isUser ? 4 : 20),
+                    ),
+                  ),
+                  child: Text(
+                    message.text,
+                    style: TextStyle(
+                      color: message.isUser ? Colors.white : Colors.black87,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
                 ),
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: message.isUser ? Colors.white : Colors.black87,
-                  fontSize: 14,
-                  height: 1.4,
+              if (message.isUser) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green[100],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    Icons.person,
+                    color: Colors.green[700],
+                    size: 16,
+                  ),
                 ),
-              ),
-            ),
+              ],
+            ],
           ),
-          if (message.isUser) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green[100],
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(
-                Icons.person,
-                color: Colors.green[700],
-                size: 16,
+          // Display property cards if found
+          if (!message.isUser && message.properties != null && message.properties!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 200, // Fixed height for horizontal scroll
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: message.properties!.length,
+                itemBuilder: (context, index) {
+                  final property = message.properties![index];
+                  return Container(
+                    width: 280,
+                    margin: EdgeInsets.only(
+                      right: index < message.properties!.length - 1 ? 12 : 0,
+                    ),
+                    child: Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          // Navigate to property details using Navigator (same as property_card.dart)
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PropertyDetailScreen(property: property),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Property image
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                topRight: Radius.circular(12),
+                              ),
+                              child: property.imageUrls.isNotEmpty
+                                  ? Image.network(
+                                      property.imageUrls.first,
+                                      height: 120,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Container(
+                                          height: 120,
+                                          color: Colors.grey[300],
+                                          child: const Icon(Icons.image, size: 40),
+                                        );
+                                      },
+                                    )
+                                  : Container(
+                                      height: 120,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.image, size: 40),
+                                    ),
+                            ),
+                            // Property details
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    property.title,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    property.displayPrice,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.green[700],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${property.city}${property.neighborhood.isNotEmpty ? ', ${property.neighborhood}' : ''}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -436,11 +552,13 @@ class ChatMessage {
   final String text;
   final bool isUser;
   final DateTime timestamp;
+  final List<Property>? properties; // Optional property results
 
   ChatMessage({
     required this.text,
     required this.isUser,
     required this.timestamp,
+    this.properties,
   });
 }
 

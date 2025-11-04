@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/admin_service.dart';
 import '../../services/property_service.dart';
@@ -12,6 +13,7 @@ import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';
 import '../../services/theme_service.dart';
 import 'firebase_auth_management_screen.dart';
+import '../../utils/text_input_formatters.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -351,6 +353,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
               controller: daysController,
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.black87),
+              inputFormatters: [PriceFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Days to extend',
                 labelStyle: TextStyle(color: Colors.black87),
@@ -1124,6 +1127,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                   TextField(
                     controller: _userSearchController,
                     style: const TextStyle(color: Colors.black87),
+                    inputFormatters: [BasicTextFormatter()],
                     decoration: InputDecoration(
                       hintText: 'Search users...',
                       hintStyle: const TextStyle(color: Colors.grey),
@@ -1443,7 +1447,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                         style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                       Text(
-                        '${l10n?.price ?? 'Price'}: ${property.price.toStringAsFixed(0)} LYD',
+                        '${l10n?.price ?? 'Price'}: ${NumberFormat('#,###').format(property.price)} LYD',
                         style: const TextStyle(fontSize: 12, color: Colors.black87),
                       ),
                       Text(
@@ -1506,7 +1510,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                     ),
                   ),
                   DataCell(Text(property.ownerName, style: const TextStyle(color: Colors.black87))),
-                  DataCell(Text('${property.price.toStringAsFixed(0)} LYD', style: const TextStyle(color: Colors.black87))),
+                  DataCell(Text('${NumberFormat('#,###').format(property.price)} LYD', style: const TextStyle(color: Colors.black87))),
                   DataCell(Text(property.city, style: const TextStyle(color: Colors.black87))),
                   DataCell(Text(property.status, style: const TextStyle(color: Colors.black87))),
                   DataCell(Text('${property.views}', style: const TextStyle(color: Colors.black87))),
@@ -1652,7 +1656,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                               style: const TextStyle(fontSize: 12, color: Colors.grey),
                             ),
                             Text(
-                              '${l10n?.price ?? 'Price'}: ${listing.packagePrice.toStringAsFixed(0)} LYD',
+                              '${l10n?.price ?? 'Price'}: ${NumberFormat('#,###').format(listing.packagePrice)} LYD',
                               style: const TextStyle(fontSize: 12, color: Colors.grey),
                             ),
                             const SizedBox(height: 8),
@@ -1735,7 +1739,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                         ),
                         DataCell(Text(listing.ownerName)),
                         DataCell(Text(listing.packageName)),
-                        DataCell(Text('${listing.packagePrice.toStringAsFixed(0)} LYD')),
+                        DataCell(Text('${NumberFormat('#,###').format(listing.packagePrice)} LYD')),
                         DataCell(
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1872,7 +1876,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                           Expanded(
                             child: _buildAnalyticsCard(
                               'Total Earned',
-                              '${analytics['totalEarned']!.toStringAsFixed(0)} LYD',
+                              '${NumberFormat('#,###').format(analytics['totalEarned']!)} LYD',
                               Colors.green,
                             ),
                           ),
@@ -1880,7 +1884,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                           Expanded(
                             child: _buildAnalyticsCard(
                               'Total Spent',
-                              '${analytics['totalSpent']!.toStringAsFixed(0)} LYD',
+                              '${NumberFormat('#,###').format(analytics['totalSpent']!)} LYD',
                               Colors.red,
                             ),
                           ),
@@ -1892,7 +1896,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                           Expanded(
                             child: _buildAnalyticsCard(
                               'Net Revenue',
-                              '${analytics['netRevenue']!.toStringAsFixed(0)} LYD',
+                              '${NumberFormat('#,###').format(analytics['netRevenue']!)} LYD',
                               analytics['netRevenue']! >= 0 ? Colors.green : Colors.red,
                             ),
                           ),
@@ -1920,6 +1924,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                   TextField(
                     controller: _transactionSearchController,
                     style: const TextStyle(color: Colors.black87),
+                    inputFormatters: [BasicTextFormatter()],
                     decoration: InputDecoration(
                       hintText: 'Search transactions...',
                       hintStyle: const TextStyle(color: Colors.grey),

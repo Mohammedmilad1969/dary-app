@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
+import '../../utils/text_input_formatters.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -768,6 +769,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _nameController,
+                  inputFormatters: [BasicTextFormatter()],
                   decoration: InputDecoration(
                     hintText: 'Enter your full name',
                     border: OutlineInputBorder(
@@ -835,6 +837,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
+                  inputFormatters: [PhoneNumberFormatter()],
                   decoration: InputDecoration(
                     hintText: 'Enter your phone number',
                     border: OutlineInputBorder(

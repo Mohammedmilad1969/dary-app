@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';
+import '../../utils/text_input_formatters.dart';
 import '../../services/theme_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -241,6 +242,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _nameController,
                         textCapitalization: TextCapitalization.words,
                         style: const TextStyle(color: Colors.black),
+                        inputFormatters: [BasicTextFormatter()],
                         decoration: InputDecoration(
                           labelText: l10n?.fullName ?? 'Full Name',
                           hintText: l10n?.enterFullName ?? 'Enter your full name',
@@ -309,6 +311,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         style: const TextStyle(color: Colors.black),
+                        inputFormatters: [PhoneNumberFormatter()],
                         decoration: InputDecoration(
                           labelText: l10n?.phoneNumber ?? 'Phone Number',
                           hintText: l10n?.enterPhoneNumber ?? 'Enter your phone number',

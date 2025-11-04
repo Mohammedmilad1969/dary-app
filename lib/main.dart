@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -22,6 +22,8 @@ import 'services/user_preferences_service.dart';
 import 'services/theme_service.dart';
 import 'config/env_config.dart';
 import 'services/api_client.dart';
+import 'utils/app_animations.dart';
+import 'providers/navigation_provider.dart';
 
 void main() async {
   // Initialize services
@@ -86,13 +88,17 @@ class DaryApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => WalletService()),
         ChangeNotifierProvider(create: (context) => PaywallService()),
         ChangeNotifierProvider(create: (context) => UserPreferencesService()),
+        ChangeNotifierProvider(create: (context) => NavigationProvider()),
         Provider(create: (context) => PersistenceService()),
       ],
       child: Consumer2<LanguageService, AuthProvider>(
         builder: (context, languageService, authProvider, child) {
+          final theme = ThemeService.getLightTheme(context);
           return MaterialApp.router(
             title: 'Dary',
-            theme: ThemeService.getLightTheme(context),
+            theme: theme.copyWith(
+              pageTransitionsTheme: AppPageTransitions.slideFromRight,
+            ),
             themeMode: ThemeMode.light,
             routerConfig: AppRouter.router,
             locale: languageService.currentLocale,

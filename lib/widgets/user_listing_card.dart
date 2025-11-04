@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../models/user_profile.dart';
 import '../models/property.dart';
 import '../providers/auth_provider.dart';
@@ -201,7 +202,7 @@ class _UserListingCardState extends State<UserListingCard> {
               ),
               const SizedBox(height: 4),
               Text(
-                '\$${widget.listing.price.toStringAsFixed(0)} • ${widget.listing.city}',
+                '\$${NumberFormat('#,###').format(widget.listing.price)} • ${widget.listing.city}',
                 style: ThemeService.getBodyStyle(
                   context,
                   fontSize: 14,

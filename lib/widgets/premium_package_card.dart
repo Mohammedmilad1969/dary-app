@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/premium_package.dart';
 
 class PremiumPackageCard extends StatelessWidget {
@@ -92,7 +93,7 @@ class PremiumPackageCard extends StatelessWidget {
               
               // Price
               Text(
-                '${package.price.toStringAsFixed(0)} ${package.currency}',
+                '${NumberFormat('#,###').format(package.price)} ${package.currency}',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,

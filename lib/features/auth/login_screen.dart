@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';
+import '../../utils/text_input_formatters.dart';
 import '../../services/theme_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -253,6 +254,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Identifier Field (Email / Phone / Username)
+                      // Note: No formatter applied - allows @ and . for email addresses
                       TextFormField(
                         controller: _identifierController,
                         keyboardType: TextInputType.text,

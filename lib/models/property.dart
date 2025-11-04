@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../services/api_client.dart';
 import '../services/property_cache_service.dart';
 import '../config/env_config.dart';
@@ -173,14 +174,15 @@ class Property {
   });
 
   String get displayPrice {
+    final formatter = NumberFormat('#,###');
     if (status == PropertyStatus.forRent) {
       if (dailyRent > 0) {
-        return '${dailyRent.toStringAsFixed(0)} LYD/day';
+        return '${formatter.format(dailyRent)} LYD/day';
       } else if (monthlyRent > 0) {
-        return '${monthlyRent.toStringAsFixed(0)} LYD/month';
+        return '${formatter.format(monthlyRent)} LYD/month';
       }
     }
-    return '${price.toStringAsFixed(0)} LYD';
+    return '${formatter.format(price)} LYD';
   }
 
   bool get isBoostActive {

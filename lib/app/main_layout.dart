@@ -8,6 +8,9 @@ import '../providers/auth_provider.dart';
 import '../features/chat/chat_notification_service.dart';
 import '../features/auth/login_screen.dart';
 import '../services/theme_service.dart';
+import '../utils/app_animations.dart';
+import '../widgets/loading_overlay.dart';
+import '../providers/navigation_provider.dart';
 
 class MainLayout extends StatelessWidget {
   final Widget child;
@@ -21,8 +24,9 @@ class MainLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<LanguageService, ChatService, AuthProvider>(
-      builder: (context, languageService, chatService, authProvider, _) {
+    final screenChild = child;
+    return Consumer4<LanguageService, ChatService, AuthProvider, NavigationProvider>(
+      builder: (context, languageService, chatService, authProvider, navProvider, consumerChild) {
         // Provide current user id to chat service so it can distinguish incoming messages
         chatService.setCurrentUserId(authProvider.currentUser?.id);
         // Provide context for in-app chat notifications
@@ -34,37 +38,42 @@ class MainLayout extends StatelessWidget {
         }
         final totalUnreadCount = authProvider.isAuthenticated ? chatService.getTotalUnreadCount() : 0;
         
-        return Scaffold(
-          body: child,
-          bottomNavigationBar: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 1,
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(context, 0, Icons.home, 'Home'),
-                    _buildNavItem(context, 1, Icons.add_home, 'Add Property'),
-                    _buildNavItem(context, 2, Icons.chat, 'Messages', badgeCount: totalUnreadCount),
-                    _buildNavItem(context, 3, Icons.account_balance_wallet, 'Wallet'),
-                    _buildNavItem(context, 4, Icons.person, 'Profile'),
-                  ],
+        return LoadingOverlay(
+          isLoading: authProvider.isLoading,
+          message: 'Loading...',
+          child: Scaffold(
+            body: screenChild,
+            bottomNavigationBar: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 0,
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Container(
+                  height: 70,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildNavItem(context, 0, Icons.home, 'Home'),
+                      _buildNavItem(context, 1, Icons.add_home, 'Add Property'),
+                      _buildNavItem(context, 2, Icons.chat, 'Messages', badgeCount: totalUnreadCount),
+                      _buildNavItem(context, 3, Icons.account_balance_wallet, 'Wallet'),
+                      _buildNavItem(context, 4, Icons.person, 'Profile'),
+                    ],
+                  ),
                 ),
               ),
             ),
+            floatingActionButton: null,
           ),
-          floatingActionButton: null,
         );
       },
     );
@@ -88,56 +97,49 @@ class MainLayout extends StatelessWidget {
   }
 
   void _onTabTapped(BuildContext context, int index, AuthProvider authProvider) {
+    String route = '/';
+    
     switch (index) {
       case 0:
-        context.go('/');
+        route = '/';
         break;
       case 1:
-        _handleAddProperty(context, authProvider);
+        if (authProvider.isAuthenticated) {
+          route = '/add';
+        } else {
+          _showLoginPrompt(context, 'Add Property');
+          return;
+        }
         break;
       case 2:
-        _handleChat(context, authProvider);
+        if (authProvider.isAuthenticated) {
+          route = '/chat';
+        } else {
+          _showLoginPrompt(context, 'Messages');
+          return;
+        }
         break;
       case 3:
-        _handleWallet(context, authProvider);
+        if (authProvider.isAuthenticated) {
+          route = '/wallet';
+        } else {
+          _showLoginPrompt(context, 'Wallet');
+          return;
+        }
         break;
       case 4:
-        _handleProfile(context, authProvider);
+        if (authProvider.isAuthenticated) {
+          route = '/profile';
+        } else {
+          _showLoginPrompt(context, 'Profile');
+          return;
+        }
         break;
     }
+    
+    context.go(route);
   }
 
-  void _handleAddProperty(BuildContext context, AuthProvider authProvider) {
-    if (authProvider.isAuthenticated) {
-      context.go('/add');
-    } else {
-      _showLoginPrompt(context, 'Add Property');
-    }
-  }
-
-  void _handleChat(BuildContext context, AuthProvider authProvider) {
-    if (authProvider.isAuthenticated) {
-      context.go('/chat');
-    } else {
-      _showLoginPrompt(context, 'Messages');
-    }
-  }
-
-  void _handleWallet(BuildContext context, AuthProvider authProvider) {
-    if (authProvider.isAuthenticated) {
-      context.go('/wallet');
-    } else {
-      _showLoginPrompt(context, 'Wallet');
-    }
-  }
-
-  void _handleProfile(BuildContext context, AuthProvider authProvider) {
-    if (authProvider.isAuthenticated) {
-      context.go('/profile');
-    } else {
-      _showLoginPrompt(context, 'Profile');
-    }
-  }
 
   void _showLoginPrompt(BuildContext context, String feature) {
     showDialog(
@@ -198,58 +200,97 @@ class MainLayout extends StatelessWidget {
     final isSelected = _getCurrentIndex(currentLocation) == index;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    return GestureDetector(
-      onTap: () => _onTabTapped(context, index, authProvider),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              children: [
-                Icon(
-                  icon,
-                  color: isSelected ? Colors.green : Colors.grey[700],
-                  size: 24,
-                ),
-                if (badgeCount > 0 && index == 2) // Messages tab
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        badgeCount > 99 ? '99+' : badgeCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+    return Expanded(
+      child: ScaleAnimation(
+        onTap: () => _onTabTapped(context, index, authProvider),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.green.withOpacity(0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: isSelected
+                ? Border.all(color: Colors.green.withOpacity(0.3), width: 1.5)
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutBack,
+                    child: Icon(
+                      icon,
+                      color: isSelected ? Colors.green[700] : Colors.grey[600],
+                      size: isSelected ? 28 : 24,
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: ThemeService.getBodyStyle(
-                context,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.green : Colors.grey[700],
+                  if (badgeCount > 0 && index == 2) // Messages tab
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: TweenAnimationBuilder<double>(
+                        duration: const Duration(milliseconds: 400),
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        curve: Curves.elasticOut,
+                        builder: (context, value, child) {
+                          final clampedValue = value.clamp(0.0, 1.0);
+                          return Transform.scale(
+                            scale: clampedValue,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.red.withOpacity(0.3),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  badgeCount > 99 ? '99+' : badgeCount.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                style: ThemeService.getBodyStyle(
+                  context,
+                  fontSize: isSelected ? 11 : 10,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? Colors.green[700] : Colors.grey[600],
+                ),
+                child: Text(label),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -2,6 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/property.dart';
+
+/// Chatbot response with text and optional property results
+class ChatbotResponse {
+  final String text;
+  final List<Property>? properties;
+
+  ChatbotResponse({required this.text, this.properties});
+}
 
 /// Service for handling chatbot interactions with Google Gemini API
 class ChatbotService {
@@ -13,8 +22,11 @@ class ChatbotService {
   bool _isInitializing = false;
   
   ChatbotService() {
-    // Initialize model asynchronously
-    _initializeModel();
+    // Initialize model asynchronously with a small delay
+    // to ensure Firebase is fully initialized
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _initializeModel();
+    });
   }
 
   /// Initialize the model with API key from Firestore
@@ -34,16 +46,10 @@ class ChatbotService {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Error initializing chatbot model: $e');
+        debugPrint('💡 Please ensure config/gemini_api_key document exists in Firestore');
       }
-      // Fallback: try to initialize with cached key or throw
-      if (_cachedApiKey != null && _cachedApiKey!.isNotEmpty) {
-        _model = GenerativeModel(
-          model: _modelName,
-          apiKey: _cachedApiKey!,
-        );
-      } else {
-        rethrow;
-      }
+      // Don't create model if API key can't be fetched - fail gracefully
+      _model = null;
     } finally {
       _isInitializing = false;
     }
@@ -73,19 +79,121 @@ class ChatbotService {
     // Fetch from Firestore
     try {
       final firestore = FirebaseFirestore.instance;
-      final doc = await firestore
-          .collection('config')
-          .doc('gemini_api_key')
-          .get();
       
-      if (!doc.exists) {
-        throw Exception('API key document not found in Firestore');
+      if (kDebugMode) {
+        debugPrint('🔍 Fetching API key from Firestore: config/gemini_api_key');
+        debugPrint('🔍 Firestore instance: ${firestore.app.name}');
+        debugPrint('🔍 Firestore database ID: ${firestore.databaseId}');
+        debugPrint('🔍 Firebase project ID: ${firestore.app.options.projectId}');
+        
+        // Try to list all documents in config collection to debug
+        try {
+          final configDocs = await firestore.collection('config').limit(10).get();
+          debugPrint('🔍 Config collection has ${configDocs.docs.length} document(s)');
+          if (configDocs.docs.isEmpty) {
+            debugPrint('⚠️ Config collection is EMPTY! The document does not exist.');
+            debugPrint('💡 Verify in Firebase Console:');
+            debugPrint('   - Project: ${firestore.app.options.projectId}');
+            debugPrint('   - Database: ${firestore.databaseId}');
+            debugPrint('   - URL: https://console.firebase.google.com/project/${firestore.app.options.projectId}/firestore/data/~2Fconfig~2Fgemini_api_key');
+          }
+          for (final doc in configDocs.docs) {
+            debugPrint('🔍 Found document in config: ${doc.id}');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error listing config collection: $e');
+        }
       }
       
-      final apiKey = doc.data()?['apiKey'] as String?;
+      // Retry mechanism - Firestore on web sometimes needs time to initialize
+      DocumentSnapshot? doc;
+      int retries = 3;
+      int attempt = 0;
+      
+      while (attempt < retries && (doc == null || !doc.exists)) {
+        attempt++;
+        
+        if (kDebugMode && attempt > 1) {
+          debugPrint('🔄 Retry attempt $attempt of $retries');
+        }
+        
+        // Wait a moment to ensure Firestore is ready (especially on web)
+        await Future.delayed(Duration(milliseconds: 300 * attempt));
+        
+        // Try to get the document - use serverAndCache to try server first, then cache
+        doc = await firestore
+            .collection('config')
+            .doc('gemini_api_key')
+            .get(const GetOptions(source: Source.serverAndCache)); // Try server first, fallback to cache
+        
+        if (doc.exists) {
+          break; // Found it, exit retry loop
+        }
+        
+        if (kDebugMode && attempt < retries) {
+          debugPrint('⚠️ Document not found on attempt $attempt, retrying...');
+        }
+      }
+      
+      // Check if we have a document after all retries
+      if (doc == null) {
+        throw Exception('Failed to fetch document after $retries attempts');
+      }
+      
+      if (kDebugMode) {
+        debugPrint('🔍 Document exists: ${doc.exists}');
+        debugPrint('🔍 Document ID: ${doc.id}');
+        debugPrint('🔍 Document reference path: ${doc.reference.path}');
+        debugPrint('🔍 Document data: ${doc.data()}');
+        debugPrint('🔍 Document metadata: ${doc.metadata}');
+      }
+      
+      if (!doc.exists) {
+        if (kDebugMode) {
+          debugPrint('❌ Document does not exist. Config collection has 0 documents.');
+          debugPrint('💡 The document needs to be created in Firebase Console:');
+          
+          // Document doesn't exist - provide detailed instructions
+          debugPrint('💡 Please create the document manually in Firebase Console:');
+          debugPrint('   1. Go to: https://console.firebase.google.com/project/dary-a74c8/firestore/data');
+          debugPrint('   2. Make sure you see the (default) database (not a named database)');
+          debugPrint('   3. Click "Start collection" if config collection doesn\'t exist');
+          debugPrint('   4. Collection ID: config');
+          debugPrint('   5. Document ID: gemini_api_key');
+          debugPrint('   6. Click "Add field"');
+          debugPrint('   7. Field name: apiKey (exactly, case-sensitive)');
+          debugPrint('   8. Field type: string');
+          debugPrint('   9. Field value: Your Gemini API key');
+          debugPrint('   10. Click "Save"');
+          debugPrint('');
+          debugPrint('🔍 Verification steps:');
+          debugPrint('   - After creating, refresh the page');
+          debugPrint('   - Verify the document appears in the config collection');
+          debugPrint('   - Verify the apiKey field is visible');
+          debugPrint('   - Make sure you\'re logged into the correct Firebase account');
+        } else {
+          throw Exception('API key document not found in Firestore at path: config/gemini_api_key');
+        }
+      }
+      
+      // After creation/retry, check again
+      if (doc != null && !doc.exists) {
+        throw Exception('API key document still not found after creation attempt');
+      }
+      
+      final data = doc.data() as Map<String, dynamic>?;
+      if (kDebugMode) {
+        debugPrint('🔍 Document data keys: ${data?.keys.toList()}');
+      }
+      
+      final apiKey = data?['apiKey'] as String?;
+      
+      if (kDebugMode) {
+        debugPrint('🔍 API key found: ${apiKey != null && apiKey.isNotEmpty}');
+      }
       
       if (apiKey == null || apiKey.isEmpty) {
-        throw Exception('API key not configured in Firestore');
+        throw Exception('API key field is null or empty in Firestore document. Document contains: ${data?.keys.toList()}');
       }
 
       // Cache the key locally
@@ -107,11 +215,11 @@ class ChatbotService {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ Error fetching API key from Firestore: $e');
-        debugPrint('💡 Make sure Firestore document exists at config/gemini_api_key');
+        debugPrint('💡 Make sure Firestore document exists at config/gemini_api_key with apiKey field');
       }
-      // Fallback: use the key temporarily until Firestore is set up
-      // TODO: Remove this fallback after Firestore document is created
-      return 'AIzaSyCRjEnjwf210P1Vu_j8HKhXwC9Yh2AErxo';
+      // REMOVED: No fallback API key for security reasons
+      // The document should exist in Firestore
+      rethrow; // Re-throw the error so the caller knows it failed
     }
   }
 
@@ -128,14 +236,760 @@ class ChatbotService {
     return arabicPattern.hasMatch(message);
   }
 
+  /// Search properties based on user query
+  Future<List<Property>> _searchProperties(String userQuery) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final isArabic = _isArabicMessage(userQuery);
+      
+      // Normalize query to lowercase
+      final normalizedQuery = userQuery.toLowerCase().trim();
+      
+      // Check if user wants to see ALL properties (including unpublished)
+      // Detect "show all" patterns even when combined with property types
+      final showAllKeywords = ['show all', 'show me all', 'list all', 'جميع', 'كل', 'عرض جميع'];
+      final hasShowAllKeyword = showAllKeywords.any((keyword) => normalizedQuery.contains(keyword));
+      // Also check for property-related words (apartments, villas, etc. count too)
+      final hasPropertyKeyword = normalizedQuery.contains('propert') || 
+                                 normalizedQuery.contains('عقار') ||
+                                 normalizedQuery.contains('apartment') ||
+                                 normalizedQuery.contains('villa') ||
+                                 normalizedQuery.contains('house') ||
+                                 normalizedQuery.contains('land') ||
+                                 normalizedQuery.contains('شقة') ||
+                                 normalizedQuery.contains('فيلا');
+      
+      // If user says "show all" or "show me all" + any property type, show all properties
+      final showAllProperties = hasShowAllKeyword && hasPropertyKeyword;
+      
+      if (kDebugMode) {
+        debugPrint('🔍 Query analysis:');
+        debugPrint('   Has "show all" keyword: $hasShowAllKeyword');
+        debugPrint('   Has property keyword: $hasPropertyKeyword');
+        debugPrint('   Show ALL properties: $showAllProperties');
+      }
+      
+      // Extract all search parameters
+      String? city;
+      String? neighborhood;
+      PropertyType? propertyType;
+      double? minPrice;
+      double? maxPrice;
+      int? minBedrooms;
+      int? maxBedrooms;
+      int? minBathrooms;
+      PropertyStatus? status;
+      int? minSizeSqm;
+      int? maxSizeSqm;
+      List<String> requiredFeatures = [];
+      
+      // Map Arabic city names to English
+      final cityMap = {
+        'طرابلس': 'Tripoli',
+        'بنغازي': 'Benghazi',
+        'مصراتة': 'Misrata',
+        'سبها': 'Sebha',
+        'طبرق': 'Tobruk',
+      };
+      
+      // Map property types (order matters - more specific first)
+      final typeMap = {
+        // English - plural and singular
+        'apartments': PropertyType.apartment,
+        'apartment': PropertyType.apartment,
+        'villas': PropertyType.villa,
+        'villa': PropertyType.villa,
+        'houses': PropertyType.house,
+        'house': PropertyType.house,
+        'lands': PropertyType.land,
+        'land': PropertyType.land,
+        'commercial': PropertyType.commercial,
+        // Arabic
+        'شقة': PropertyType.apartment,
+        'شقق': PropertyType.apartment,
+        'بيت': PropertyType.house,
+        'بيوت': PropertyType.house,
+        'منزل': PropertyType.house,
+        'منازل': PropertyType.house,
+        'دار': PropertyType.house,
+        'دور': PropertyType.house,
+        'أرض': PropertyType.land,
+        'أراضي': PropertyType.land,
+        'عمارة': PropertyType.apartment,
+        'عمارات': PropertyType.apartment,
+        'فيلا': PropertyType.villa,
+        'فيلات': PropertyType.villa,
+      };
+      
+      // Try to extract city
+      for (final entry in cityMap.entries) {
+        if (normalizedQuery.contains(entry.key.toLowerCase()) || 
+            normalizedQuery.contains(entry.value.toLowerCase())) {
+          city = entry.value;
+          break;
+        }
+      }
+      
+      // Try to extract property type (check exact word matches first for accuracy)
+      // Split query into words and remove common stop words
+      final stopWords = {'i', 'want', 'need', 'looking', 'for', 'a', 'an', 'the', 'in', 'at', 'ب', 'في', 'أريد', 'أحتاج', 'أبحث'};
+      final queryWords = normalizedQuery
+          .split(RegExp(r'[\s,\-\.]+'))
+          .map((w) => w.trim().toLowerCase())
+          .where((w) => w.isNotEmpty && !stopWords.contains(w))
+          .toList();
+      
+      if (kDebugMode) {
+        debugPrint('🔍 Query words (filtered): $queryWords');
+      }
+      
+      // First, try exact word matches (more accurate) - prioritize longer/more specific matches
+      final sortedTypeMap = typeMap.entries.toList()
+        ..sort((a, b) => b.key.length.compareTo(a.key.length)); // Longer keys first
+      
+      // Check each query word against type map
+      for (final word in queryWords) {
+        if (word.isEmpty) continue;
+        
+        // Check exact match first (most accurate)
+        for (final entry in sortedTypeMap) {
+          final keyLower = entry.key.toLowerCase();
+          if (word == keyLower) {
+            propertyType = entry.value;
+            if (kDebugMode) {
+              debugPrint('✅ Found exact word match: "$word" -> ${propertyType!.name}');
+            }
+            break;
+          }
+        }
+        if (propertyType != null) break;
+        
+        // Check if word starts with or ends with type key (handles plurals like "apartments" -> "apartment")
+        for (final entry in sortedTypeMap) {
+          final keyLower = entry.key.toLowerCase();
+          // Remove 's' suffix for plurals (apartments -> apartment)
+          final wordWithoutS = word.endsWith('s') && word.length > 1 ? word.substring(0, word.length - 1) : word;
+          if (wordWithoutS == keyLower || word == keyLower || 
+              word.startsWith(keyLower) || keyLower.startsWith(word) ||
+              wordWithoutS.startsWith(keyLower) || keyLower.startsWith(wordWithoutS)) {
+            propertyType = entry.value;
+            if (kDebugMode) {
+              debugPrint('✅ Found word match: "$word" -> ${propertyType!.name}');
+            }
+            break;
+          }
+        }
+        if (propertyType != null) break;
+      }
+      
+      // If no exact match found, try contains on full query (less accurate but catches more)
+      if (propertyType == null) {
+        for (final entry in sortedTypeMap) {
+          if (normalizedQuery.contains(entry.key.toLowerCase())) {
+            propertyType = entry.value;
+            if (kDebugMode) {
+              debugPrint('🔍 Found contains match: "${entry.key}" -> ${propertyType.name}');
+            }
+            break;
+          }
+        }
+      }
+      
+      if (kDebugMode && propertyType != null) {
+        debugPrint('✅ Extracted property type: ${propertyType.name}');
+      } else if (kDebugMode) {
+        debugPrint('⚠️ Could not extract property type from query');
+      }
+      
+      // Extract neighborhood keywords (common neighborhoods - expanded list)
+      final neighborhoods = {
+        'siraj': 'siraj',
+        'صراج': 'siraj',
+        'ain zara': 'Ain Zara',
+        'عين زارة': 'Ain Zara',
+        'hay andalous': 'Hay Andalous',
+        'حي الأندلس': 'Hay Andalous',
+        'gargharesh': 'Gargharesh',
+        'قرقارش': 'Gargharesh',
+        'ben ashur': 'Ben Ashur',
+        'بن عاشور': 'Ben Ashur',
+        'swani': 'Swani',
+        'صواني': 'Swani',
+        'hadaek': 'Hadaek',
+        'حدائق': 'Hadaek',
+      };
+      
+      for (final entry in neighborhoods.entries) {
+        if (normalizedQuery.contains(entry.key.toLowerCase())) {
+          neighborhood = entry.value;
+          if (kDebugMode) {
+            debugPrint('✅ Extracted neighborhood: $neighborhood');
+          }
+          break;
+        }
+      }
+      
+      // Extract price range
+      // Patterns: "under 50000", "over 100000", "between 30000 and 80000", "less than 50000", "more than 80000"
+      // Arabic: "أقل من", "أكثر من", "بين", "تحت", "فوق"
+      final pricePatterns = [
+        // English patterns
+        RegExp(r'(?:under|below|less than|max|maximum|max price)\s*(\d+(?:[,\s]\d{3})*)', caseSensitive: false),
+        RegExp(r'(?:over|above|more than|min|minimum|min price)\s*(\d+(?:[,\s]\d{3})*)', caseSensitive: false),
+        RegExp(r'(?:between|from)\s*(\d+(?:[,\s]\d{3})*)\s*(?:and|to|-)\s*(\d+(?:[,\s]\d{3})*)', caseSensitive: false),
+        // Arabic patterns
+        RegExp(r'(?:أقل من|تحت|حد أقصى|أقصى سعر)\s*(\d+(?:[,\s]\d{3})*)', caseSensitive: false),
+        RegExp(r'(?:أكثر من|فوق|حد أدنى|أدنى سعر)\s*(\d+(?:[,\s]\d{3})*)', caseSensitive: false),
+        RegExp(r'(?:بين|من)\s*(\d+(?:[,\s]\d{3})*)\s*(?:و|إلى|-)\s*(\d+(?:[,\s]\d{3})*)', caseSensitive: false),
+        // Simple number patterns (assume max price if mentioned as single number)
+        RegExp(r'(\d+(?:[,\s]\d{3})*)\s*(?:lyd|dinar|دينار|ليرة)', caseSensitive: false),
+      ];
+      
+      for (final pattern in pricePatterns) {
+        final match = pattern.firstMatch(normalizedQuery);
+        if (match != null) {
+          try {
+            // Remove commas and spaces from numbers
+            String parseNumber(String numStr) => numStr.replaceAll(RegExp(r'[,\s]'), '');
+            
+            if (match.groupCount >= 2 && match.group(2) != null) {
+              // Range pattern (between X and Y)
+              final minStr = parseNumber(match.group(1)!);
+              final maxStr = parseNumber(match.group(2)!);
+              minPrice = double.tryParse(minStr);
+              maxPrice = double.tryParse(maxStr);
+              if (kDebugMode && minPrice != null && maxPrice != null) {
+                debugPrint('✅ Extracted price range: ${minPrice!.toInt()} - ${maxPrice!.toInt()} LYD');
+              }
+            } else if (pattern.pattern.contains('under|below|less|max|أقل|تحت')) {
+              // Max price pattern
+              final maxStr = parseNumber(match.group(1)!);
+              maxPrice = double.tryParse(maxStr);
+              if (kDebugMode && maxPrice != null) {
+                debugPrint('✅ Extracted max price: ${maxPrice!.toInt()} LYD');
+              }
+            } else if (pattern.pattern.contains('over|above|more|min|أكثر|فوق')) {
+              // Min price pattern
+              final minStr = parseNumber(match.group(1)!);
+              minPrice = double.tryParse(minStr);
+              if (kDebugMode && minPrice != null) {
+                debugPrint('✅ Extracted min price: ${minPrice!.toInt()} LYD');
+              }
+            } else if (match.groupCount >= 1 && match.group(1) != null) {
+              // Simple number pattern - assume max price
+              final maxStr = parseNumber(match.group(1)!);
+              maxPrice = double.tryParse(maxStr);
+              if (kDebugMode && maxPrice != null) {
+                debugPrint('✅ Extracted price (assumed max): ${maxPrice!.toInt()} LYD');
+              }
+            }
+            
+            if (minPrice != null || maxPrice != null) break;
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('⚠️ Error parsing price: $e');
+            }
+          }
+        }
+      }
+      
+      // Extract bedrooms count
+      // Patterns: "2 bedrooms", "3+ bedrooms", "2-4 bedrooms", "at least 2 bedrooms"
+      final bedroomPatterns = [
+        RegExp(r'(\d+)\s*(?:\+|\+)?\s*(?:bedroom|bed|br|غرفة|غرف)', caseSensitive: false),
+        RegExp(r'(?:at least|minimum|min)\s*(\d+)\s*(?:bedroom|bed|br|غرفة|غرف)', caseSensitive: false),
+        RegExp(r'(\d+)\s*(?:to|-)\s*(\d+)\s*(?:bedroom|bed|br|غرفة|غرف)', caseSensitive: false),
+        RegExp(r'(?:up to|max|maximum)\s*(\d+)\s*(?:bedroom|bed|br|غرفة|غرف)', caseSensitive: false),
+      ];
+      
+      for (final pattern in bedroomPatterns) {
+        final match = pattern.firstMatch(normalizedQuery);
+        if (match != null) {
+          try {
+            if (match.groupCount >= 2 && match.group(2) != null) {
+              // Range pattern
+              minBedrooms = int.tryParse(match.group(1)!);
+              maxBedrooms = int.tryParse(match.group(2)!);
+              if (kDebugMode && minBedrooms != null && maxBedrooms != null) {
+                debugPrint('✅ Extracted bedrooms range: $minBedrooms - $maxBedrooms');
+              }
+            } else if (pattern.pattern.contains('\\+')) {
+              // "3+ bedrooms" pattern
+              final countStr = match.group(1)!;
+              minBedrooms = int.tryParse(countStr);
+              if (kDebugMode && minBedrooms != null) {
+                debugPrint('✅ Extracted min bedrooms: $minBedrooms+');
+              }
+            } else if (pattern.pattern.contains('up to|max')) {
+              // Max bedrooms pattern
+              maxBedrooms = int.tryParse(match.group(1)!);
+              if (kDebugMode && maxBedrooms != null) {
+                debugPrint('✅ Extracted max bedrooms: $maxBedrooms');
+              }
+            } else if (match.groupCount >= 1) {
+              // Simple count pattern
+              minBedrooms = int.tryParse(match.group(1)!);
+              if (kDebugMode && minBedrooms != null) {
+                debugPrint('✅ Extracted bedrooms: $minBedrooms');
+              }
+            }
+            
+            if (minBedrooms != null || maxBedrooms != null) break;
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('⚠️ Error parsing bedrooms: $e');
+            }
+          }
+        }
+      }
+      
+      // Extract bathrooms count
+      final bathroomPatterns = [
+        RegExp(r'(\d+)\s*(?:bathroom|bath|wc|حمام)', caseSensitive: false),
+      ];
+      
+      for (final pattern in bathroomPatterns) {
+        final match = pattern.firstMatch(normalizedQuery);
+        if (match != null) {
+          try {
+            minBathrooms = int.tryParse(match.group(1)!);
+            if (kDebugMode && minBathrooms != null) {
+              debugPrint('✅ Extracted bathrooms: $minBathrooms');
+            }
+            break;
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('⚠️ Error parsing bathrooms: $e');
+            }
+          }
+        }
+      }
+      
+      // Extract property status (for sale, for rent)
+      if (normalizedQuery.contains(RegExp(r'(?:for sale|sale|buy|شراء|للبيع)', caseSensitive: false))) {
+        status = PropertyStatus.forSale;
+        if (kDebugMode) {
+          debugPrint('✅ Extracted status: for sale');
+        }
+      } else if (normalizedQuery.contains(RegExp(r'(?:for rent|rent|rental|إيجار|للايجار)', caseSensitive: false))) {
+        status = PropertyStatus.forRent;
+        if (kDebugMode) {
+          debugPrint('✅ Extracted status: for rent');
+        }
+      }
+      
+      // Extract features
+      final featureMap = {
+        'parking': 'hasParking',
+        'موقف سيارات': 'hasParking',
+        'pool': 'hasPool',
+        'مسبح': 'hasPool',
+        'garden': 'hasGarden',
+        'حديقة': 'hasGarden',
+        'balcony': 'hasBalcony',
+        'شرفة': 'hasBalcony',
+        'elevator': 'hasElevator',
+        'مصعد': 'hasElevator',
+        'furnished': 'hasFurnished',
+        'مفروش': 'hasFurnished',
+        'ac|air conditioning': 'hasAC',
+        'تكييف': 'hasAC',
+        'gym': 'hasGym',
+        'صالة رياضية': 'hasGym',
+        'security': 'hasSecurity',
+        'أمن': 'hasSecurity',
+      };
+      
+      for (final entry in featureMap.entries) {
+        if (normalizedQuery.contains(entry.key.toLowerCase())) {
+          requiredFeatures.add(entry.value);
+          if (kDebugMode) {
+            debugPrint('✅ Extracted feature: ${entry.value}');
+          }
+        }
+      }
+      
+      // Extract size/area (in sqm)
+      final sizePatterns = [
+        RegExp(r'(\d+)\s*(?:sqm|m²|square meter|متر مربع)', caseSensitive: false),
+        RegExp(r'(?:at least|minimum|min)\s*(\d+)\s*(?:sqm|m²|square meter|متر مربع)', caseSensitive: false),
+      ];
+      
+      for (final pattern in sizePatterns) {
+        final match = pattern.firstMatch(normalizedQuery);
+        if (match != null) {
+          try {
+            minSizeSqm = int.tryParse(match.group(1)!);
+            if (kDebugMode && minSizeSqm != null) {
+              debugPrint('✅ Extracted min size: $minSizeSqm sqm');
+            }
+            break;
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('⚠️ Error parsing size: $e');
+            }
+          }
+        }
+      }
+      
+      // Build Firestore query
+      Query firestoreQuery = firestore.collection('properties');
+      
+      // Only filter by isPublished if user didn't explicitly ask for "all properties"
+      // For "show all properties", we include both published and unpublished
+      if (!showAllProperties) {
+        // Only show published properties (default behavior)
+        firestoreQuery = firestoreQuery.where('isPublished', isEqualTo: true);
+        if (kDebugMode) {
+          debugPrint('🔍 Filtering by isPublished: true (default)');
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint('🔍 Showing ALL properties (including unpublished)');
+        }
+      }
+      
+      // Filter by city if found (only when user specifies a city)
+      if (city != null) {
+        firestoreQuery = firestoreQuery.where('city', isEqualTo: city);
+        if (kDebugMode) {
+          debugPrint('🔍 Filtering by city: $city');
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint('🔍 No city filter (getting all cities)');
+        }
+      }
+      
+      // Filter by status if specified (for sale/rent)
+      if (status != null) {
+        firestoreQuery = firestoreQuery.where('status', isEqualTo: status.name);
+        if (kDebugMode) {
+          debugPrint('🔍 Filtering by status: ${status.name}');
+        }
+      }
+      
+      // Filter by price range (min/max) if specified
+      // Note: Firestore can only filter on one range per query, so we'll use the most restrictive
+      if (minPrice != null) {
+        firestoreQuery = firestoreQuery.where('price', isGreaterThanOrEqualTo: minPrice);
+        if (kDebugMode) {
+          debugPrint('🔍 Filtering by min price: ${minPrice!.toInt()} LYD');
+        }
+      }
+      if (maxPrice != null && minPrice == null) {
+        // Only add maxPrice if minPrice wasn't used (Firestore limitation)
+        // Otherwise we'll filter in memory
+        firestoreQuery = firestoreQuery.where('price', isLessThanOrEqualTo: maxPrice);
+        if (kDebugMode) {
+          debugPrint('🔍 Filtering by max price: ${maxPrice!.toInt()} LYD');
+        }
+      }
+      
+      // Add orderBy - Firestore requires orderBy when using limit() for consistent results
+      // Order by createdAt descending (most recent first)
+      // If price filtering, we might want to order by price instead, but createdAt is safer for now
+      firestoreQuery = firestoreQuery.orderBy('createdAt', descending: true);
+      
+      // Get ALL properties (Firestore max limit is 1000, but we'll use 500 for performance)
+      // We filter by type in memory anyway, so getting more is safe
+      firestoreQuery = firestoreQuery.limit(500);
+      
+      if (kDebugMode) {
+        debugPrint('🔍 Firestore query: orderBy(createdAt DESC), limit: 500');
+      }
+      
+      final snapshot = await firestoreQuery.get();
+      
+      if (kDebugMode) {
+        debugPrint('📥 Retrieved ${snapshot.docs.length} documents from Firestore (limit: 500)');
+        if (snapshot.docs.length >= 500) {
+          debugPrint('⚠️ Warning: Hit Firestore limit of 500! There may be more properties.');
+        }
+      }
+      
+      // Filter in memory (type, neighborhood - ensures exact matches)
+      var filteredDocs = snapshot.docs;
+      
+      // First filter by property type if specified (ensure exact match)
+      if (propertyType != null && filteredDocs.isNotEmpty) {
+        // Property types in Firestore are stored as enum.name (e.g., "apartment", "villa")
+        final expectedTypeString = propertyType.name.toLowerCase();
+        
+        if (kDebugMode) {
+          debugPrint('🔍 Filtering by property type: $expectedTypeString');
+          debugPrint('🔍 Total docs from Firestore before type filtering: ${filteredDocs.length}');
+          debugPrint('🔍 Show all properties mode: $showAllProperties');
+        }
+        
+        var index = 0;
+        var matchedCount = 0;
+        filteredDocs = filteredDocs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final docType = (data['type']?.toString() ?? '').toLowerCase().trim();
+          
+          if (kDebugMode && index < 5) {
+            debugPrint('🔍 Doc[$index] type: "$docType" vs expected: "$expectedTypeString"');
+          }
+          index++;
+          
+          // Match exact type (e.g., "apartment" or "villa")
+          final matches = docType == expectedTypeString;
+          if (matches) matchedCount++;
+          
+          if (kDebugMode && !matches && index <= 5) {
+            debugPrint('❌ Doc[$index] type mismatch: "$docType" != "$expectedTypeString"');
+          }
+          
+          return matches;
+        }).toList();
+        
+        if (kDebugMode) {
+          debugPrint('✅ Total docs after type filtering: ${filteredDocs.length} (matched: $matchedCount)');
+        }
+      }
+      
+      // Then filter by neighborhood if found
+      if (neighborhood != null && filteredDocs.isNotEmpty) {
+        final neighborhoodLower = neighborhood.toLowerCase();
+        filteredDocs = filteredDocs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final docNeighborhood = (data['neighborhood'] ?? '').toString().toLowerCase();
+          return docNeighborhood.contains(neighborhoodLower) || 
+                 neighborhoodLower.contains(docNeighborhood);
+        }).toList();
+        
+        if (kDebugMode) {
+          debugPrint('🔍 Filtered by neighborhood "$neighborhood": ${filteredDocs.length} docs');
+        }
+      }
+      
+      // Filter by price range (if not already filtered in Firestore)
+      if (maxPrice != null && minPrice != null && filteredDocs.isNotEmpty) {
+        // Both min and max specified - filter in memory (Firestore limitation)
+        filteredDocs = filteredDocs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final price = (data['price'] ?? 0).toDouble();
+          return price >= minPrice! && price <= maxPrice!;
+        }).toList();
+        
+        if (kDebugMode) {
+          debugPrint('🔍 Filtered by price range ${minPrice!.toInt()}-${maxPrice!.toInt()}: ${filteredDocs.length} docs');
+        }
+      } else if (maxPrice != null && minPrice == null && filteredDocs.isNotEmpty) {
+        // Only maxPrice specified but wasn't in Firestore query - filter in memory
+        filteredDocs = filteredDocs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final price = (data['price'] ?? 0).toDouble();
+          return price <= maxPrice!;
+        }).toList();
+        
+        if (kDebugMode) {
+          debugPrint('🔍 Filtered by max price ${maxPrice!.toInt()}: ${filteredDocs.length} docs');
+        }
+      }
+      
+      if (filteredDocs.isEmpty) {
+        if (kDebugMode) {
+          debugPrint('❌ No properties found after filtering');
+        }
+        return [];
+      }
+      
+      final properties = <Property>[];
+      var processedCount = 0;
+      var skippedCount = 0;
+      var addedCount = 0;
+      
+      for (final doc in filteredDocs) {
+        try {
+          processedCount++;
+          final data = doc.data() as Map<String, dynamic>;
+          final property = Property.fromFirestore(doc.id, data);
+          
+          // Double-check property type matches (extra validation)
+          if (propertyType != null && property.type != propertyType) {
+            skippedCount++;
+            if (kDebugMode && skippedCount <= 3) {
+              debugPrint('⚠️ Skipped property ${doc.id}: type is ${property.type.name} but expected ${propertyType.name}');
+            }
+            continue; // Skip if type doesn't match
+          }
+          
+          // Filter by bedrooms range
+          if (minBedrooms != null && property.bedrooms < minBedrooms!) {
+            skippedCount++;
+            if (kDebugMode && skippedCount <= 3) {
+              debugPrint('⚠️ Skipped property ${doc.id}: bedrooms ${property.bedrooms} < min ${minBedrooms}');
+            }
+            continue;
+          }
+          if (maxBedrooms != null && property.bedrooms > maxBedrooms!) {
+            skippedCount++;
+            if (kDebugMode && skippedCount <= 3) {
+              debugPrint('⚠️ Skipped property ${doc.id}: bedrooms ${property.bedrooms} > max ${maxBedrooms}');
+            }
+            continue;
+          }
+          
+          // Filter by bathrooms
+          if (minBathrooms != null && property.bathrooms < minBathrooms!) {
+            skippedCount++;
+            if (kDebugMode && skippedCount <= 3) {
+              debugPrint('⚠️ Skipped property ${doc.id}: bathrooms ${property.bathrooms} < min ${minBathrooms}');
+            }
+            continue;
+          }
+          
+          // Filter by size
+          if (minSizeSqm != null && property.sizeSqm < minSizeSqm!) {
+            skippedCount++;
+            if (kDebugMode && skippedCount <= 3) {
+              debugPrint('⚠️ Skipped property ${doc.id}: size ${property.sizeSqm} < min ${minSizeSqm}');
+            }
+            continue;
+          }
+          if (maxSizeSqm != null && property.sizeSqm > maxSizeSqm!) {
+            skippedCount++;
+            if (kDebugMode && skippedCount <= 3) {
+              debugPrint('⚠️ Skipped property ${doc.id}: size ${property.sizeSqm} > max ${maxSizeSqm}');
+            }
+            continue;
+          }
+          
+          // Filter by required features
+          if (requiredFeatures.isNotEmpty) {
+            bool hasAllFeatures = true;
+            for (final feature in requiredFeatures) {
+              bool hasFeature = false;
+              switch (feature) {
+                case 'hasParking':
+                  hasFeature = property.hasParking;
+                  break;
+                case 'hasPool':
+                  hasFeature = property.hasPool;
+                  break;
+                case 'hasGarden':
+                  hasFeature = property.hasGarden;
+                  break;
+                case 'hasBalcony':
+                  hasFeature = property.hasBalcony;
+                  break;
+                case 'hasElevator':
+                  hasFeature = property.hasElevator;
+                  break;
+                case 'hasFurnished':
+                  hasFeature = property.hasFurnished;
+                  break;
+                case 'hasAC':
+                  hasFeature = property.hasAC;
+                  break;
+                case 'hasGym':
+                  hasFeature = property.hasGym;
+                  break;
+                case 'hasSecurity':
+                  hasFeature = property.hasSecurity;
+                  break;
+              }
+              
+              if (!hasFeature) {
+                hasAllFeatures = false;
+                break;
+              }
+            }
+            
+            if (!hasAllFeatures) {
+              skippedCount++;
+              if (kDebugMode && skippedCount <= 3) {
+                debugPrint('⚠️ Skipped property ${doc.id}: missing required features');
+              }
+              continue;
+            }
+          }
+          
+          properties.add(property);
+          addedCount++;
+          
+          if (kDebugMode && addedCount <= 5) {
+            debugPrint('✅ Added property $addedCount: ${property.title} (${property.city}, type: ${property.type.name}, price: ${property.price.toInt()})');
+          }
+          
+          // Don't limit - return all matching properties
+        } catch (e) {
+          skippedCount++;
+          if (kDebugMode && skippedCount <= 3) {
+            debugPrint('⚠️ Error parsing property ${doc.id}: $e');
+          }
+        }
+      }
+      
+      if (kDebugMode) {
+        debugPrint('📊 Search Summary:');
+        debugPrint('   Total docs from Firestore: ${snapshot.docs.length}');
+        debugPrint('   Processed docs: $processedCount');
+        debugPrint('   Skipped docs: $skippedCount');
+        debugPrint('   Final properties: ${properties.length}');
+      }
+      
+      return properties;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Error searching properties: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Detect if message is asking about properties/search
+  bool _isPropertySearchQuery(String message) {
+    final normalizedQuery = message.toLowerCase();
+    
+    // Keywords that indicate property search
+    final searchKeywords = [
+      'find', 'search', 'look for', 'show me', 'want', 'need', 'أبحث عن', 'أريد', 'أحتاج', 
+      'أرغب في', 'find me', 'looking for', 'properties', 'property', 'عقار', 'عقارات',
+      'villa', 'house', 'apartment', 'land', 'شقة', 'بيت', 'منزل', 'دار', 'أرض', 'أراضي',
+      'tripoli', 'benghazi', 'طرابلس', 'بنغازي', 'siraj', 'siraj', 'siraj', 'عين زارة'
+    ];
+    
+    return searchKeywords.any((keyword) => normalizedQuery.contains(keyword));
+  }
+
   /// Send a message to the chatbot and get a response
-  Future<String> sendMessage(String message, {String? conversationContext}) async {
+  Future<ChatbotResponse> sendMessage(String message, {String? conversationContext}) async {
     try {
       // Ensure model is initialized
       await _ensureModelInitialized();
       
       if (_model == null) {
-        throw Exception('Chatbot model not initialized');
+        final isArabic = _isArabicMessage(message);
+        return ChatbotResponse(
+          text: isArabic 
+            ? 'عذرًا، خدمة الدردشة غير متاحة حاليًا. يرجى التحقق من إعدادات Firebase.'
+            : 'Sorry, the chatbot service is currently unavailable. Please check Firebase configuration.',
+        );
+      }
+      
+      // Check if user is asking about properties/search
+      final isPropertySearch = _isPropertySearchQuery(message);
+      List<Property>? foundProperties;
+      
+      if (isPropertySearch) {
+        // Search properties first
+        foundProperties = await _searchProperties(message);
+        
+        if (foundProperties.isNotEmpty) {
+          final isArabic = _isArabicMessage(message);
+          final propertyCount = foundProperties.length;
+          final responseText = isArabic
+            ? 'وجدت $propertyCount عقاراً يتطابق مع بحثك:\n\n'
+            : 'I found $propertyCount property(ies) matching your search:\n\n';
+          
+          return ChatbotResponse(
+            text: responseText,
+            properties: foundProperties,
+          );
+        }
       }
       
       // Detect if user is asking in Arabic
@@ -441,11 +1295,16 @@ Remember:
           final index = responseText.toLowerCase().indexOf('provide a helpful response:');
           responseText = responseText.substring(index + 'provide a helpful response:'.length).trim();
         }
-        return responseText;
+        return ChatbotResponse(
+          text: responseText,
+          properties: foundProperties?.isNotEmpty == true ? foundProperties : null,
+        );
       } else {
-        return isArabic 
-          ? 'عذرًا، لم أتمكن من إنشاء رد. يرجى المحاولة مرة أخرى.'
-          : 'I apologize, but I couldn\'t generate a response. Please try again.';
+        return ChatbotResponse(
+          text: isArabic 
+            ? 'عذرًا، لم أتمكن من إنشاء رد. يرجى المحاولة مرة أخرى.'
+            : 'I apologize, but I couldn\'t generate a response. Please try again.',
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -458,26 +1317,36 @@ Remember:
       // Provide more helpful error message in the user's language
       final errorString = e.toString().toLowerCase();
       if (errorString.contains('api_key') || errorString.contains('api key') || errorString.contains('invalid api')) {
-        return isArabic 
-          ? 'عذرًا، هناك مشكلة في إعدادات API. يرجى الاتصال بالدعم.'
-          : 'Sorry, there\'s an issue with the API configuration. Please contact support.';
+        return ChatbotResponse(
+          text: isArabic 
+            ? 'عذرًا، هناك مشكلة في إعدادات API. يرجى الاتصال بالدعم.'
+            : 'Sorry, there\'s an issue with the API configuration. Please contact support.',
+        );
       } else if (errorString.contains('quota') || errorString.contains('limit') || errorString.contains('rate limit')) {
-        return isArabic
-          ? 'عذرًا، الخدمة غير متاحة مؤقتًا بسبب حدود المعدل. يرجى المحاولة مرة أخرى لاحقًا.'
-          : 'Sorry, the service is temporarily unavailable due to rate limits. Please try again later.';
+        return ChatbotResponse(
+          text: isArabic
+            ? 'عذرًا، الخدمة غير متاحة مؤقتًا بسبب حدود المعدل. يرجى المحاولة مرة أخرى لاحقًا.'
+            : 'Sorry, the service is temporarily unavailable due to rate limits. Please try again later.',
+        );
       } else if (errorString.contains('network') || errorString.contains('connection')) {
-        return isArabic
-          ? 'عذرًا، لم أتمكن من الاتصال بالخدمة. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.'
-          : 'Sorry, I couldn\'t connect to the service. Please check your internet connection and try again.';
+        return ChatbotResponse(
+          text: isArabic
+            ? 'عذرًا، لم أتمكن من الاتصال بالخدمة. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.'
+            : 'Sorry, I couldn\'t connect to the service. Please check your internet connection and try again.',
+        );
       } else if (errorString.contains('safety') || errorString.contains('blocked')) {
-        return isArabic
-          ? 'عذرًا، تم حظر رسالتك بواسطة فلاتر الأمان. يرجى إعادة صياغة سؤالك.'
-          : 'Sorry, your message was blocked by safety filters. Please try rephrasing your question.';
+        return ChatbotResponse(
+          text: isArabic
+            ? 'عذرًا، تم حظر رسالتك بواسطة فلاتر الأمان. يرجى إعادة صياغة سؤالك.'
+            : 'Sorry, your message was blocked by safety filters. Please try rephrasing your question.',
+        );
       }
       
-      return isArabic
-        ? 'عذرًا، واجهت خطأ. يرجى المحاولة مرة أخرى. إذا استمرت المشكلة، اتصل بالدعم.'
-        : 'Sorry, I encountered an error. Please try again. If the problem persists, contact support.';
+      return ChatbotResponse(
+        text: isArabic
+          ? 'عذرًا، واجهت خطأ. يرجى المحاولة مرة أخرى. إذا استمرت المشكلة، اتصل بالدعم.'
+          : 'Sorry, I encountered an error. Please try again. If the problem persists, contact support.',
+      );
     }
   }
 

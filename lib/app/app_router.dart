@@ -16,6 +16,7 @@ import '../features/saved_searches/saved_searches_screens.dart';
 import '../features/notifications/notifications_screens.dart';
 import '../features/chat/chat_screens.dart';
 import '../providers/auth_provider.dart';
+import '../providers/navigation_provider.dart';
 import 'main_layout.dart';
 
 class AppRouter {

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'dart:async';
 import '../services/language_service.dart';
 import '../widgets/language_toggle_button.dart';
@@ -1342,7 +1343,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           _buildDetailRow(
                             icon: Icons.security,
                             label: 'Security Deposit',
-                            value: '${widget.property.deposit.toStringAsFixed(0)} LYD',
+                            value: '${NumberFormat('#,###').format(widget.property.deposit)} LYD',
                         ),
 
                         const SizedBox(height: 16),

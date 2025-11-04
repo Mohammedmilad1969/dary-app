@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 import '../services/wallet_service.dart' as wallet_service;
+import '../utils/text_input_formatters.dart';
 
 class PaymentModal extends StatefulWidget {
   final double amount;
@@ -81,7 +83,7 @@ class _PaymentModalState extends State<PaymentModal> {
         ),
         const SizedBox(height: 16),
         Text(
-          '${widget.amount.toStringAsFixed(0)} LYD has been added to your wallet.',
+          '${NumberFormat('#,###').format(widget.amount)} LYD has been added to your wallet.',
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: 16,
@@ -136,7 +138,7 @@ class _PaymentModalState extends State<PaymentModal> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Amount: ${widget.amount.toStringAsFixed(0)} LYD',
+            'Amount: ${NumberFormat('#,###').format(widget.amount)} LYD',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -234,6 +236,7 @@ class _PaymentModalState extends State<PaymentModal> {
           // Cardholder Name
           TextFormField(
             controller: _cardholderNameController,
+            inputFormatters: [BasicTextFormatter()],
             decoration: const InputDecoration(
               labelText: 'Cardholder Name',
               hintText: 'John Doe',

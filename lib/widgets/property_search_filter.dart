@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../models/property.dart';
 import '../providers/auth_provider.dart';
 import '../services/saved_search_service.dart';
 import '../services/theme_service.dart';
+import '../utils/text_input_formatters.dart';
 
 class PropertySearchFilter extends StatefulWidget {
   final Function(List<Property>) onFilterChanged;
@@ -465,6 +466,7 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                   context,
                   color: Colors.black87,
                 ),
+                inputFormatters: [PriceFormatter()],
                 decoration: InputDecoration(
                   labelText: 'Min Price (LYD)',
                   labelStyle: ThemeService.getBodyStyle(context),
@@ -484,6 +486,7 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                   context,
                   color: Colors.black87,
                 ),
+                inputFormatters: [PriceFormatter()],
                 decoration: InputDecoration(
                   labelText: 'Max Price (LYD)',
                   labelStyle: ThemeService.getBodyStyle(context),
@@ -629,6 +632,7 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                   context,
                   color: Colors.black87,
                 ),
+                inputFormatters: [PriceFormatter()],
                 decoration: InputDecoration(
                   labelText: 'Min Size (m²)',
                   labelStyle: ThemeService.getBodyStyle(context),
@@ -648,6 +652,7 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                   context,
                   color: Colors.black87,
                 ),
+                inputFormatters: [PriceFormatter()],
                 decoration: InputDecoration(
                   labelText: 'Max Size (m²)',
                   labelStyle: ThemeService.getBodyStyle(context),

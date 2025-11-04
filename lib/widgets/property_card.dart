@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +8,7 @@ import '../models/property.dart';
 import '../screens/property_detail_screen.dart';
 import '../services/theme_service.dart';
 import '../providers/auth_provider.dart';
+import '../utils/app_animations.dart';
 
 // Set Libya timezone offset (GMT+2)
 const libyaTimeZone = Duration(hours: 2);
@@ -89,24 +90,66 @@ class _PropertyCardState extends State<PropertyCard> {
       borderWidth = 2;
     }
     
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      elevation: widget.property.isBoosted ? 10 : (widget.property.isFeatured ? 6 : 2),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: borderColor != null
-            ? BorderSide(color: borderColor, width: borderWidth)
-            : BorderSide.none,
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => PropertyDetailScreen(property: widget.property),
+    return Hero(
+      tag: 'property_${widget.property.id}',
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 600),
+        tween: Tween(begin: 0.0, end: 1.0),
+        curve: Curves.easeOutBack,
+        builder: (context, value, child) {
+          // Clamp opacity to valid range [0.0, 1.0]
+          final clampedOpacity = value.clamp(0.0, 1.0);
+          return Transform.scale(
+            scale: 0.8 + (0.2 * clampedOpacity),
+            child: Opacity(
+              opacity: clampedOpacity,
+              child: child,
             ),
           );
         },
+        child: Card(
+          margin: EdgeInsets.zero, // Remove margins - spacing handled by parent grid/list
+          clipBehavior: Clip.antiAlias,
+          elevation: widget.property.isBoosted ? 10 : (widget.property.isFeatured ? 6 : 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: borderColor != null
+                ? BorderSide(color: borderColor, width: borderWidth)
+                : BorderSide.none,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                Navigator.of(context).push(
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        PropertyDetailScreen(property: widget.property),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      return FadeTransition(
+                        opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.0, 0.3),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          )),
+                          child: ScaleTransition(
+                            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+                              CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                            ),
+                            child: child,
+                          ),
+                        ),
+                      );
+                    },
+                    transitionDuration: const Duration(milliseconds: 400),
+                  ),
+                );
+              },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -117,7 +160,7 @@ class _PropertyCardState extends State<PropertyCard> {
                 topRight: Radius.circular(16),
               ),
               child: SizedBox(
-                height: 190,
+                height: 160,
                 width: double.infinity,
                 child: Stack(
                   children: [
@@ -199,80 +242,85 @@ class _PropertyCardState extends State<PropertyCard> {
             
             // Info
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Agent and listed time
                   Row(
                     children: [
                       CircleAvatar(
-                        radius: 14,
+                        radius: 12,
                         backgroundColor: Colors.green[100],
                         child: Text(
                           widget.property.agentName.split(' ').map((n) => n.isNotEmpty ? n[0] : '').join(),
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green[700]),
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green[700]),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           widget.property.agentName,
-                          style: ThemeService.getBodyStyle(context, fontSize: 13, color: Colors.grey[700]),
+                          style: ThemeService.getBodyStyle(context, fontSize: 12, color: Colors.grey[700]),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(
-                        _getTimeAgo(widget.property.createdAt),
-                        style: ThemeService.getBodyStyle(context, fontSize: 12, color: Colors.grey[700]),
+                      Flexible(
+                        child: Text(
+                          _getTimeAgo(widget.property.createdAt),
+                          style: ThemeService.getBodyStyle(context, fontSize: 10, color: Colors.grey[700]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   // Property Title
                   Text(
                     widget.property.title,
-                    style: ThemeService.getBodyStyle(context, fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: ThemeService.getBodyStyle(context, fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     widget.property.type.typeDisplayName,
-                    style: ThemeService.getBodyStyle(context, fontSize: 13, color: Colors.grey[600]),
+                    style: ThemeService.getBodyStyle(context, fontSize: 12, color: Colors.grey[600]),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     widget.property.displayPrice,
-                    style: ThemeService.getBodyStyle(context, fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: ThemeService.getBodyStyle(context, fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.location_on, size: 14, color: Colors.grey[700]),
-                      const SizedBox(width: 6),
+                      Icon(Icons.location_on, size: 13, color: Colors.grey[700]),
+                      const SizedBox(width: 4),
                       Expanded(
-                        child:                   Text(
-                    '${widget.property.neighborhood}, ${widget.property.city}',
-                          style: ThemeService.getBodyStyle(context, fontSize: 13, color: Colors.grey[600]),
+                        child: Text(
+                          '${widget.property.neighborhood}, ${widget.property.city}',
+                          style: ThemeService.getBodyStyle(context, fontSize: 12, color: Colors.grey[600]),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Row(
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       _buildMetric(context, Icons.bed, '${widget.property.bedrooms}'),
-                      const SizedBox(width: 16),
                       _buildMetric(context, Icons.bathtub, '${widget.property.bathrooms}'),
-                      const SizedBox(width: 16),
                       _buildMetric(context, Icons.square_foot, '${widget.property.sizeSqm} m²'),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -291,7 +339,7 @@ class _PropertyCardState extends State<PropertyCard> {
                           },
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: _buildActionButton(
                           context,
@@ -315,6 +363,9 @@ class _PropertyCardState extends State<PropertyCard> {
             ),
           ],
         ),
+          ),
+        ),
+        ),
       ),
     );
   }
@@ -337,14 +388,15 @@ class _PropertyCardState extends State<PropertyCard> {
 
   Widget _buildMetric(BuildContext context, IconData icon, String text) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: Colors.grey[600]),
-        const SizedBox(width: 4),
+        Icon(icon, size: 12, color: Colors.grey[600]),
+        const SizedBox(width: 3),
         Text(
           text,
           style: ThemeService.getBodyStyle(
             context,
-            fontSize: 12,
+            fontSize: 11,
             color: Colors.grey[600],
           ),
         ),
@@ -381,24 +433,30 @@ class _PropertyCardState extends State<PropertyCard> {
   }
 
   Widget _buildActionButton(BuildContext context, {required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
-    return InkWell(
+    return ScaleAnimation(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color.withOpacity(0.4)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: ThemeService.getBodyStyle(context, fontSize: 14, fontWeight: FontWeight.w600, color: color),
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: ThemeService.getBodyStyle(context, fontSize: 12, fontWeight: FontWeight.w600, color: color),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
