@@ -1,4 +1,3 @@
-import 'env_config.dart';
 
 /// Production environment specific configuration
 /// 

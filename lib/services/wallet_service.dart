@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../models/wallet.dart' as wallet_models;
 import '../services/persistence_service.dart';
-import 'package:provider/provider.dart';
 
 /// Firebase-based Wallet Service
 /// 
@@ -182,15 +181,14 @@ class WalletService extends ChangeNotifier {
     required double amount,
     required wallet_models.TransactionType type,
     required String description,
+    wallet_models.TransactionStatus status = wallet_models.TransactionStatus.completed,
+    String? referenceId,
     Map<String, dynamic>? metadata,
   }) async {
     try {
       // Validate userId
       if (userId.isEmpty) {
         _setErrorMessage('User ID cannot be empty');
-        if (kDebugMode) {
-          debugPrint('❌ User ID is empty');
-        }
         return false;
       }
 
@@ -198,7 +196,13 @@ class WalletService extends ChangeNotifier {
         'amount': amount,
         'type': type.name,
         'description': description,
-        'metadata': metadata ?? {},
+        'status': status.name,
+        'referenceId': referenceId,
+        'metadata': {
+          ...(metadata ?? {}),
+          'platform': kIsWeb ? 'web' : 'mobile',
+          'support_id': 'SUP-${DateTime.now().millisecondsSinceEpoch}',
+        },
         'createdAt': Timestamp.now(),
       };
 
@@ -252,56 +256,64 @@ class WalletService extends ChangeNotifier {
   }
 
   /// Recharge wallet with a code
-  Future<bool> rechargeWallet(String userId, String code) async {
+  Future<Map<String, dynamic>> rechargeWallet(String userId, String code) async {
     try {
       if (kDebugMode) {
         debugPrint('🔄 Attempting recharge for user: $userId with code: $code');
       }
       
-      // Validate recharge code format (16 digits)
-      if (code.length != 16 || !RegExp(r'^\d{16}$').hasMatch(code)) {
-        _setErrorMessage('Invalid recharge code format');
-        if (kDebugMode) {
-          debugPrint('❌ Invalid code format: length=${code.length}, isNumeric=${RegExp(r'^\d{16}$').hasMatch(code)}');
-        }
-        return false;
+      // Validate recharge code format (13 digits)
+      if (code.length != 13 || !RegExp(r'^\d{13}$').hasMatch(code)) {
+        _setErrorMessage('Invalid recharge code format (13 digits required)');
+        return {'success': false, 'error': 'Invalid format'};
       }
 
-      // Simulate recharge amount (in real app, this would validate with payment provider)
-      const double rechargeAmount = 25.0;
+      // Check voucher in Firestore
+      final voucherRef = _firestore.collection('vouchers').doc(code);
+      final voucherSnap = await voucherRef.get();
 
-      if (kDebugMode) {
-        debugPrint('💰 Adding recharge transaction: $rechargeAmount LYD');
+      if (!voucherSnap.exists) {
+        _setErrorMessage('Invalid voucher code. Please check and try again.');
+        return {'success': false, 'error': 'Not found'};
       }
 
-      // Add recharge transaction
+      final voucherData = voucherSnap.data()!;
+      if (voucherData['isUsed'] == true) {
+        _setErrorMessage('This voucher has already been redeemed.');
+        return {'success': false, 'error': 'Already used'};
+      }
+
+      final double rechargeAmount = (voucherData['value'] ?? 0).toDouble();
+
+      // 1. Mark voucher as used
+      await voucherRef.update({
+        'isUsed': true,
+        'usedBy': userId,
+        'usedAt': FieldValue.serverTimestamp(),
+      });
+
       final success = await addTransaction(
         userId: userId,
         amount: rechargeAmount,
         type: wallet_models.TransactionType.recharge,
-        description: 'Wallet Recharge',
-        metadata: {'code': code, 'provider': 'mock'},
+        description: 'Voucher Recharge',
+        referenceId: 'VCHR-${code.substring(0, 4)}',
+        metadata: {
+          'voucher_prefix': code.substring(0, 4),
+          'voucher_type': 'Dary Card',
+          'full_code_masked': '****-****-****-${code.substring(code.length - 4)}',
+        },
       );
 
       if (success) {
-        if (kDebugMode) {
-          debugPrint('💰 Wallet recharged: $rechargeAmount LYD for user: $userId');
-        }
-        // Force refresh the wallet data
         await initialize(userId);
+        return {'success': true, 'amount': rechargeAmount};
       } else {
-        if (kDebugMode) {
-          debugPrint('❌ Failed to add recharge transaction');
-        }
+        return {'success': false, 'error': 'Update failed'};
       }
-
-      return success;
     } catch (e) {
       _setErrorMessage('Failed to recharge wallet: $e');
-      if (kDebugMode) {
-        debugPrint('❌ Error recharging wallet: $e');
-      }
-      return false;
+      return {'success': false, 'error': e.toString()};
     }
   }
 
@@ -501,12 +513,17 @@ class WalletService extends ChangeNotifier {
           return false;
         }
         
-        // Add funds to wallet
         final success = await addTransaction(
           userId: userId,
           amount: amount,
           type: wallet_models.TransactionType.deposit,
           description: 'Card Payment - $cardholderName',
+          referenceId: 'CARD-${cardNumber.substring(cardNumber.length - 4)}',
+          metadata: {
+            'card_holder': cardholderName,
+            'card_number_masked': '**** **** **** ${cardNumber.substring(cardNumber.length - 4)}',
+            'expiry': expiryDate,
+          },
         );
 
         if (success) {

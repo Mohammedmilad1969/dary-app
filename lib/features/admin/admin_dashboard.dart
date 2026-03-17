@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:dary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/admin_service.dart';
 import '../../services/property_service.dart';
 import '../../services/persistence_service.dart';
 import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';
-import '../../services/theme_service.dart';
 import 'firebase_auth_management_screen.dart';
-import '../../utils/text_input_formatters.dart';
+import '../../widgets/dary_loading_indicator.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -22,8 +20,9 @@ class AdminDashboard extends StatefulWidget {
   State<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProviderStateMixin {
+class _AdminDashboardState extends State<AdminDashboard> with TickerProviderStateMixin {
   late TabController _tabController;
+  late AnimationController _animationController;
   final AdminService _adminService = AdminService();
   
   bool _isLoading = true;
@@ -47,54 +46,62 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   DateTime? _transactionEndDate;
   
   // Selected items for bulk actions
-  Set<String> _selectedUsers = {};
-  Set<String> _selectedProperties = {};
-  Set<String> _selectedPayments = {};
-  Set<String> _selectedTransactions = {};
+  final Set<String> _selectedUsers = {};
+  final Set<String> _selectedProperties = {};
+  final Set<String> _selectedPayments = {};
+  final Set<String> _selectedTransactions = {};
+
+  // Tab names for display
+  final List<Map<String, dynamic>> _tabs = [
+    {'icon': Icons.people_rounded, 'label': 'Users'},
+    {'icon': Icons.home_work_rounded, 'label': 'Properties'},
+    {'icon': Icons.toll_rounded, 'label': 'Points'},
+    {'icon': Icons.diamond_rounded, 'label': 'Premium'},
+    {'icon': Icons.receipt_long_rounded, 'label': 'Transactions'},
+    {'icon': Icons.security_rounded, 'label': 'Firebase'},
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
     _loadAdminData();
+    
+    _userSearchController.addListener(() => setState(() {}));
+    _propertySearchController.addListener(() => setState(() {}));
+    _transactionSearchController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _animationController.dispose();
     _userSearchController.dispose();
     _propertySearchController.dispose();
     _transactionSearchController.dispose();
     super.dispose();
   }
 
-  /// Refresh PropertyService to update homepage and other parts of the app
   Future<void> _refreshPropertyService() async {
     try {
       final propertyService = Provider.of<PropertyService>(context, listen: false);
       final persistenceService = Provider.of<PersistenceService>(context, listen: false);
-      
-      // Force refresh by clearing local cache and reinitializing
       await persistenceService.clearAllData();
       await propertyService.initialize(persistenceService: persistenceService);
-      
-      if (kDebugMode) {
-        debugPrint('🔄 PropertyService refreshed after admin operation');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Failed to refresh PropertyService: $e');
-      }
+      if (kDebugMode) debugPrint('⚠️ Failed to refresh PropertyService: $e');
     }
   }
 
   Future<void> _loadAdminData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (!mounted) return;
+    setState(() => _isLoading = true);
 
     try {
-      // Load all admin data in parallel
       final results = await Future.wait([
         _adminService.getDashboardStats(),
         _adminService.getUsers(),
@@ -103,6 +110,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         _adminService.getPremiumListings(sortBy: _premiumSortBy),
       ]);
 
+      if (!mounted) return;
       setState(() {
         _stats = results[0] as Map<String, int>;
         _users = results[1] as List<AdminUser>;
@@ -110,113 +118,163 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         _payments = results[3] as List<AdminPayment>;
         _premiumListings = results[4] as List<AdminPremiumListing>;
       });
+      
+      _animationController.forward(from: 0);
     } catch (e) {
+      if (kDebugMode) debugPrint('❌ Error loading admin data: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)?.errorLoadingAdminData ?? 'Error loading admin data'),
+            content: Text('Error loading data: ${e.toString()}'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _loadAdminData,
+            ),
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // Filter methods
+  List<AdminUser> _getFilteredUsers() {
+    final searchTerm = _userSearchController.text.toLowerCase();
+    return _users.where((user) {
+      final matchesSearch = searchTerm.isEmpty ||
+          user.id.toLowerCase().contains(searchTerm) ||
+          user.name.toLowerCase().contains(searchTerm) ||
+          user.email.toLowerCase().contains(searchTerm) ||
+          user.phone.toLowerCase().contains(searchTerm);
+      
+      final matchesFilter = _userFilter == 'all' ||
+          (_userFilter == 'verified' && user.isVerified) ||
+          (_userFilter == 'unverified' && !user.isVerified) ||
+          (_userFilter == 'active' && user.isActive) ||
+          (_userFilter == 'inactive' && !user.isActive) ||
+          (_userFilter == 'office' && user.isRealEstateOffice);
+      
+      return matchesSearch && matchesFilter;
+    }).toList();
+  }
+
+  List<AdminProperty> _getFilteredProperties() {
+    final searchTerm = _propertySearchController.text.toLowerCase();
+    return _properties.where((property) {
+      final matchesSearch = searchTerm.isEmpty ||
+          property.id.toLowerCase().contains(searchTerm) ||
+          property.title.toLowerCase().contains(searchTerm) ||
+          property.ownerName.toLowerCase().contains(searchTerm) ||
+          property.city.toLowerCase().contains(searchTerm);
+      
+      final matchesFilter = _propertyFilter == 'all' ||
+          (_propertyFilter == 'active' && property.isActive) ||
+          (_propertyFilter == 'inactive' && !property.isActive) ||
+          (_propertyFilter == 'boosted' && property.isBoosted) ||
+          (_propertyFilter == 'expired' && property.isExpired);
+      
+      return matchesSearch && matchesFilter;
+    }).toList();
+  }
+
+  List<AdminPayment> _getFilteredTransactions() {
+    final searchTerm = _transactionSearchController.text.toLowerCase();
+    return _payments.where((transaction) {
+      final matchesSearch = searchTerm.isEmpty ||
+          transaction.id.toLowerCase().contains(searchTerm) ||
+          transaction.userId.toLowerCase().contains(searchTerm) ||
+          transaction.userName.toLowerCase().contains(searchTerm) ||
+          transaction.userEmail.toLowerCase().contains(searchTerm) ||
+          (transaction.description?.toLowerCase().contains(searchTerm) ?? false);
+      
+      final matchesFilter = _transactionFilter == 'all' ||
+          (_transactionFilter == 'wallet_recharge' && transaction.type == 'wallet_recharge') ||
+          (_transactionFilter == 'top_listing' && transaction.type == 'top_listing_purchase') ||
+          (_transactionFilter == 'pending' && transaction.status == 'pending') ||
+          (_transactionFilter == 'completed' && transaction.status == 'completed');
+      
+      bool matchesDate = true;
+      if (_transactionStartDate != null) {
+        matchesDate = matchesDate && transaction.createdAt.isAfter(_transactionStartDate!);
+      }
+      if (_transactionEndDate != null) {
+        matchesDate = matchesDate && transaction.createdAt.isBefore(_transactionEndDate!.add(const Duration(days: 1)));
+      }
+      
+      return matchesSearch && matchesFilter && matchesDate;
+    }).toList();
+  }
+
+  Map<String, dynamic> _getTransactionAnalytics() {
+    final filtered = _getFilteredTransactions();
+    double totalEarned = 0;
+    double totalSpent = 0;
+    int walletRecharges = 0;
+    int topListingPurchases = 0;
+    
+    for (final transaction in filtered) {
+      if (transaction.type == 'wallet_recharge') {
+        totalEarned += transaction.amount;
+        walletRecharges++;
+      } else if (transaction.type == 'top_listing_purchase' || transaction.type == 'purchase') {
+        totalSpent += transaction.amount;
+        topListingPurchases++;
+      }
+    }
+    
+    return {
+      'totalEarned': totalEarned,
+      'totalSpent': totalSpent,
+      'netRevenue': totalEarned - totalSpent,
+      'walletRecharges': walletRecharges,
+      'topListingPurchases': topListingPurchases,
+    };
+  }
+
+  // Action methods
   Future<void> _deleteUser(AdminUser user) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)?.actions ?? 'Actions'),
-        content: Text('Are you sure you want to delete user "${user.name}"? This action cannot be undone and will delete all their data.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-          ),
-        ],
-      ),
+    final confirmed = await _showConfirmDialog(
+      title: 'Delete User',
+      message: 'Are you sure you want to delete "${user.name}"? This action cannot be undone.',
+      confirmText: 'Delete',
+      isDestructive: true,
     );
 
     if (confirmed == true) {
       try {
         final success = await _adminService.deleteUser(user.id);
         if (success) {
-          // Refresh all admin data from Firebase
           await _loadAdminData();
-          // Also refresh PropertyService to update homepage
           await _refreshPropertyService();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('User "${user.name}" deleted successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          _showSuccessSnackBar('User "${user.name}" deleted successfully');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete user'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('Failed to delete user');
       }
     }
   }
 
   Future<void> _deactivateUser(AdminUser user) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)?.actions ?? 'Actions'),
-        content: Text('Are you sure you want to deactivate user "${user.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Deactivate'),
-          ),
-        ],
-      ),
+    final confirmed = await _showConfirmDialog(
+      title: 'Deactivate User',
+      message: 'Are you sure you want to deactivate "${user.name}"?',
+      confirmText: 'Deactivate',
     );
 
     if (confirmed == true) {
       try {
         final success = await _adminService.deactivateUser(user.id);
         if (success) {
-          // Refresh all admin data from Firebase
           await _loadAdminData();
-          // Also refresh PropertyService to update homepage
           await _refreshPropertyService();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('User "${user.name}" deactivated successfully'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          _showSuccessSnackBar('User "${user.name}" deactivated');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to deactivate user'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('Failed to deactivate user');
       }
     }
   }
@@ -225,115 +283,127 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     try {
       final success = await _adminService.toggleUserVerification(user.id);
       if (success) {
-        // Refresh all admin data from Firebase
         await _loadAdminData();
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${user.name} verification status updated'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        _showSuccessSnackBar('${user.name} verification updated');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update verification status'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showErrorSnackBar('Failed to update verification');
+    }
+  }
+
+  Future<void> _toggleRealEstateOfficeStatus(AdminUser user) async {
+    final confirmed = await _showConfirmDialog(
+      title: user.isRealEstateOffice ? 'Remove Office Status' : 'Activate as Office',
+      message: user.isRealEstateOffice
+          ? 'Remove office status from "${user.name}"?'
+          : 'Activate "${user.name}" as a real estate office?',
+      confirmText: user.isRealEstateOffice ? 'Remove' : 'Activate',
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await _adminService.toggleRealEstateOfficeStatus(user.id);
+        if (success) {
+          await _loadAdminData();
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          if (authProvider.currentUser?.id == user.id) {
+            await authProvider.refreshUser();
+          }
+          _showSuccessSnackBar('Office status updated');
+        }
+      } catch (e) {
+        _showErrorSnackBar('Failed to update office status');
+      }
+    }
+  }
+
+  Future<void> _toggleAdminStatus(AdminUser user) async {
+    final confirmed = await _showConfirmDialog(
+      title: user.isAdmin ? 'Remove Admin Status' : 'Make Admin',
+      message: user.isAdmin
+          ? 'Remove admin privileges from "${user.name}"?'
+          : 'Grant admin privileges to "${user.name}"? They will have full access to the admin dashboard.',
+      confirmText: user.isAdmin ? 'Remove' : 'Make Admin',
+      isDestructive: user.isAdmin,
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await _adminService.toggleAdminStatus(user.id);
+        if (success) {
+          await _loadAdminData();
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          if (authProvider.currentUser?.id == user.id) {
+            await authProvider.refreshUser();
+          }
+          _showSuccessSnackBar(user.isAdmin ? 'Admin status removed' : '${user.name} is now an admin');
+        }
+      } catch (e) {
+        _showErrorSnackBar('Failed to update admin status');
+      }
     }
   }
 
   Future<void> _deactivateProperty(AdminProperty property) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)?.actions ?? 'Actions'),
-        content: Text('Are you sure you want to deactivate "${property.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+    final confirmed = await _showConfirmDialog(
+      title: 'Deactivate Property',
+      message: 'Are you sure you want to deactivate "${property.title}"?',
+      confirmText: 'Deactivate',
     );
 
     if (confirmed == true) {
       try {
         final success = await _adminService.deactivateProperty(property.id);
         if (success) {
-          // Refresh all admin data from Firebase
           await _loadAdminData();
-          // Also refresh PropertyService to update homepage
           await _refreshPropertyService();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Property "${property.title}" deactivated successfully'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          _showSuccessSnackBar('Property deactivated');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to deactivate property'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('Failed to deactivate property');
       }
     }
   }
 
   Future<void> _deleteProperty(AdminProperty property) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)?.actions ?? 'Actions'),
-        content: Text('Are you sure you want to delete "${property.title}"? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm'),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-          ),
-        ],
-      ),
+    final confirmed = await _showConfirmDialog(
+      title: 'Delete Property',
+      message: 'Are you sure you want to delete "${property.title}"? This action cannot be undone.',
+      confirmText: 'Delete',
+      isDestructive: true,
     );
 
     if (confirmed == true) {
       try {
         final success = await _adminService.deleteProperty(property.id);
         if (success) {
-          // Refresh all admin data from Firebase
           await _loadAdminData();
-          // Also refresh PropertyService to update homepage
           await _refreshPropertyService();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Property "${property.title}" deleted successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          _showSuccessSnackBar('Property deleted');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete property'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('Failed to delete property');
+      }
+    }
+  }
+
+  Future<void> _renewProperty(AdminProperty property) async {
+    final confirmed = await _showConfirmDialog(
+      title: 'Renew Property',
+      message: 'Are you sure you want to renew "${property.title}"? This will reset the creation date and make it published for another 60 days.',
+      confirmText: 'Renew',
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await _adminService.renewProperty(property.id);
+        if (success) {
+          await _loadAdminData();
+          await _refreshPropertyService();
+          _showSuccessSnackBar('Property renewed successfully');
+        }
+      } catch (e) {
+        _showErrorSnackBar('Failed to renew property');
       }
     }
   }
@@ -343,33 +413,37 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)?.actions ?? 'Actions'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Extend Premium', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Extend premium listing for "${listing.propertyTitle}"'),
+            Text('Extend "${listing.propertyTitle}" premium by:'),
             const SizedBox(height: 16),
             TextField(
               controller: daysController,
               keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.black87),
-              inputFormatters: [PriceFormatter()],
-              decoration: const InputDecoration(
-                labelText: 'Days to extend',
-                labelStyle: TextStyle(color: Colors.black87),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: 'Days',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.grey[100],
               ),
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm'),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF01352D),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Extend', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -377,512 +451,490 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
 
     if (confirmed == true) {
       try {
-        final daysToExtend = int.tryParse(daysController.text) ?? 7;
-        final success = await _adminService.extendPremiumListing(listing.id, daysToExtend);
+        final days = int.tryParse(daysController.text) ?? 7;
+        final success = await _adminService.extendPremiumListing(listing.id, days);
         if (success) {
-          await _loadAdminData(); // Reload data to get updated expiry dates
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Premium listing extended by $daysToExtend days'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          await _loadAdminData();
+          _showSuccessSnackBar('Extended by $days days');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to extend premium listing'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('Failed to extend listing');
       }
     }
   }
 
-  Future<void> _deactivatePremiumListing(AdminPremiumListing listing) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)?.actions ?? 'Actions'),
-        content: Text('Are you sure you want to deactivate premium listing for "${listing.propertyTitle}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+  Future<void> _cancelPremiumListing(AdminPremiumListing listing) async {
+    final confirmed = await _showConfirmDialog(
+      title: 'Cancel Premium',
+      message: 'Cancel premium for "${listing.propertyTitle}"?',
+      confirmText: 'Cancel Premium',
+      isDestructive: true,
     );
 
     if (confirmed == true) {
       try {
         final success = await _adminService.deactivatePremiumListing(listing.id);
         if (success) {
-          await _loadAdminData(); // Reload data to get updated status
-          // Also refresh PropertyService to update homepage
+          await _loadAdminData();
           await _refreshPropertyService();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Premium listing deactivated'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          _showSuccessSnackBar('Premium cancelled');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to deactivate premium listing'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('Failed to cancel premium');
       }
     }
   }
 
-  // Bulk Actions
+  // Bulk actions
   Future<void> _bulkVerifyUsers() async {
     if (_selectedUsers.isEmpty) return;
     
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Bulk Action'),
-        content: Text('Verify ${_selectedUsers.length} selected users?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Verify All'),
-          ),
-        ],
-      ),
+    final confirmed = await _showConfirmDialog(
+      title: 'Verify Users',
+      message: 'Verify ${_selectedUsers.length} selected users?',
+      confirmText: 'Verify All',
     );
 
     if (confirmed == true) {
-      int successCount = 0;
       for (final userId in _selectedUsers) {
-        try {
-          final success = await _adminService.toggleUserVerification(userId);
-          if (success) successCount++;
-        } catch (e) {
-          debugPrint('Error verifying user $userId: $e');
-        }
+        await _adminService.toggleUserVerification(userId);
       }
-      
-      setState(() {
-        _selectedUsers.clear();
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully verified $successCount users'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      
+      _selectedUsers.clear();
       await _loadAdminData();
+      _showSuccessSnackBar('Users verified');
     }
   }
 
   Future<void> _bulkDeactivateProperties() async {
     if (_selectedProperties.isEmpty) return;
     
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Bulk Action'),
-        content: Text('Deactivate ${_selectedProperties.length} selected properties?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Deactivate All'),
-          ),
-        ],
-      ),
+    final confirmed = await _showConfirmDialog(
+      title: 'Deactivate Properties',
+      message: 'Deactivate ${_selectedProperties.length} selected properties?',
+      confirmText: 'Deactivate All',
     );
 
     if (confirmed == true) {
-      int successCount = 0;
       for (final propertyId in _selectedProperties) {
-        try {
-          final success = await _adminService.deactivateProperty(propertyId);
-          if (success) successCount++;
-        } catch (e) {
-          debugPrint('Error deactivating property $propertyId: $e');
-        }
+        await _adminService.deactivateProperty(propertyId);
       }
-      
-      setState(() {
-        _selectedProperties.clear();
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully deactivated $successCount properties'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      
+      _selectedProperties.clear();
       await _loadAdminData();
+      await _refreshPropertyService();
+      _showSuccessSnackBar('Properties deactivated');
     }
   }
 
-  // Search and Filter Methods
-  List<AdminUser> _getFilteredUsers() {
-    List<AdminUser> filtered = _users;
-    
-    // Apply search filter
-    if (_userSearchController.text.isNotEmpty) {
-      final searchTerm = _userSearchController.text.toLowerCase();
-      filtered = filtered.where((user) => 
-        user.name.toLowerCase().contains(searchTerm) ||
-        user.email.toLowerCase().contains(searchTerm) ||
-        user.phone.toLowerCase().contains(searchTerm)
-      ).toList();
-    }
-    
-    // Apply status filter
-    switch (_userFilter) {
-      case 'verified':
-        filtered = filtered.where((user) => user.isVerified).toList();
-        break;
-      case 'unverified':
-        filtered = filtered.where((user) => !user.isVerified).toList();
-        break;
-      case 'active':
-        filtered = filtered.where((user) => user.isActive).toList();
-        break;
-      case 'inactive':
-        filtered = filtered.where((user) => !user.isActive).toList();
-        break;
-    }
-    
-    return filtered;
-  }
-
-  List<AdminProperty> _getFilteredProperties() {
-    List<AdminProperty> filtered = _properties;
-    
-    // Apply search filter
-    if (_propertySearchController.text.isNotEmpty) {
-      final searchTerm = _propertySearchController.text.toLowerCase();
-      filtered = filtered.where((property) => 
-        property.title.toLowerCase().contains(searchTerm) ||
-        property.ownerName.toLowerCase().contains(searchTerm) ||
-        property.city.toLowerCase().contains(searchTerm)
-      ).toList();
-    }
-    
-    // Apply status filter
-    switch (_propertyFilter) {
-      case 'active':
-        filtered = filtered.where((property) => property.isActive).toList();
-        break;
-      case 'inactive':
-        filtered = filtered.where((property) => !property.isActive).toList();
-        break;
-      case 'high_price':
-        filtered = filtered.where((property) => property.price > 500000).toList();
-        break;
-      case 'low_price':
-        filtered = filtered.where((property) => property.price < 100000).toList();
-        break;
-    }
-    
-    return filtered;
-  }
-
-  // Transaction filtering methods
-  List<AdminPayment> _getFilteredTransactions() {
-    List<AdminPayment> filtered = _payments;
-    
-    // Apply search filter
-    if (_transactionSearchController.text.isNotEmpty) {
-      final searchTerm = _transactionSearchController.text.toLowerCase();
-      filtered = filtered.where((transaction) => 
-        transaction.userName.toLowerCase().contains(searchTerm) ||
-        transaction.userEmail.toLowerCase().contains(searchTerm) ||
-        transaction.type.toLowerCase().contains(searchTerm) ||
-        (transaction.description?.toLowerCase().contains(searchTerm) ?? false)
-      ).toList();
-    }
-    
-    // Apply type filter
-    switch (_transactionFilter) {
-      case 'wallet_recharge':
-        filtered = filtered.where((transaction) => transaction.type.toLowerCase().contains('recharge')).toList();
-        break;
-      case 'top_listing':
-        filtered = filtered.where((transaction) => transaction.type.toLowerCase().contains('top listing')).toList();
-        break;
-      case 'completed':
-        filtered = filtered.where((transaction) => transaction.status.toLowerCase() == 'completed').toList();
-        break;
-      case 'pending':
-        filtered = filtered.where((transaction) => transaction.status.toLowerCase() == 'pending').toList();
-        break;
-      case 'failed':
-        filtered = filtered.where((transaction) => transaction.status.toLowerCase() == 'failed').toList();
-        break;
-      case 'high_amount':
-        filtered = filtered.where((transaction) => transaction.amount > 500).toList();
-        break;
-      case 'low_amount':
-        filtered = filtered.where((transaction) => transaction.amount < 100).toList();
-        break;
-    }
-    
-    // Apply date filter
-    if (_transactionStartDate != null) {
-      filtered = filtered.where((transaction) => 
-        transaction.createdAt.isAfter(_transactionStartDate!) || 
-        transaction.createdAt.isAtSameMomentAs(_transactionStartDate!)
-      ).toList();
-    }
-    
-    if (_transactionEndDate != null) {
-      filtered = filtered.where((transaction) => 
-        transaction.createdAt.isBefore(_transactionEndDate!.add(const Duration(days: 1))) || 
-        transaction.createdAt.isAtSameMomentAs(_transactionEndDate!)
-      ).toList();
-    }
-    
-    return filtered;
-  }
-
-  // Transaction analytics
-  Map<String, double> _getTransactionAnalytics() {
-    final filteredTransactions = _getFilteredTransactions();
-    
-    double totalSpent = 0;
-    double totalEarned = 0;
-    int walletRecharges = 0;
-    int topListingPurchases = 0;
-    
-    for (final transaction in filteredTransactions) {
-      if (transaction.type.toLowerCase().contains('recharge')) {
-        totalEarned += transaction.amount;
-        walletRecharges++;
-      } else if (transaction.type.toLowerCase().contains('top listing')) {
-        totalSpent += transaction.amount;
-        topListingPurchases++;
-      }
-    }
-    
-    return {
-      'totalSpent': totalSpent,
-      'totalEarned': totalEarned,
-      'netRevenue': totalEarned - totalSpent,
-      'walletRecharges': walletRecharges.toDouble(),
-      'topListingPurchases': topListingPurchases.toDouble(),
-    };
-  }
-
-  // Bulk transaction actions
-  Future<void> _bulkRefundTransactions() async {
-    if (_selectedTransactions.isEmpty) return;
-    
-    final confirmed = await showDialog<bool>(
+  // Helper methods
+  Future<bool?> _showConfirmDialog({
+    required String title,
+    required String message,
+    required String confirmText,
+    bool isDestructive = false,
+  }) {
+    return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Bulk Refund'),
-        content: Text('Refund ${_selectedTransactions.length} selected transactions?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        content: Text(message, style: GoogleFonts.inter()),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Refund All'),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDestructive ? Colors.red : const Color(0xFF01352D),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(confirmText, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
-
-    if (confirmed == true) {
-      int successCount = 0;
-      for (final transactionId in _selectedTransactions) {
-        try {
-          // In a real app, you'd call a refund API
-          await Future.delayed(const Duration(milliseconds: 100));
-          successCount++;
-        } catch (e) {
-          debugPrint('Error refunding transaction $transactionId: $e');
-        }
-      }
-      
-      setState(() {
-        _selectedTransactions.clear();
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully refunded $successCount transactions'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      
-      await _loadAdminData();
-    }
   }
 
-  // Export functionality
-  void _exportUsers() {
-    final filteredUsers = _getFilteredUsers();
-    final csvData = 'Name,Email,Phone,Verified,Active,Listings\n' +
-        filteredUsers.map((user) => 
-          '${user.name},${user.email},${user.phone},${user.isVerified ? "Yes" : "No"},${user.isActive ? "Yes" : "No"},${user.activeListings}/${user.totalListings}'
-        ).join('\n');
-    
+  void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Exported ${filteredUsers.length} users to CSV'),
-        backgroundColor: Colors.green,
-        action: SnackBarAction(
-          label: 'Copy',
-          onPressed: () {
-            // In a real app, you'd copy to clipboard or save to file
-            debugPrint('CSV Data:\n$csvData');
-          },
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white),
+            const SizedBox(width: 12),
+            Text(message),
+          ],
         ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_rounded, color: Colors.white),
+            const SizedBox(width: 12),
+            Text(message),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  void _exportUsers() {
+    final filteredUsers = _getFilteredUsers();
+    final csvData = 'ID,Name,Email,Phone,Verified,Active,Listings\n${filteredUsers.map((user) => 
+          '${user.id},${user.name},${user.email},${user.phone},${user.isVerified},${user.isActive},${user.totalListings}'
+        ).join('\n')}';
+    
+    _showSuccessSnackBar('Exported ${filteredUsers.length} users');
+    if (kDebugMode) debugPrint('CSV Data:\n$csvData');
   }
 
   void _exportProperties() {
     final filteredProperties = _getFilteredProperties();
-    final csvData = 'Title,Owner,Price,City,Status,Views,Active\n' +
-        filteredProperties.map((property) => 
-          '${property.title},${property.ownerName},${property.price},${property.city},${property.status},${property.views},${property.isActive ? "Yes" : "No"}'
-        ).join('\n');
+    final csvData = 'ID,Title,Owner,Price,City,Status,Views,Active\n${filteredProperties.map((property) => 
+          '${property.id},${property.title},${property.ownerName},${property.price},${property.city},${property.status},${property.views},${property.isActive}'
+        ).join('\n')}';
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Exported ${filteredProperties.length} properties to CSV'),
-        backgroundColor: Colors.green,
-        action: SnackBarAction(
-          label: 'Copy',
-          onPressed: () {
-            debugPrint('CSV Data:\n$csvData');
-          },
-        ),
-      ),
-    );
+    _showSuccessSnackBar('Exported ${filteredProperties.length} properties');
+    if (kDebugMode) debugPrint('CSV Data:\n$csvData');
   }
 
   void _exportTransactions() {
     final filteredTransactions = _getFilteredTransactions();
-    final analytics = _getTransactionAnalytics();
-    final csvData = 'User,Email,Type,Amount,Status,Date,Description\n' +
-        filteredTransactions.map((transaction) => 
-          '${transaction.userName},${transaction.userEmail},${transaction.type},${transaction.amount} ${transaction.currency},${transaction.status},${transaction.createdAt.toIso8601String().split('T')[0]},${transaction.description ?? ""}'
-        ).join('\n') +
-        '\n\nSUMMARY\nTotal Earned,${analytics['totalEarned']} LYD\nTotal Spent,${analytics['totalSpent']} LYD\nNet Revenue,${analytics['netRevenue']} LYD\nWallet Recharges,${analytics['walletRecharges']}\nTop Listing Purchases,${analytics['topListingPurchases']}';
+    final csvData = 'ID,User,Type,Amount,Status,Date\n${filteredTransactions.map((t) => 
+          '${t.id},${t.userName},${t.type},${t.amount},${t.status},${t.createdAt.toIso8601String().split('T')[0]}'
+        ).join('\n')}';
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Exported ${filteredTransactions.length} transactions to CSV'),
-        backgroundColor: Colors.green,
-        action: SnackBarAction(
-          label: 'Copy',
-          onPressed: () {
-            debugPrint('CSV Data:\n$csvData');
-          },
+    _showSuccessSnackBar('Exported ${filteredTransactions.length} transactions');
+    if (kDebugMode) debugPrint('CSV Data:\n$csvData');
+  }
+
+  Future<void> _showAddVouchersDialog() async {
+    int selectedAmount = 20;
+    final codesController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Add Vouchers', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Select Amount:', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [20, 50, 100, 300, 600, 1000].map((amount) {
+                    final isSelected = selectedAmount == amount;
+                    return ChoiceChip(
+                      label: Text('$amount LYD'),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) setState(() => selectedAmount = amount);
+                      },
+                      selectedColor: const Color(0xFF01352D),
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black87,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                Text('Paste Codes (one per line):', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: codesController,
+                  maxLines: 8,
+                  decoration: InputDecoration(
+                    hintText: 'Paste your voucher codes here...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF01352D),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Add Vouchers', style: TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
       ),
     );
+
+    if (confirmed == true && codesController.text.isNotEmpty) {
+      try {
+        setState(() => _isLoading = true);
+        
+        final codes = codesController.text
+            .split('\n')
+            .where((line) => line.trim().isNotEmpty)
+            .toList();
+            
+        final count = await _adminService.importVouchers(
+          amount: selectedAmount,
+          codes: codes,
+        );
+        
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        
+        _showSuccessSnackBar('Successfully added $count vouchers');
+      } catch (e) {
+        if (mounted) setState(() => _isLoading = false);
+        _showErrorSnackBar('Failed to add vouchers');
+      }
+    }
   }
 
-  // Analytics and Insights
-  void _showAnalytics() {
-    showDialog(
+  Future<void> _adjustPointsDialog(AdminUser user) async {
+    final amountController = TextEditingController(text: '5');
+    bool isAdding = true;
+
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Analytics & Insights'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
             children: [
-              _buildAnalyticsCard('Total Revenue', '${_stats['totalRevenue'] ?? 0} LYD', Colors.green),
-              _buildAnalyticsCard('Active Users', '${_stats['totalUsers'] ?? 0}', Colors.blue),
-              _buildAnalyticsCard('Premium Listings', '${_stats['activePremiumListings'] ?? 0}', Colors.purple),
-              _buildAnalyticsCard('Avg. Property Price', '${(_stats['totalRevenue'] ?? 0) / (_stats['totalProperties'] ?? 1)} LYD', Colors.orange),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFf7971e).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.toll_rounded, color: Color(0xFFf7971e), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Adjust Points', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(user.name, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[500]), overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFf7971e).withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFf7971e).withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.toll_rounded, color: Color(0xFFf7971e), size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Current: ${user.postingCredits} pts',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFFf7971e)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Add / Deduct toggle
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setDialogState(() => isAdding = true),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isAdding ? Colors.green : Colors.grey[100],
+                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_circle_rounded, color: isAdding ? Colors.white : Colors.grey, size: 18),
+                            const SizedBox(width: 6),
+                            Text('Add', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: isAdding ? Colors.white : Colors.grey[600])),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setDialogState(() => isAdding = false),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: !isAdding ? Colors.red : Colors.grey[100],
+                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.remove_circle_rounded, color: !isAdding ? Colors.white : Colors.grey, size: 18),
+                            const SizedBox(width: 6),
+                            Text('Deduct', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: !isAdding ? Colors.white : Colors.grey[600])),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  hintText: '0',
+                  labelText: 'Amount',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFF01352D), width: 2),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Quick amount chips
+              Wrap(
+                spacing: 8,
+                children: [1, 5, 10, 25, 50, 100].map((v) => ActionChip(
+                  label: Text('$v', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12)),
+                  onPressed: () => amountController.text = '$v',
+                  backgroundColor: Colors.grey[100],
+                  padding: EdgeInsets.zero,
+                )).toList(),
+              ),
+            ],
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isAdding ? Colors.green : Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: Icon(isAdding ? Icons.add_rounded : Icons.remove_rounded, size: 18),
+              label: Text(isAdding ? 'Add Points' : 'Deduct Points', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
     );
-  }
 
-  Widget _buildAnalyticsCard(String title, String value, Color color) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-          Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
+    if (confirmed == true) {
+      final amount = int.tryParse(amountController.text) ?? 0;
+      if (amount <= 0) return;
+      final delta = isAdding ? amount : -amount;
+      try {
+        final success = await _adminService.adjustUserPostingCredits(user.id, delta);
+        if (success) {
+          await _loadAdminData();
+          _showSuccessSnackBar(isAdding
+              ? 'Added $amount points to ${user.name}'
+              : 'Deducted $amount points from ${user.name}');
+        }
+      } catch (e) {
+        _showErrorSnackBar('Failed to adjust points');
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final authProvider = Provider.of<AuthProvider>(context);
     
-    // Check if user is admin
     if (authProvider.currentUser?.isAdmin != true) {
       return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          title: Text(
-            l10n?.adminDashboard ?? 'Admin Dashboard',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF01352D), Color(0xFF024035)],
             ),
           ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/profile'),
-          ),
-        ),
-        body: Center(
-          child: Text(
-            'Access denied. Admin privileges required.',
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.lock_rounded, size: 80, color: Colors.white24),
+                const SizedBox(height: 24),
+                Text(
+                  'Access Denied',
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Admin privileges required',
+                  style: GoogleFonts.inter(color: Colors.white60),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () => context.go('/'),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Go Back'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF01352D),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -890,219 +942,429 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     }
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        title: Text(
-          l10n?.adminDashboard ?? 'Admin Dashboard',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/profile'),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.analytics),
-            onPressed: _showAnalytics,
-            tooltip: 'Analytics',
-          ),
-          IconButton(
-            icon: const Icon(Icons.download),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Export Data'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.people),
-                        title: const Text('Export Users'),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _exportUsers();
-                        },
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.home),
-                        title: const Text('Export Properties'),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _exportProperties();
-                        },
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.account_balance_wallet),
-                        title: const Text('Export Transactions'),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _exportTransactions();
-                        },
-                      ),
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            tooltip: 'Export',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadAdminData,
-            tooltip: 'Refresh',
-          ),
-          Consumer<LanguageService>(
-            builder: (context, languageService, child) {
-              return LanguageToggleButton(languageService: languageService);
-            },
-          ),
-        ],
-      ),
+      backgroundColor: const Color(0xFFF8FAFC),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadAdminData,
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Stats Cards
-                    _buildStatsCards(l10n),
-                    
-                    // Tab Content - Fixed height to allow scrolling
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.6, // 60% of screen height
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildUsersTab(l10n),
-                          _buildPropertiesTab(l10n),
-                          _buildPremiumListingsTab(l10n),
-                          _buildTransactionsTab(l10n),
-                          _buildFirebaseAuthTab(l10n),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+          ? _buildLoadingState()
+          : CustomScrollView(
+              slivers: [
+                _buildAppBar(),
+                SliverToBoxAdapter(child: _buildStatsSection()),
+                SliverToBoxAdapter(child: _buildQuickActions()),
+                SliverToBoxAdapter(child: _buildTabSection()),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF01352D), Color(0xFF024035)],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const DaryLoadingIndicator(
+                color: Colors.white,
+                strokeWidth: 3,
               ),
             ),
-      bottomNavigationBar: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        indicatorColor: Colors.green,
-        labelColor: Colors.green,
-        unselectedLabelColor: Colors.grey[400],
-        tabs: [
-          Tab(icon: Icon(Icons.people), text: l10n?.users ?? 'Users'),
-          Tab(icon: Icon(Icons.home), text: l10n?.properties ?? 'Properties'),
-          Tab(icon: Icon(Icons.star), text: l10n?.premiumListings ?? 'Premium Listings'),
-          Tab(icon: Icon(Icons.account_balance_wallet), text: 'Transactions'),
-          Tab(icon: Icon(Icons.security), text: 'Firebase Auth'),
-        ],
+            const SizedBox(height: 24),
+            Text(
+              'Loading Dashboard...',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatsCards(AppLocalizations? l10n) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isMobile = constraints.maxWidth < 600;
-          final crossAxisCount = isMobile ? 2 : 4;
-          final childAspectRatio = isMobile ? 1.5 : 1.2;
-          
-          return GridView.count(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: childAspectRatio,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+  Widget _buildAppBar() {
+    return SliverAppBar(
+      expandedHeight: 140,
+      floating: false,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: const Color(0xFF01352D),
+      leading: IconButton(
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.arrow_back_ios_rounded, size: 18, color: Colors.white),
+        ),
+        onPressed: () => context.go('/profile'),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+          onPressed: _loadAdminData,
+        ),
+        Consumer<LanguageService>(
+          builder: (context, languageService, child) {
+            return LanguageToggleButton(languageService: languageService);
+          },
+        ),
+        const SizedBox(width: 8),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF01352D), Color(0xFF024035), Color(0xFF015F4D)],
+            ),
+          ),
+          child: Stack(
             children: [
-              _buildStatCard(
-                icon: Icons.people,
-                title: l10n?.totalUsers ?? 'Total Users',
-                value: '${_stats['totalUsers'] ?? 0}',
-                color: Colors.blue,
+              // Decorative circles
+              Positioned(
+                right: -50,
+                top: -50,
+                child: Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
               ),
-              _buildStatCard(
-                icon: Icons.home,
-                title: l10n?.totalProperties ?? 'Total Properties',
-                value: '${_stats['totalProperties'] ?? 0}',
-                color: Colors.green,
+              Positioned(
+                left: -30,
+                bottom: -30,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
               ),
-              _buildStatCard(
-                icon: Icons.payment,
-                title: l10n?.totalPayments ?? 'Total Payments',
-                value: '${_stats['totalPayments'] ?? 0}',
-                color: Colors.orange,
-              ),
-              _buildStatCard(
-                icon: Icons.star,
-                title: l10n?.premiumListings ?? 'Premium Listings',
-                value: '${_stats['activePremiumListings'] ?? 0}/${_stats['totalPremiumListings'] ?? 0}',
-                color: Colors.purple,
+              // Content
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 80, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Admin Dashboard',
+                      style: GoogleFonts.poppins(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Manage your platform',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.white60,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
-          );
-        },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsSection() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Overview',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Live',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.4,
+            children: [
+              _buildStatCard(
+                icon: Icons.people_rounded,
+                label: 'Total Users',
+                value: '${_stats['totalUsers'] ?? 0}',
+                gradient: const [Color(0xFF667eea), Color(0xFF764ba2)],
+              ),
+              _buildStatCard(
+                icon: Icons.home_work_rounded,
+                label: 'Properties',
+                value: '${_stats['totalProperties'] ?? 0}',
+                gradient: const [Color(0xFF11998e), Color(0xFF38ef7d)],
+              ),
+              _buildStatCard(
+                icon: Icons.toll_rounded,
+                label: 'Points Issued',
+                value: '${_stats['totalPointsIssued'] ?? 0}',
+                gradient: const [Color(0xFFf7971e), Color(0xFFffd200)],
+              ),
+              _buildStatCard(
+                icon: Icons.account_balance_wallet_rounded,
+                label: 'Revenue (LYD)',
+                value: '${_stats['totalRevenue'] ?? 0}',
+                gradient: const [Color(0xFF43e97b), Color(0xFF38f9d7)],
+              ),
+              _buildStatCard(
+                icon: Icons.diamond_rounded,
+                label: 'Boosted',
+                value: '${_stats['activePremiumListings'] ?? 0}',
+                gradient: const [Color(0xFFf093fb), Color(0xFFf5576c)],
+              ),
+              _buildStatCard(
+                icon: Icons.receipt_long_rounded,
+                label: 'Transactions',
+                value: '${_stats['totalPayments'] ?? 0}',
+                gradient: const [Color(0xFF4facfe), Color(0xFF00f2fe)],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStatCard({
     required IconData icon,
-    required String title,
+    required String label,
     required String value,
-    required Color color,
+    required List<Color> gradient,
   }) {
-    return Card(
-      elevation: 4,
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: 0.8 + (0.2 * _animationController.value),
+          child: Opacity(
+            opacity: _animationController.value,
+            child: child,
+          ),
+        );
+      },
       child: Container(
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+            colors: gradient,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: gradient[0].withValues(alpha: 0.4),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      value,
+                      style: GoogleFonts.poppins(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Quick Actions',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
             ),
-            const SizedBox(height: 4),
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildQuickActionChip(
+                  icon: Icons.toll_rounded,
+                  label: 'Points',
+                  onTap: () => _tabController.animateTo(2),
+                ),
+                const SizedBox(width: 8),
+                _buildQuickActionChip(
+                  icon: Icons.download_rounded,
+                  label: 'Export All',
+                  onTap: () {
+                    _exportUsers();
+                    _exportProperties();
+                    _exportTransactions();
+                  },
+                ),
+                const SizedBox(width: 8),
+                _buildQuickActionChip(
+                  icon: Icons.analytics_rounded,
+                  label: 'Analytics',
+                  onTap: _showAnalytics,
+                ),
+                const SizedBox(width: 8),
+                _buildQuickActionChip(
+                  icon: Icons.add_card_rounded,
+                  label: 'Add Vouchers',
+                  onTap: _showAddVouchersDialog,
+                ),
+                const SizedBox(width: 8),
+                _buildQuickActionChip(
+                  icon: Icons.security_rounded,
+                  label: 'Firebase Auth',
+                  onTap: () => _tabController.animateTo(5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(25),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: const Color(0xFF01352D)),
+            const SizedBox(width: 8),
             Text(
-              title,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -1110,708 +1372,817 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     );
   }
 
-  Widget _buildUsersTab(AppLocalizations? l10n) {
-    final filteredUsers = _getFilteredUsers();
-    
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
-        
-        return Column(
+  void _showAnalytics() {
+    final analytics = _getTransactionAnalytics();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.5,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
           children: [
-            // Search and Filter Bar
             Container(
-              padding: const EdgeInsets.all(8),
-              child: Column(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
                 children: [
-                  TextField(
-                    controller: _userSearchController,
-                    style: const TextStyle(color: Colors.black87),
-                    inputFormatters: [BasicTextFormatter()],
-                    decoration: InputDecoration(
-                      hintText: 'Search users...',
-                      hintStyle: const TextStyle(color: Colors.grey),
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                      suffixIcon: _userSearchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, color: Colors.grey),
-                              onPressed: () {
-                                _userSearchController.clear();
-                                setState(() {});
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.grey),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.green),
-                      ),
+                  const Icon(Icons.analytics_rounded, color: Color(0xFF01352D)),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Analytics & Insights',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    onChanged: (value) => setState(() {}),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _userFilter,
-                          dropdownColor: Colors.white,
-                          style: const TextStyle(color: Colors.black87),
-                          decoration: const InputDecoration(
-                            labelText: 'Filter',
-                            labelStyle: TextStyle(color: Colors.grey),
-                            border: OutlineInputBorder(),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.grey),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.green),
-                            ),
-                          ),
-                          items: [
-                            DropdownMenuItem(value: 'all', child: Text('All Users', style: TextStyle(color: Colors.black87))),
-                            DropdownMenuItem(value: 'verified', child: Text('Verified', style: TextStyle(color: Colors.black87))),
-                            DropdownMenuItem(value: 'unverified', child: Text('Unverified', style: TextStyle(color: Colors.black87))),
-                            DropdownMenuItem(value: 'active', child: Text('Active', style: TextStyle(color: Colors.black87))),
-                            DropdownMenuItem(value: 'inactive', child: Text('Inactive', style: TextStyle(color: Colors.black87))),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _userFilter = value ?? 'all';
-                            });
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (_selectedUsers.isNotEmpty) ...[
-                        ElevatedButton.icon(
-                          onPressed: _bulkVerifyUsers,
-                          icon: const Icon(Icons.verified_user),
-                          label: Text(
-                            'Verify ${_selectedUsers.length}',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      ElevatedButton.icon(
-                        onPressed: _exportUsers,
-                        icon: const Icon(Icons.download),
-                        label: const Text(
-                          'Export',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ),
-            
-            // Users List
             Expanded(
-              child: isMobile
-                  ? ListView.builder(
-                      itemCount: filteredUsers.length,
-                      itemBuilder: (context, index) {
-                        final user = filteredUsers[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: CheckboxListTile(
-                            value: _selectedUsers.contains(user.id),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  _selectedUsers.add(user.id);
-                                } else {
-                                  _selectedUsers.remove(user.id);
-                                }
-                              });
-                            },
-                            title: Text(
-                              user.name,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user.email,
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                Text(
-                                  user.phone,
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                Text(
-                                  '${l10n?.listings ?? 'Listings'}: ${user.activeListings}/${user.totalListings}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.black87),
-                                ),
-                              ],
-                            ),
-                            secondary: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  user.isVerified ? Icons.check_circle : Icons.cancel,
-                                  color: user.isVerified ? Colors.green : Colors.red,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  user.isActive ? Icons.check_circle : Icons.cancel,
-                                  color: user.isActive ? Colors.green : Colors.red,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  icon: Icon(
-                                    user.isVerified ? Icons.verified_user : Icons.verified_user_outlined,
-                                    color: user.isVerified ? Colors.green : Colors.grey,
-                                    size: 20,
-                                  ),
-                                  onPressed: () => _toggleUserVerification(user),
-                                  tooltip: user.isVerified ? 'Remove Verification' : 'Verify User',
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    user.isActive ? Icons.person_off : Icons.person_add,
-                                    color: user.isActive ? Colors.orange : Colors.green,
-                                    size: 20,
-                                  ),
-                                  onPressed: () => user.isActive ? _deactivateUser(user) : null,
-                                  tooltip: user.isActive ? 'Deactivate User' : 'User is inactive',
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                    size: 20,
-                                  ),
-                                  onPressed: () => _deleteUser(user),
-                                  tooltip: 'Delete User',
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    )
-                  : SingleChildScrollView(
-                      child: DataTable(
-                        columns: [
-                          DataColumn(label: Text(l10n?.name ?? 'Name', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.email ?? 'Email', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.phone ?? 'Phone', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.verified ?? 'Verified', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.active ?? 'Active', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.listings ?? 'Listings', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.actions ?? 'Actions', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                        ],
-                        rows: filteredUsers.map((user) {
-                          return DataRow(
-                            selected: _selectedUsers.contains(user.id),
-                            onSelectChanged: (bool? selected) {
-                              setState(() {
-                                if (selected == true) {
-                                  _selectedUsers.add(user.id);
-                                } else {
-                                  _selectedUsers.remove(user.id);
-                                }
-                              });
-                            },
-                            cells: [
-                              DataCell(Text(user.name, style: const TextStyle(color: Colors.black87))),
-                              DataCell(Text(user.email, style: const TextStyle(color: Colors.black87))),
-                              DataCell(Text(user.phone, style: const TextStyle(color: Colors.black87))),
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      user.isVerified ? Icons.check_circle : Icons.cancel,
-                                      color: user.isVerified ? Colors.green : Colors.red,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(user.isVerified ? 'Yes' : 'No', style: const TextStyle(color: Colors.black87)),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      user.isActive ? Icons.check_circle : Icons.cancel,
-                                      color: user.isActive ? Colors.green : Colors.red,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(user.isActive ? 'Yes' : 'No', style: const TextStyle(color: Colors.black87)),
-                                  ],
-                                ),
-                              ),
-                              DataCell(Text('${user.activeListings}/${user.totalListings}', style: const TextStyle(color: Colors.black87))),
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        user.isVerified ? Icons.verified_user : Icons.verified_user_outlined,
-                                        color: user.isVerified ? Colors.green : Colors.grey,
-                                        size: 16,
-                                      ),
-                                      onPressed: () => _toggleUserVerification(user),
-                                      tooltip: user.isVerified ? 'Remove Verification' : 'Verify User',
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        user.isActive ? Icons.person_off : Icons.person_add,
-                                        color: user.isActive ? Colors.orange : Colors.green,
-                                        size: 16,
-                                      ),
-                                      onPressed: () => user.isActive ? _deactivateUser(user) : null,
-                                      tooltip: user.isActive ? 'Deactivate User' : 'User is inactive',
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
-                                        size: 16,
-                                      ),
-                                      onPressed: () => _deleteUser(user),
-                                      tooltip: 'Delete User',
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  _buildAnalyticsTile('Total Revenue', '${analytics['totalEarned']?.toStringAsFixed(0) ?? 0} LYD', Colors.green),
+                  _buildAnalyticsTile('Total Spent', '${analytics['totalSpent']?.toStringAsFixed(0) ?? 0} LYD', Colors.orange),
+                  _buildAnalyticsTile('Net Revenue', '${analytics['netRevenue']?.toStringAsFixed(0) ?? 0} LYD', Colors.blue),
+                  _buildAnalyticsTile('Wallet Recharges', '${analytics['walletRecharges'] ?? 0}', Colors.purple),
+                  _buildAnalyticsTile('Premium Purchases', '${analytics['topListingPurchases'] ?? 0}', Colors.pink),
+                ],
+              ),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildPropertiesTab(AppLocalizations? l10n) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
-        
-        if (isMobile) {
-          return ListView.builder(
-            itemCount: _properties.length,
-            itemBuilder: (context, index) {
-              final property = _properties[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              property.title,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Icon(
-                            property.isActive ? Icons.check_circle : Icons.cancel,
-                            color: property.isActive ? Colors.green : Colors.red,
-                            size: 16,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${l10n?.owner ?? 'Owner'}: ${property.ownerName}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        '${l10n?.price ?? 'Price'}: ${NumberFormat('#,###').format(property.price)} LYD',
-                        style: const TextStyle(fontSize: 12, color: Colors.black87),
-                      ),
-                      Text(
-                        '${l10n?.city ?? 'City'}: ${property.city}',
-                        style: const TextStyle(fontSize: 12, color: Colors.black87),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(
-                            '${l10n?.status ?? 'Status'}: ${property.status}',
-                            style: const TextStyle(fontSize: 12, color: Colors.black87),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            '${l10n?.views ?? 'Views'}: ${property.views}',
-                            style: const TextStyle(fontSize: 12, color: Colors.black87),
-                          ),
-                          const Spacer(),
-                          if (property.isActive)
-                            IconButton(
-                              icon: const Icon(Icons.pause_circle, color: Colors.orange, size: 20),
-                              onPressed: () => _deactivateProperty(property),
-                              tooltip: 'Deactivate',
-                            ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                            onPressed: () => _deleteProperty(property),
-                            tooltip: 'Delete',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        } else {
-          return DataTable(
-            columns: [
-              DataColumn(label: Text(l10n?.title ?? 'Title', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text(l10n?.owner ?? 'Owner', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text(l10n?.price ?? 'Price', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text(l10n?.city ?? 'City', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text(l10n?.status ?? 'Status', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text(l10n?.views ?? 'Views', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text(l10n?.active ?? 'Active', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-              DataColumn(label: Text(l10n?.actions ?? 'Actions', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-            ],
-            rows: _properties.map((property) {
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Text(
-                      property.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black87),
+  Widget _buildAnalyticsTile(String title, String value, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[800],
+            ),
+          ),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          // Custom tab bar
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: List.generate(_tabs.length, (index) {
+                final isSelected = _tabController.index == index;
+                return GestureDetector(
+                  onTap: () => setState(() => _tabController.animateTo(index)),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFF01352D) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(25),
                     ),
-                  ),
-                  DataCell(Text(property.ownerName, style: const TextStyle(color: Colors.black87))),
-                  DataCell(Text('${NumberFormat('#,###').format(property.price)} LYD', style: const TextStyle(color: Colors.black87))),
-                  DataCell(Text(property.city, style: const TextStyle(color: Colors.black87))),
-                  DataCell(Text(property.status, style: const TextStyle(color: Colors.black87))),
-                  DataCell(Text('${property.views}', style: const TextStyle(color: Colors.black87))),
-                  DataCell(
-                    Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          property.isActive ? Icons.check_circle : Icons.cancel,
-                          color: property.isActive ? Colors.green : Colors.red,
-                          size: 16,
+                          _tabs[index]['icon'],
+                          size: 18,
+                          color: isSelected ? Colors.white : Colors.grey[600],
                         ),
-                        const SizedBox(width: 4),
-                        Text(property.isActive ? 'Yes' : 'No', style: const TextStyle(color: Colors.black87)),
-                      ],
-                    ),
-                  ),
-                  DataCell(
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (property.isActive)
-                          IconButton(
-                            icon: const Icon(Icons.pause_circle, color: Colors.orange),
-                            onPressed: () => _deactivateProperty(property),
-                            tooltip: 'Deactivate',
+                        const SizedBox(width: 8),
+                        Text(
+                          _tabs[index]['label'],
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? Colors.white : Colors.grey[600],
                           ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteProperty(property),
-                          tooltip: 'Delete',
                         ),
                       ],
                     ),
                   ),
-                ],
-              );
-            }).toList(),
-          );
-        }
-      },
+                );
+              }),
+            ),
+          ),
+          // Tab content
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildUsersTab(),
+                _buildPropertiesTab(),
+                _buildPointsTab(),
+                _buildPremiumTab(),
+                _buildTransactionsTab(),
+                _buildFirebaseTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildPremiumListingsTab(AppLocalizations? l10n) {
+  Widget _buildUsersTab() {
+    final filteredUsers = _getFilteredUsers();
+    
     return Column(
       children: [
-        // Sort controls
-        Container(
+        // Search and filter
+        Padding(
           padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Search bar
+              TextField(
+                controller: _userSearchController,
+                style: GoogleFonts.inter(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Search by ID, name, email...',
+                  hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+                  suffixIcon: _userSearchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 20),
+                          onPressed: () {
+                            _userSearchController.clear();
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Filter chips and count
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF01352D).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${filteredUsers.length} users',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF01352D),
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  _buildFilterChip('All', _userFilter == 'all', () => setState(() => _userFilter = 'all')),
+                  _buildFilterChip('Verified', _userFilter == 'verified', () => setState(() => _userFilter = 'verified')),
+                  _buildFilterChip('Office', _userFilter == 'office', () => setState(() => _userFilter = 'office')),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // Users list
+        Expanded(
+          child: filteredUsers.isEmpty
+              ? _buildEmptyState(
+                  icon: Icons.people_outline_rounded,
+                  title: 'No users found',
+                  subtitle: 'Try adjusting your search or filter',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: filteredUsers.length,
+                  itemBuilder: (context, index) {
+                    final user = filteredUsers[index];
+                    return _buildUserCard(user);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF01352D) : Colors.grey[100],
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? Colors.white : Colors.grey[600],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserCard(AdminUser user) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showUserDetails(user),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    // Avatar
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: user.isRealEstateOffice
+                              ? [const Color(0xFF01352D), const Color(0xFF024035)]
+                              : [Colors.blue[400]!, Colors.blue[600]!],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: Text(
+                          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  user.name,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey[800],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (user.isVerified)
+                                const Icon(Icons.verified_rounded, size: 18, color: Colors.blue),
+                              if (user.isAdmin)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.purple.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Admin',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.purple,
+                                    ),
+                                  ),
+                                ),
+                              if (user.isRealEstateOffice)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF01352D).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Office',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF01352D),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          Text(
+                            user.email,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          SelectableText(
+                            'ID: ${user.id}',
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 10,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Action buttons
+                Row(
+                  children: [
+                    _buildActionButton(
+                      icon: user.isAdmin ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined,
+                      color: user.isAdmin ? Colors.purple : Colors.grey,
+                      onTap: () => _toggleAdminStatus(user),
+                    ),
+                    _buildActionButton(
+                      icon: user.isVerified ? Icons.verified_user_rounded : Icons.verified_user_outlined,
+                      color: user.isVerified ? Colors.blue : Colors.grey,
+                      onTap: () => _toggleUserVerification(user),
+                    ),
+                    _buildActionButton(
+                      icon: user.isRealEstateOffice ? Icons.business_rounded : Icons.business_outlined,
+                      color: user.isRealEstateOffice ? const Color(0xFF01352D) : Colors.grey,
+                      onTap: () => _toggleRealEstateOfficeStatus(user),
+                    ),
+                    _buildActionButton(
+                      icon: Icons.block_rounded,
+                      color: Colors.orange,
+                      onTap: () => _deactivateUser(user),
+                    ),
+                    _buildActionButton(
+                      icon: Icons.delete_rounded,
+                      color: Colors.red,
+                      onTap: () => _deleteUser(user),
+                    ),
+                    const Spacer(),
+                    // Points badge + adjust button
+                    GestureDetector(
+                      onTap: () => _adjustPointsDialog(user),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFf7971e), Color(0xFFffd200)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFf7971e).withValues(alpha: 0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.toll_rounded, size: 13, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${user.postingCredits} pts',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
+      ),
+    );
+  }
+
+  void _showUserDetails(AdminUser user) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.6,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: user.isRealEstateOffice
+                                    ? [const Color(0xFF01352D), const Color(0xFF024035)]
+                                    : [Colors.blue[400]!, Colors.blue[600]!],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Center(
+                              child: Text(
+                                user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            user.name,
+                            style: GoogleFonts.poppins(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            user.email,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SelectableText(
+                            'ID: ${user.id}',
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 12,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildDetailRow('Phone', user.phone),
+                    _buildDetailRow('Status', user.isActive ? 'Active' : 'Inactive'),
+                    _buildDetailRow('Verified', user.isVerified ? 'Yes' : 'No'),
+                    _buildDetailRow('Admin', user.isAdmin ? 'Yes' : 'No'),
+                    _buildDetailRow('Office', user.isRealEstateOffice ? 'Yes' : 'No'),
+                    _buildDetailRow('Listings', '${user.activeListings}/${user.totalListings}'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPointsTab() {
+    // Sort users by postingCredits descending
+    final sorted = List<AdminUser>.from(_users)
+      ..sort((a, b) => b.postingCredits.compareTo(a.postingCredits));
+
+    if (sorted.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.toll_outlined,
+        title: 'No users found',
+        subtitle: 'Users will appear here once loaded',
+      );
+    }
+
+    final totalPoints = sorted.fold(0, (sum, u) => sum + u.postingCredits);
+
+    return Column(
+      children: [
+        // Summary banner
+        Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFf7971e), Color(0xFFffd200)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFf7971e).withValues(alpha: 0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
           child: Row(
             children: [
-              Text(
-                l10n?.sortBy ?? 'Sort by:',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.toll_rounded, color: Colors.white, size: 28),
               ),
               const SizedBox(width: 16),
-              DropdownButton<String>(
-                value: _premiumSortBy,
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _premiumSortBy = newValue;
-                    });
-                    _loadAdminData();
-                  }
-                },
-                items: [
-                  DropdownMenuItem(
-                    value: 'expiryDate',
-                    child: Text(l10n?.expiryDate ?? 'Expiry Date'),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$totalPoints',
+                    style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
-                  DropdownMenuItem(
-                    value: 'purchaseDate',
-                    child: Text(l10n?.purchaseDate ?? 'Purchase Date'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'packagePrice',
-                    child: Text(l10n?.packagePrice ?? 'Package Price'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'views',
-                    child: Text(l10n?.views ?? 'Views'),
+                  Text(
+                    'Total Points in Circulation',
+                    style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withValues(alpha: 0.9)),
                   ),
                 ],
               ),
             ],
           ),
         ),
-        
-        // DataTable
+        // Users list
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isMobile = constraints.maxWidth < 600;
-              
-              if (isMobile) {
-                return ListView.builder(
-                  itemCount: _premiumListings.length,
-                  itemBuilder: (context, index) {
-                    final listing = _premiumListings[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    listing.propertyTitle,
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: _getPremiumStatusColor(listing.status),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    listing.status,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${l10n?.owner ?? 'Owner'}: ${listing.ownerName}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                            Text(
-                              '${l10n?.package ?? 'Package'}: ${listing.packageName}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                            Text(
-                              '${l10n?.price ?? 'Price'}: ${NumberFormat('#,###').format(listing.packagePrice)} LYD',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Text(
-                                  '${l10n?.expiryDate ?? 'Expiry'}: ${listing.expiryDate.day}/${listing.expiryDate.month}/${listing.expiryDate.year}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                const SizedBox(width: 16),
-                                Text(
-                                  '${l10n?.views ?? 'Views'}: ${listing.views}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                const Spacer(),
-                                if (listing.isActive) ...[
-                                  IconButton(
-                                    icon: const Icon(Icons.add_circle, color: Colors.green, size: 20),
-                                    onPressed: () => _extendPremiumListing(listing),
-                                    tooltip: 'Extend',
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.pause_circle, color: Colors.orange, size: 20),
-                                    onPressed: () => _deactivatePremiumListing(listing),
-                                    tooltip: 'Deactivate',
-                                  ),
-                                ] else ...[
-                                  IconButton(
-                                    icon: const Icon(Icons.play_circle, color: Colors.blue, size: 20),
-                                    onPressed: () => _extendPremiumListing(listing),
-                                    tooltip: 'Reactivate',
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              listing.isExpired 
-                                  ? 'Expired' 
-                                  : listing.isExpiringSoon 
-                                      ? 'Expires Soon' 
-                                      : '${listing.daysUntilExpiry} days left',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: listing.isExpired 
-                                    ? Colors.red 
-                                    : listing.isExpiringSoon 
-                                        ? Colors.orange 
-                                        : Colors.green,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: sorted.length,
+            itemBuilder: (context, index) {
+              final user = sorted[index];
+              final rankColor = index == 0
+                  ? const Color(0xFFffd700)
+                  : index == 1
+                      ? const Color(0xFFc0c0c0)
+                      : index == 2
+                          ? const Color(0xFFcd7f32)
+                          : Colors.grey[300]!;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey[100]!),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Rank badge
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: rankColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: rankColor, width: 1.5),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '#${index + 1}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: rankColor == Colors.grey[300] ? Colors.grey[600]! : rankColor,
+                          ),
                         ),
                       ),
-                    );
-                  },
-                );
-              } else {
-                return DataTable(
-                  columns: [
-                    DataColumn(label: Text(l10n?.propertyTitle ?? 'Property')),
-                    DataColumn(label: Text(l10n?.owner ?? 'Owner')),
-                    DataColumn(label: Text(l10n?.package ?? 'Package')),
-                    DataColumn(label: Text(l10n?.price ?? 'Price')),
-                    DataColumn(label: Text(l10n?.expiryDate ?? 'Expiry')),
-                    DataColumn(label: Text(l10n?.status ?? 'Status')),
-                    DataColumn(label: Text(l10n?.views ?? 'Views')),
-                    DataColumn(label: Text(l10n?.actions ?? 'Actions')),
-                  ],
-                  rows: _premiumListings.map((listing) {
-                    return DataRow(
-                      cells: [
-                        DataCell(
+                    ),
+                    const SizedBox(width: 12),
+                    // Avatar
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: user.isRealEstateOffice
+                              ? [const Color(0xFF01352D), const Color(0xFF024035)]
+                              : [Colors.blue[400]!, Colors.blue[600]!],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Name + email
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            listing.propertyTitle,
-                            maxLines: 1,
+                            user.name,
+                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        DataCell(Text(listing.ownerName)),
-                        DataCell(Text(listing.packageName)),
-                        DataCell(Text('${NumberFormat('#,###').format(listing.packagePrice)} LYD')),
-                        DataCell(
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('${listing.expiryDate.day}/${listing.expiryDate.month}/${listing.expiryDate.year}'),
-                              Text(
-                                listing.isExpired 
-                                    ? 'Expired' 
-                                    : listing.isExpiringSoon 
-                                        ? 'Expires Soon' 
-                                        : '${listing.daysUntilExpiry} days left',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: listing.isExpired 
-                                      ? Colors.red 
-                                      : listing.isExpiringSoon 
-                                          ? Colors.orange 
-                                          : Colors.green,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            user.email,
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500]),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Points display
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${user.postingCredits}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFf7971e),
                           ),
                         ),
-                        DataCell(
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _getPremiumStatusColor(listing.status),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              listing.status,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        DataCell(Text('${listing.views}')),
-                        DataCell(
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (listing.isActive) ...[
-                                IconButton(
-                                  icon: const Icon(Icons.add_circle, color: Colors.green),
-                                  onPressed: () => _extendPremiumListing(listing),
-                                  tooltip: 'Extend',
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.pause_circle, color: Colors.orange),
-                                  onPressed: () => _deactivatePremiumListing(listing),
-                                  tooltip: 'Deactivate',
-                                ),
-                              ] else ...[
-                                IconButton(
-                                  icon: const Icon(Icons.play_circle, color: Colors.blue),
-                                  onPressed: () => _extendPremiumListing(listing),
-                                  tooltip: 'Reactivate',
-                                ),
-                              ],
-                            ],
-                          ),
+                        Text(
+                          'points',
+                          style: GoogleFonts.inter(fontSize: 10, color: Colors.grey[500]),
                         ),
                       ],
-                    );
-                  }).toList(),
-                );
-              }
+                    ),
+                    const SizedBox(width: 8),
+                    // Adjust button
+                    InkWell(
+                      onTap: () => _adjustPointsDialog(user),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFf7971e).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.edit_rounded, size: 18, color: Color(0xFFf7971e)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ),
@@ -1819,608 +2190,765 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return Colors.green;
-      case 'pending':
-        return Colors.orange;
-      case 'failed':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
+  Widget _buildPropertiesTab() {
+    final filteredProperties = _getFilteredProperties();
+    
+    return Column(
+      children: [
+        // Search and filter
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              TextField(
+                controller: _propertySearchController,
+                style: GoogleFonts.inter(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Search by ID, title, owner, city...',
+                  hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+                  suffixIcon: _propertySearchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 20),
+                          onPressed: () {
+                            _propertySearchController.clear();
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF01352D).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${filteredProperties.length} properties',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF01352D),
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  _buildFilterChip('All', _propertyFilter == 'all', () => setState(() => _propertyFilter = 'all')),
+                  _buildFilterChip('Active', _propertyFilter == 'active', () => setState(() => _propertyFilter = 'active')),
+                  _buildFilterChip('Boosted', _propertyFilter == 'boosted', () => setState(() => _propertyFilter = 'boosted')),
+                  _buildFilterChip('Expired', _propertyFilter == 'expired', () => setState(() => _propertyFilter = 'expired')),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // Properties list
+        Expanded(
+          child: filteredProperties.isEmpty
+              ? _buildEmptyState(
+                  icon: Icons.home_work_outlined,
+                  title: 'No properties found',
+                  subtitle: 'Try adjusting your search or filter',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: filteredProperties.length,
+                  itemBuilder: (context, index) {
+                    final property = filteredProperties[index];
+                    return _buildPropertyCard(property);
+                  },
+                ),
+        ),
+      ],
+    );
   }
 
-  Color _getPremiumStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return Colors.green;
-      case 'expired':
-        return Colors.red;
-      case 'inactive':
-        return Colors.grey;
-      default:
-        return Colors.blue;
-    }
-  }
-
-  Widget _buildTransactionsTab(AppLocalizations? l10n) {
-    final filteredTransactions = _getFilteredTransactions();
-    final analytics = _getTransactionAnalytics();
-    
-    
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
-        
-        return Column(
+  Widget _buildPropertyCard(AdminProperty property) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: property.isBoosted ? Colors.amber[400]! : Colors.grey[200]!,
+          width: property.isBoosted ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: property.isBoosted 
+                ? Colors.amber.withValues(alpha: 0.2) 
+                : Colors.grey.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Transaction Analytics Summary
-            Container(
-              padding: const EdgeInsets.all(8),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
+            Row(
+              children: [
+                Expanded(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Transaction Summary',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Row(
+                        children: [
+                          if (property.isBoosted)
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Colors.amber, Colors.orange],
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.diamond_rounded, size: 12, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'BOOSTED',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          Expanded(
+                            child: Text(
+                              property.title,
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[800],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline_rounded, size: 14, color: Colors.grey[400]),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              property.ownerName,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[400]),
+                          const SizedBox(width: 4),
+                          Text(
+                            property.city,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        'ID: ${property.id}',
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 10,
+                          color: Colors.grey[400],
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildAnalyticsCard(
-                              'Total Earned',
-                              '${NumberFormat('#,###').format(analytics['totalEarned']!)} LYD',
-                              Colors.green,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildAnalyticsCard(
-                              'Total Spent',
-                              '${NumberFormat('#,###').format(analytics['totalSpent']!)} LYD',
-                              Colors.red,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildAnalyticsCard(
-                              'Net Revenue',
-                              '${NumberFormat('#,###').format(analytics['netRevenue']!)} LYD',
-                              analytics['netRevenue']! >= 0 ? Colors.green : Colors.red,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildAnalyticsCard(
-                              'Transactions',
-                              '${filteredTransactions.length}',
-                              Colors.blue,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
-            
-            // Search and Filter Bar
-            Container(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _transactionSearchController,
-                    style: const TextStyle(color: Colors.black87),
-                    inputFormatters: [BasicTextFormatter()],
-                    decoration: InputDecoration(
-                      hintText: 'Search transactions...',
-                      hintStyle: const TextStyle(color: Colors.grey),
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                      suffixIcon: _transactionSearchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, color: Colors.grey),
-                              onPressed: () {
-                                _transactionSearchController.clear();
-                                setState(() {});
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${property.price.toStringAsFixed(0)} LYD',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF01352D),
                       ),
                     ),
-                    onChanged: (value) => setState(() {}),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _transactionFilter,
-                          decoration: const InputDecoration(
-                            labelText: 'Filter',
-                            border: OutlineInputBorder(),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.visibility_rounded, size: 14, color: Colors.grey[400]),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${property.views}',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Colors.grey[600],
                           ),
-                          items: const [
-                            DropdownMenuItem(value: 'all', child: Text('All Transactions')),
-                            DropdownMenuItem(value: 'wallet_recharge', child: Text('Wallet Recharge')),
-                            DropdownMenuItem(value: 'top_listing', child: Text('Top Listing')),
-                            DropdownMenuItem(value: 'completed', child: Text('Completed')),
-                            DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                            DropdownMenuItem(value: 'failed', child: Text('Failed')),
-                            DropdownMenuItem(value: 'high_amount', child: Text('High Amount (>500)')),
-                            DropdownMenuItem(value: 'low_amount', child: Text('Low Amount (<100)')),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _transactionFilter = value ?? 'all';
-                            });
-                          },
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          final startDate = await showDatePicker(
-                            context: context,
-                            initialDate: _transactionStartDate ?? DateTime.now().subtract(const Duration(days: 30)),
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime.now(),
-                          );
-                          if (startDate != null) {
-                            setState(() {
-                              _transactionStartDate = startDate;
-                            });
-                          }
-                        },
-                        icon: const Icon(Icons.date_range),
-                        label: Text(_transactionStartDate != null 
-                            ? 'From: ${_transactionStartDate!.day}/${_transactionStartDate!.month}' 
-                            : 'From Date'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final endDate = await showDatePicker(
-                              context: context,
-                              initialDate: _transactionEndDate ?? DateTime.now(),
-                              firstDate: _transactionStartDate ?? DateTime(2020),
-                              lastDate: DateTime.now(),
-                            );
-                            if (endDate != null) {
-                              setState(() {
-                                _transactionEndDate = endDate;
-                              });
-                            }
-                          },
-                          icon: const Icon(Icons.date_range),
-                          label: Text(_transactionEndDate != null 
-                              ? 'To: ${_transactionEndDate!.day}/${_transactionEndDate!.month}' 
-                              : 'To Date'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (_transactionStartDate != null || _transactionEndDate != null)
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _transactionStartDate = null;
-                              _transactionEndDate = null;
-                            });
-                          },
-                          icon: const Icon(Icons.clear),
-                          label: const Text('Clear Dates'),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                        ),
-                      const SizedBox(width: 8),
-                      if (_selectedTransactions.isNotEmpty) ...[
-                        ElevatedButton.icon(
-                          onPressed: _bulkRefundTransactions,
-                          icon: const Icon(Icons.refresh),
-                          label: Text('Refund ${_selectedTransactions.length}'),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                        ),
-                        const SizedBox(width: 8),
                       ],
-                      ElevatedButton.icon(
-                        onPressed: _exportTransactions,
-                        icon: const Icon(Icons.download),
-                        label: const Text('Export'),
+                    ),
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: property.isExpired 
+                            ? Colors.red.withValues(alpha: 0.1)
+                            : (property.isActive ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1)),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                    ],
+                      child: Text(
+                        property.isExpired ? 'Expired' : (property.isActive ? 'Active' : 'Inactive'),
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: property.isExpired 
+                              ? Colors.red 
+                              : (property.isActive ? Colors.green : Colors.orange),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildActionButton(
+                  icon: property.isActive ? Icons.pause_circle_rounded : Icons.play_circle_rounded,
+                  color: property.isActive ? Colors.orange : Colors.green,
+                  onTap: () => _deactivateProperty(property),
+                ),
+                _buildActionButton(
+                  icon: Icons.delete_rounded,
+                  color: Colors.red,
+                  onTap: () => _deleteProperty(property),
+                ),
+                if (property.isExpired || !property.isActive || !property.isPublished)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: _buildActionButton(
+                      icon: Icons.refresh_rounded,
+                      color: Colors.blue,
+                      onTap: () => _renewProperty(property),
+                    ),
+                  ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () {
+                    // View property
+                  },
+                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                  label: Text('View', style: GoogleFonts.inter(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF01352D),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumTab() {
+    return Column(
+      children: [
+        // Sort options
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_premiumListings.length} premium',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.purple,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Sort by:',
+                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
+              ),
+              const SizedBox(width: 8),
+              _buildFilterChip('Expiry', _premiumSortBy == 'expiryDate', () {
+                setState(() => _premiumSortBy = 'expiryDate');
+                _loadAdminData();
+              }),
+              _buildFilterChip('Package', _premiumSortBy == 'packageName', () {
+                setState(() => _premiumSortBy = 'packageName');
+                _loadAdminData();
+              }),
+            ],
+          ),
+        ),
+        // Premium listings
+        Expanded(
+          child: _premiumListings.isEmpty
+              ? _buildEmptyState(
+                  icon: Icons.diamond_outlined,
+                  title: 'No premium listings',
+                  subtitle: 'Premium listings will appear here',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _premiumListings.length,
+                  itemBuilder: (context, index) {
+                    final listing = _premiumListings[index];
+                    return _buildPremiumCard(listing);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPremiumCard(AdminPremiumListing listing) {
+    final now = DateTime.now();
+    final isExpired = listing.expiryDate.isBefore(now);
+    final difference = listing.expiryDate.difference(now);
+    // Calculate days remaining - round up so <24 hours shows as 1 day, not 0
+    final daysRemaining = isExpired ? 0 : (difference.inHours / 24).ceil();
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isExpired 
+              ? [Colors.grey[100]!, Colors.grey[200]!]
+              : [Colors.purple[50]!, Colors.pink[50]!],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isExpired ? Colors.grey[300]! : Colors.purple.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isExpired
+                          ? [Colors.grey, Colors.grey[600]!]
+                          : [Colors.purple, Colors.pink],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    listing.packageName,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (isExpired)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'EXPIRED',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    daysRemaining == 0 
+                        ? (difference.inHours > 0 ? '${difference.inHours}h left' : '< 1h left')
+                        : daysRemaining == 1 
+                            ? '1 day left'
+                            : '$daysRemaining days left',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: daysRemaining <= 3 ? Colors.orange : Colors.green,
+                    ),
+                  ),
+                const Spacer(),
+                Text(
+                  '${listing.packagePrice.toStringAsFixed(0)} LYD',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              listing.propertyTitle,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.person_outline_rounded, size: 14, color: Colors.grey[500]),
+                const SizedBox(width: 4),
+                Text(
+                  listing.ownerName,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(Icons.calendar_today_rounded, size: 14, color: Colors.grey[500]),
+                const SizedBox(width: 4),
+                Text(
+                  DateFormat('MMM dd, yyyy').format(listing.expiryDate),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _extendPremiumListing(listing),
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: Text('Extend', style: GoogleFonts.inter(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.purple,
+                      side: const BorderSide(color: Colors.purple),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _cancelPremiumListing(listing),
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                    label: Text('Cancel', style: GoogleFonts.inter(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionsTab() {
+    final filteredTransactions = _getFilteredTransactions();
+    final analytics = _getTransactionAnalytics();
+    
+    return Column(
+      children: [
+        // Search and analytics
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              TextField(
+                controller: _transactionSearchController,
+                style: GoogleFonts.inter(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Search transactions...',
+                  hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+                  suffixIcon: _transactionSearchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 20),
+                          onPressed: () {
+                            _transactionSearchController.clear();
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Quick stats
+              Row(
+                children: [
+                  _buildMiniStat('Revenue', '${analytics['totalEarned']?.toStringAsFixed(0) ?? 0}', Colors.green),
+                  const SizedBox(width: 8),
+                  _buildMiniStat('Spent', '${analytics['totalSpent']?.toStringAsFixed(0) ?? 0}', Colors.orange),
+                  const SizedBox(width: 8),
+                  _buildMiniStat('Net', '${analytics['netRevenue']?.toStringAsFixed(0) ?? 0}', Colors.blue),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildFilterChip('All', _transactionFilter == 'all', () => setState(() => _transactionFilter = 'all')),
+                    _buildFilterChip('Recharge', _transactionFilter == 'wallet_recharge', () => setState(() => _transactionFilter = 'wallet_recharge')),
+                    _buildFilterChip('Purchase', _transactionFilter == 'top_listing', () => setState(() => _transactionFilter = 'top_listing')),
+                    _buildFilterChip('Completed', _transactionFilter == 'completed', () => setState(() => _transactionFilter = 'completed')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Transactions list
+        Expanded(
+          child: filteredTransactions.isEmpty
+              ? _buildEmptyState(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'No transactions found',
+                  subtitle: 'Transactions will appear here',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: filteredTransactions.length,
+                  itemBuilder: (context, index) {
+                    final transaction = filteredTransactions[index];
+                    return _buildTransactionCard(transaction);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                color: Colors.grey[600],
+              ),
+            ),
+            Text(
+              '$value LYD',
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionCard(AdminPayment transaction) {
+    final isCredit = transaction.type == 'wallet_recharge' || transaction.type == 'credit';
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: (isCredit ? Colors.green : Colors.orange).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                size: 20,
+                color: isCredit ? Colors.green : Colors.orange,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    transaction.userName,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  Text(
+                    transaction.description ?? transaction.type.replaceAll('_', ' ').toUpperCase(),
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: Colors.grey[500],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    DateFormat('MMM dd, HH:mm').format(transaction.createdAt),
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: Colors.grey[400],
+                    ),
                   ),
                 ],
               ),
             ),
-            
-            // Transactions List
-            Expanded(
-              child: filteredTransactions.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.account_balance_wallet_outlined,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No transactions found',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[400],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Transactions will appear here when users make payments or recharge their wallets.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          if (kDebugMode) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              'Debug: Total payments loaded: ${_payments.length}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    )
-                  : isMobile
-                      ? ListView.builder(
-                      itemCount: filteredTransactions.length,
-                      itemBuilder: (context, index) {
-                        final transaction = filteredTransactions[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          child: ListTile(
-                            dense: true,
-                            leading: Checkbox(
-                              value: _selectedTransactions.contains(transaction.id),
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  if (value == true) {
-                                    _selectedTransactions.add(transaction.id);
-                                  } else {
-                                    _selectedTransactions.remove(transaction.id);
-                                  }
-                                });
-                              },
-                            ),
-                            title: Text(
-                              transaction.userName,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
-                            ),
-                            subtitle: Text(
-                              '${transaction.type} - ${transaction.amount.toStringAsFixed(0)} ${transaction.currency}',
-                              style: const TextStyle(fontSize: 11, color: Colors.grey),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(transaction.status),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    transaction.status,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                IconButton(
-                                  icon: const Icon(Icons.refresh, color: Colors.orange, size: 16),
-                                  onPressed: () async {
-                                    await _processRefund(transaction);
-                                  },
-                                  tooltip: 'Refund Transaction',
-                                ),
-                              ],
-                            ),
-                            onTap: () {
-                              // Show transaction details in a dialog
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  backgroundColor: Colors.white,
-                                  title: Text(
-                                    'Transaction Details',
-                                    style: const TextStyle(color: Colors.black87),
-                                  ),
-                                  content: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('User: ${transaction.userName}', style: const TextStyle(color: Colors.black87)),
-                                      Text('Email: ${transaction.userEmail}', style: const TextStyle(color: Colors.black87)),
-                                      Text('Type: ${transaction.type}', style: const TextStyle(color: Colors.black87)),
-                                      Text('Amount: ${transaction.amount} ${transaction.currency}', style: const TextStyle(color: Colors.black87)),
-                                      Text('Date: ${transaction.createdAt.day}/${transaction.createdAt.month}/${transaction.createdAt.year}', style: const TextStyle(color: Colors.black87)),
-                                      if (transaction.description != null && transaction.description!.isNotEmpty)
-                                        Text('Description: ${transaction.description}', style: const TextStyle(color: Colors.black87)),
-                                    ],
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('Close', style: TextStyle(color: Colors.green)),
-                                    ),
-                                    TextButton(
-                                      onPressed: () async {
-                                        Navigator.pop(context);
-                                        await _processRefund(transaction);
-                                      },
-                                      child: const Text('Refund', style: TextStyle(color: Colors.red)),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    )
-                  : SingleChildScrollView(
-                      child: DataTable(
-                        headingRowHeight: 40,
-                        dataRowHeight: 50,
-                        columns: [
-                          DataColumn(label: Text(l10n?.user ?? 'User', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.type ?? 'Type', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.amount ?? 'Amount', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.status ?? 'Status', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.date ?? 'Date', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.description ?? 'Description', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                          DataColumn(label: Text(l10n?.actions ?? 'Actions', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-                        ],
-                        rows: filteredTransactions.map((transaction) {
-                          return DataRow(
-                            selected: _selectedTransactions.contains(transaction.id),
-                            onSelectChanged: (bool? selected) {
-                              setState(() {
-                                if (selected == true) {
-                                  _selectedTransactions.add(transaction.id);
-                                } else {
-                                  _selectedTransactions.remove(transaction.id);
-                                }
-                              });
-                            },
-                            cells: [
-                              DataCell(
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      transaction.userName,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 12),
-                                    ),
-                                    Text(
-                                      transaction.userEmail,
-                                      style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      transaction.type.toLowerCase().contains('recharge') 
-                                          ? Icons.add_circle 
-                                          : Icons.remove_circle,
-                                      color: transaction.type.toLowerCase().contains('recharge') 
-                                          ? Colors.green 
-                                          : Colors.red,
-                                      size: 14,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(transaction.type, style: const TextStyle(color: Colors.black87, fontSize: 12)),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  '${transaction.amount.toStringAsFixed(0)} ${transaction.currency}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    color: transaction.type.toLowerCase().contains('recharge') 
-                                        ? Colors.green 
-                                        : Colors.red,
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(transaction.status),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    transaction.status,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              DataCell(Text('${transaction.createdAt.day}/${transaction.createdAt.month}/${transaction.createdAt.year}', style: const TextStyle(color: Colors.black87, fontSize: 12))),
-                              DataCell(
-                                Text(
-                                  transaction.description ?? '',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.black87, fontSize: 12),
-                                ),
-                              ),
-                              DataCell(
-                                IconButton(
-                                  icon: const Icon(Icons.refresh, color: Colors.orange),
-                                  onPressed: () {
-                                    // Individual refund action
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: const Text('Refund Transaction'),
-                                        content: Text('Refund ${transaction.amount} ${transaction.currency} to ${transaction.userName}?'),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context),
-                                            child: const Text('Cancel'),
-                                          ),
-                                          TextButton(
-                                            onPressed: () async {
-                                              Navigator.pop(context);
-                                              await _processRefund(transaction);
-                                            },
-                                            child: const Text('Refund'),
-                                            style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  tooltip: 'Refund Transaction',
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${isCredit ? '+' : '-'}${transaction.amount.toStringAsFixed(0)} LYD',
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isCredit ? Colors.green : Colors.orange,
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: transaction.status == 'completed' 
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.amber.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    transaction.status.toUpperCase(),
+                    style: GoogleFonts.inter(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: transaction.status == 'completed' ? Colors.green : Colors.amber[700],
                     ),
+                  ),
+                ),
+              ],
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
-  /// Process a refund for a transaction
-  Future<void> _processRefund(AdminPayment transaction) async {
-    try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-
-      // Get current wallet balance
-      final walletDoc = await FirebaseFirestore.instance
-          .collection('wallet')
-          .doc(transaction.userId)
-          .get();
-
-      if (!walletDoc.exists) {
-        throw Exception('User wallet not found');
-      }
-
-      final walletData = walletDoc.data()!;
-      final currentBalance = (walletData['balance'] ?? 0).toDouble();
-
-      // Calculate refund amount (negative of original transaction)
-      final refundAmount = -transaction.amount;
-      final newBalance = currentBalance + refundAmount;
-
-      // Create refund transaction
-      final refundTransactionData = {
-        'amount': refundAmount,
-        'type': 'refund',
-        'description': 'Refund for transaction: ${transaction.description}',
-        'metadata': {
-          'originalTransactionId': transaction.id,
-          'refundedBy': 'admin',
-          'refundedAt': Timestamp.now(),
-        },
-        'createdAt': Timestamp.now(),
-      };
-
-      // Add refund transaction to subcollection
-      await FirebaseFirestore.instance
-          .collection('wallet')
-          .doc(transaction.userId)
-          .collection('transactions')
-          .add(refundTransactionData);
-
-      // Update wallet balance
-      await FirebaseFirestore.instance
-          .collection('wallet')
-          .doc(transaction.userId)
-          .update({
-        'balance': newBalance,
-        'updatedAt': Timestamp.now(),
-      });
-
-      // Close loading dialog
-      Navigator.pop(context);
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully refunded ${transaction.amount} ${transaction.currency} to ${transaction.userName}'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Refresh admin data to show updated transactions
-      await _loadAdminData();
-
-    } catch (e) {
-      // Close loading dialog
-      Navigator.pop(context);
-
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to process refund: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+  Widget _buildFirebaseTab() {
+    return const FirebaseAuthManagementScreen();
   }
 
-  Widget _buildFirebaseAuthTab(AppLocalizations? l10n) {
-    return const FirebaseAuthManagementScreen();
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(icon, size: 48, color: Colors.grey[400]),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

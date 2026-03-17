@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:dary/l10n/app_localizations.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/saved_search.dart';
-import '../../models/property.dart';
+import '../../widgets/dary_loading_indicator.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';
@@ -171,7 +171,7 @@ class _SavedSearchesScreenState extends State<SavedSearchesScreen> {
     final currentUser = authProvider.currentUser;
     if (currentUser == null) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: DaryLoadingIndicator(color: Color(0xFF01352D))),
       );
     }
 
@@ -189,7 +189,7 @@ class _SavedSearchesScreenState extends State<SavedSearchesScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: DaryLoadingIndicator(color: Color(0xFF01352D)))
           : userSearches.isEmpty
               ? _buildEmptyState(l10n)
               : _buildSearchesList(userSearches, l10n),

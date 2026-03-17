@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../services/chatbot_service.dart';
 import '../services/language_service.dart';
 import '../models/property.dart';
 import '../screens/property_detail_screen.dart';
 import '../utils/text_input_formatters.dart';
+import 'dary_loading_indicator.dart';
 
 /// Floating chatbot widget for homepage
 class HomeChatbot extends StatefulWidget {
@@ -145,7 +145,7 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -158,7 +158,7 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.green[600]!, Colors.green[700]!],
+                          colors: [const Color(0xFF01352D), const Color(0xFF01352D).withValues(alpha: 0.85)],
                         ),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(20),
@@ -170,7 +170,7 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Icon(
@@ -262,11 +262,11 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
                           const SizedBox(width: 8),
                           Container(
                             decoration: BoxDecoration(
-                              color: Colors.green,
+                              color: const Color(0xFF01352D),
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.green.withOpacity(0.3),
+                                  color: const Color(0xFF01352D).withValues(alpha: 0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -288,12 +288,12 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.green[600]!, Colors.green[700]!],
+                colors: [const Color(0xFF01352D), const Color(0xFF01352D).withValues(alpha: 0.85)],
               ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.green.withOpacity(0.4),
+                  color: const Color(0xFF01352D).withValues(alpha: 0.4),
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                 ),
@@ -334,12 +334,12 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.green[100],
+                    color: const Color(0xFF01352D).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.smart_toy,
-                    color: Colors.green[700],
+                    color: Color(0xFF01352D),
                     size: 16,
                   ),
                 ),
@@ -350,7 +350,7 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: message.isUser
-                        ? Colors.green[600]
+                        ? const Color(0xFF01352D)
                         : Colors.grey[200],
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(20),
@@ -374,12 +374,12 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.green[100],
+                    color: const Color(0xFF01352D).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.person,
-                    color: Colors.green[700],
+                    color: Color(0xFF01352D),
                     size: 16,
                   ),
                 ),
@@ -531,12 +531,13 @@ class _HomeChatbotState extends State<HomeChatbot> with SingleTickerProviderStat
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(
+                  child: DaryLoadingIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!),
+                    color: Color(0xFF15803D), // green[700]
+                    size: 16,
                   ),
                 ),
               ],

@@ -1,4 +1,20 @@
 {
+  "@@locale": "en",
+  "noInternetConnection": "No Internet Connection",
+  "pleaseCheckConnection": "Please check your network settings",
+  "propertyLegalNote": "Please verify all property paperwork. Dary is not responsible for any legal discrepancies or issues.",
+  "propertyLegalNoteAr": "يرجى التحقق من جميع أوراق العقار. داري ليست مسؤولة عن أي خلافات أو مشاكل قانونية.",
+  "paymentSuccessful": "Payment Successful!",
+  "paymentFailed": "Payment failed. Please check your card details and try again.",
+  "changePhoneNumber": "Change Phone Number",
+  "processing": "Processing...",
+  "payNow": "Pay Now",
+  "cardDetails": "Card Details",
+  "cardNumber": "Card Number",
+  "expiryDate": "Expiry Date (MM/YY)",
+  "cvv": "CVV",
+  "cardholderName": "Cardholder Name",
+  "errorOccurred": "An error occurred. Please try again.",
   "appTitle": "Dary Properties",
   "@appTitle": {
     "description": "The title of the application"
@@ -35,7 +51,7 @@
   "@currentBalance": {
     "description": "Current balance label"
   },
-  "recharge": "Recharge",
+  "recharge": "Top up",
   "@recharge": {
     "description": "Recharge button text"
   },
@@ -79,7 +95,7 @@
   "@deleteAccount": {
     "description": "Delete account button text"
   },
-  "upgradeToPremiumTitle": "Upgrade to Premium",
+  "upgradeToPremiumTitle": "Buy Points",
   "@upgradeToPremiumTitle": {
     "description": "Paywall screen title"
   },
@@ -87,7 +103,7 @@
   "@boostYourListings": {
     "description": "Paywall screen header title"
   },
-  "getMoreVisibility": "Get more visibility with our Top Listing packages",
+  "getMoreVisibility": "Purchase posting points to list your properties",
   "@getMoreVisibility": {
     "description": "Paywall screen header subtitle"
   },
@@ -95,11 +111,11 @@
   "@limitedTimeOffer": {
     "description": "Limited time offer badge"
   },
-  "chooseYourPackage": "Choose Your Package",
+  "chooseYourPackage": "Choose Your Points Package",
   "@chooseYourPackage": {
     "description": "Choose package section title"
   },
-  "selectPerfectDuration": "Select the perfect duration for your listing promotion",
+  "selectPerfectDuration": "Points are permanent and never expire",
   "@selectPerfectDuration": {
     "description": "Choose package section subtitle"
   },
@@ -653,6 +669,62 @@
   "@registerFailed": {
     "description": "Register failed message"
   },
+  "firebaseWrongPassword": "Incorrect password. Please try again.",
+  "@firebaseWrongPassword": {
+    "description": "Firebase wrong password error"
+  },
+  "firebaseUserNotFound": "No account found with this email or phone number.",
+  "@firebaseUserNotFound": {
+    "description": "Firebase user not found error"
+  },
+  "firebaseEmailAlreadyInUse": "This email is already registered. Please sign in.",
+  "@firebaseEmailAlreadyInUse": {
+    "description": "Firebase email already in use error"
+  },
+  "firebasePhoneAlreadyInUse": "This phone number is already registered.",
+  "@firebasePhoneAlreadyInUse": {
+    "description": "Firebase phone already in use error"
+  },
+  "firebaseWeakPassword": "Password is too weak. Please choose a stronger password.",
+  "@firebaseWeakPassword": {
+    "description": "Firebase weak password error"
+  },
+  "firebaseTooManyRequests": "Too many attempts. Please wait a moment and try again.",
+  "@firebaseTooManyRequests": {
+    "description": "Firebase too many requests error"
+  },
+  "firebaseNetworkError": "Network error. Please check your internet connection.",
+  "@firebaseNetworkError": {
+    "description": "Firebase network error"
+  },
+  "firebaseInvalidCredential": "Invalid credentials. Please check your email and password.",
+  "@firebaseInvalidCredential": {
+    "description": "Firebase invalid credential error"
+  },
+  "firebaseUserDisabled": "This account has been disabled. Please contact support.",
+  "@firebaseUserDisabled": {
+    "description": "Firebase user disabled error"
+  },
+  "firebaseOperationNotAllowed": "This operation is not allowed. Please contact support.",
+  "@firebaseOperationNotAllowed": {
+    "description": "Firebase operation not allowed error"
+  },
+  "firebaseInvalidEmail": "Invalid email format.",
+  "@firebaseInvalidEmail": {
+    "description": "Firebase invalid email error"
+  },
+  "firebaseAccountExistsWithDifferentCredential": "An account already exists with the same email but different credentials.",
+  "@firebaseAccountExistsWithDifferentCredential": {
+    "description": "Firebase account exists with different credential error"
+  },
+  "firebaseRequiresRecentLogin": "This operation is sensitive and requires recent authentication. Please sign in again.",
+  "@firebaseRequiresRecentLogin": {
+    "description": "Firebase requires recent login error"
+  },
+  "firebaseGenericError": "An error occurred. Please try again.",
+  "@firebaseGenericError": {
+    "description": "Firebase generic error"
+  },
   "loggingIn": "Signing in...",
   "@loggingIn": {
     "description": "Login loading text"
@@ -665,9 +737,103 @@
   "@forgotPassword": {
     "description": "Forgot password link"
   },
+  "forgotPasswordTitle": "Forgot Password?",
+  "@forgotPasswordTitle": {
+    "description": "Forgot password screen title"
+  },
+  "forgotPasswordDescription": "Don't worry! Enter your email below to receive password reset instructions.",
+  "@forgotPasswordDescription": {
+    "description": "Forgot password screen description"
+  },
+  "sendInstructions": "Send Instructions",
+  "@sendInstructions": {
+    "description": "Send instructions button text"
+  },
+  "rememberPassword": "Remember password?",
+  "@rememberPassword": {
+    "description": "Remember password text"
+  },
+  "backToLogin": "Back to Login",
+  "@backToLogin": {
+    "description": "Back to login link text"
+  },
+  "enterValidEmail": "Please enter a valid email",
+  "@enterValidEmail": {
+    "description": "Enter valid email validation message"
+  },
+  "resetInstructionsSent": "Password reset instructions sent to your email.",
+  "@resetInstructionsSent": {
+    "description": "Reset instructions sent success message"
+  },
+  "checkEmail": "Check your email",
+  "@checkEmail": {
+    "description": "Check email message"
+  },
+  "pleaseVerifyEmail": "Verify Your Email",
+  "@pleaseVerifyEmail": {
+    "description": "Verification warning title"
+  },
+  "verificationEmailSentDesc": "A verification link was sent to your email. Please verify it to access all features.",
+  "@verificationEmailSentDesc": {
+    "description": "Verification warning description"
+  },
+  "resend": "Resend",
+  "@resend": {
+    "description": "Resend button text"
+  },
+  "verificationEmailSent": "Verification email sent!",
+  "@verificationEmailSent": {
+    "description": "Verification email sent success message"
+  },
+  "verifiedAccount": "Verified Account",
+  "@verifiedAccount": {
+    "description": "Verified account status text"
+  },
+  "unverifiedAccount": "Unverified Account",
+  "@unverifiedAccount": {
+    "description": "Unverified account status text"
+  },
+
   "rememberMe": "Remember Me",
   "@rememberMe": {
     "description": "Remember me checkbox"
+  },
+  "tooManyAttempts": "Too many attempts. Please try again later.",
+  "@tooManyAttempts": {
+    "description": "Error message when email resend rate limit is hit"
+  },
+  "emailNotVerifiedTitle": "Email Not Verified",
+  "@emailNotVerifiedTitle": {
+    "description": "Title for email verification notification"
+  },
+  "emailNotVerifiedMessage": "Please verify your email to unlock all features. Check your inbox for the verification link.",
+  "@emailNotVerifiedMessage": {
+    "description": "Message for email verification notification"
+  },
+  "becomeRealEstateOffice": "Become a Real Estate Office",
+  "realEstateOfficeRequestMessage": "Hello, I would like to upgrade my account to a real estate office.\nName: {name}\nAccount ID: {id}",
+  "@realEstateOfficeRequestMessage": {
+    "description": "Message for real estate office upgrade request",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "propertyExpiringSoonTitle": "Property Expiring Soon!",
+  "@propertyExpiringSoonTitle": {
+    "description": "Title for property expiry notification"
+  },
+  "propertyExpiringSoonMessage": "Your listing \"{title}\" will expire in {days} days. Renew it now to keep it active!",
+  "@propertyExpiringSoonMessage": {
+    "description": "Message for property expiry notification",
+    "placeholders": {
+      "title": { "type": "String" },
+      "days": { "type": "int" }
+    }
   },
   "termsAndConditions": "By signing up, you agree to our Terms and Conditions",
   "@termsAndConditions": {
@@ -828,10 +994,6 @@
   "furnished": "Furnished",
   "@furnished": {
     "description": "Furnished feature"
-  },
-  "newMessageFrom": "New message from",
-  "@newMessageFrom": {
-    "description": "New message notification prefix"
   },
   "newConversationStarted": "New conversation started",
   "@newConversationStarted": {
@@ -1259,6 +1421,9 @@
     "description": "Test notification sent message"
   },
   "clearAllNotifications": "Clear All",
+  "markAllAsRead": "Mark all as read",
+  "noNotificationsYet": "No notifications yet",
+  "notificationsDiscoverySubtitle": "We'll notify you when something important happens",
   "@clearAllNotifications": {
     "description": "Clear all notifications button text"
   },
@@ -1273,5 +1438,1330 @@
   "lastCheckTimeDescription": "The last time the app checked for new matching properties",
   "@lastCheckTimeDescription": {
     "description": "Last check time description"
+  },
+  "editDetails": "Edit Details",
+  "unpublish": "Unpublish",
+  "publishNow": "Publish Now",
+  "publish": "Publish",
+  "renewListing": "Renew Listing",
+  "deleteForever": "Delete Forever",
+  "viewsCount": "{count} views",
+  "@viewsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "publishedStatus": "Published",
+  "unpublishedStatus": "Unpublished",
+  "boostedStatus": "BOOSTED",
+  "expiredStatus": "Expired",
+  "daysLeftCount": "{count} days left",
+  "@daysLeftCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "edit": "Edit",
+  "renew": "Renew",
+  "delete": "Delete",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "unpublishSuccess": "Property unpublished successfully",
+  "unpublishFailed": "Failed to unpublish property",
+  "publishSuccess": "Property published successfully",
+  "publishFailed": "Failed to publish property",
+  "renewSuccess": "Property renewed successfully",
+  "renewFailed": "Failed to renew property",
+  "deleteSuccess": "Property deleted successfully",
+  "deleteFailed": "Failed to delete property",
+  "deletePropertyTitle": "Delete Property",
+  "deletePropertyConfirm": "Are you sure you want to delete this property? This action cannot be undone.",
+  "neighborhood": "Neighborhood",
+  "kitchens": "Kitchens",
+  "sizeRange": "Size Range (m²)",
+  "priceRangeLyd": "Price Range (LYD)",
+  "bedroomsCount": "{count} Bedrooms",
+  "@bedroomsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bathroomsCount": "{count} Bathrooms",
+  "@bathroomsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "typeApartment": "Apartment",
+  "typeHouse": "House",
+  "typeVilla": "Villa",
+  "typeVacationHome": "Vacation Home",
+  "typeTownhouse": "Townhouse",
+  "typeStudio": "Studio",
+  "typePenthouse": "Penthouse",
+  "typeCommercial": "Commercial",
+  "typeLand": "Land",
+  "statusForSale": "For Sale",
+  "statusForRent": "For Rent",
+  "statusSold": "Sold",
+  "statusRented": "Rented",
+  "condNewConstruction": "New Construction",
+  "condExcellent": "Excellent",
+  "condGood": "Good",
+  "condFair": "Fair",
+  "condNeedsRenovation": "Needs Renovation",
+  "whatTypeProperty": "What type of property?",
+  "selectCategoryDescription": "Select the category that best describes your property",
+  "listingType": "Listing Type",
+  "tellUsAboutProperty": "Tell us about your property",
+  "addCompellingDescription": "Add a compelling title and description",
+  "titleHint": "e.g., Beautiful 3BR Apartment in City Center",
+  "descriptionHint": "Describe your property features, neighborhood, and what makes it special...",
+  "proTip": "Pro Tip",
+  "detailedDescriptionTip": "Properties with detailed descriptions get 40% more views!",
+  "whereIsProperty": "Where is your property?",
+  "helpBuyersFind": "Help buyers find your property easily",
+  "streetAddress": "Street Address",
+  "addressHint": "e.g., 123 Main Street",
+  "roomsSizePricing": "Rooms, size, and pricing",
+  "salePriceLyd": "Sale Price (LYD)",
+  "monthlyRent": "Monthly Rent",
+  "dailyRent": "Daily Rent",
+  "enterPrice": "Enter price",
+  "enterMonthlyRent": "Enter monthly rent",
+  "enterDailyRent": "Enter daily rent",
+  "beds": "Beds",
+  "baths": "Baths",
+  "landSizeM2": "Land Size (m²)",
+  "buildingSizeM2": "Building Size (m²)",
+  "enterSizeM2": "Enter size in square meters",
+  "floors": "Floors",
+  "yearBuilt": "Year Built",
+  "discardChangesTitle": "Discard Changes?",
+  "discardChangesMessage": "Are you sure you want to leave? Your progress will be lost.",
+  "discard": "Discard",
+  "continueButton": "Continue",
+  "stepProgress": "Step {current} of {total}",
+  "@stepProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "editProperty": "Edit Property",
+  "addPropertyTitle": "Add Property",
+  "saving": "Saving...",
+  "updateProperty": "Update Property",
+  "publishProperty": "Publish Property",
+  "back": "Back",
+  "photosAdded": "photos added",
+  "photoTipsDescription": "• Use good lighting\n• Show all rooms\n• Include exterior photos",
+  "indoorFeatures": "Indoor Features",
+  "outdoorFeatures": "Outdoor Features",
+  "buildingFeatures": "Building Features",
+  "nearby": "Nearby",
+  "minImagesError": "Please upload at least 4 photos. You have uploaded {count} photo(s).",
+  "@minImagesError": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadingImages": "Uploading {count} images...",
+  "@uploadingImages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "insufficientBalance": "Insufficient wallet balance. Please add funds to your wallet.",
+  "propertyUpdatedSuccessfully": "Property updated successfully!",
+  "propertyPublishedSuccessfully": "Property published successfully!",
+  "boostActivated": "Boost package activated!",
+  "selectPackage": "Select Package for Your Property",
+  "chooseBoostPackage": "Choose a package to boost your property listing:",
+  "plusBoost": "Plus Boost",
+  "emeraldBoost": "Emerald Boost",
+  "eliteBoost": "Elite Boost",
+  "premiumBoost": "Premium Boost",
+  "durationOneDay": "1 Day",
+  "durationThreeDays": "3 Days",
+  "durationSevenDays": "7 Days",
+  "durationThirtyDays": "30 Days",
+  "rooms": "Rooms",
+  "location": "Location",
+  "select": "Select",
+  "packageSelected": "package selected for your property",
+  "featured": "Cover",
+  "changePackage": "Change Package",
+  "upgradeBoost": "Upgrade Your Ad",
+  "boostDescription": "Make your property stand out with premium features!",
+  "priorityPlacement": "Top listing position",
+  "increasedVisibility": "Increased visibility",
+  "featuredBadge": "Featured everywhere",
+  "premiumSupport": "Priority support",
+  "eliteBranding": "Elite branding",
+  "dedicatedSupport": "Dedicated support",
+  "packageCleared": "Package selection cleared",
+  "loginRequired": "Login Required",
+  "pleaseLoginToAddProperty": "Please login to add properties to the platform",
+  "backToHome": "Back to Home",
+  "chooseBoostPackage": "Choose a package to boost your property listing:",
+  "plusBoost": "Plus Boost",
+  "emeraldBoost": "Emerald Boost",
+  "premiumBoost": "Premium Boost",
+  "eliteBoost": "Elite Boost",
+  "durationOneDay": "1 Day",
+  "selectPackage": "Select Package",
+  "close": "Close",
+  "packageSelectedWithPrice": "Package Selected: {package} ({price} LYD)",
+  "clearSelection": "Clear Selection",
+  "selectedWithPrice": "Selected: {package} ({price} LYD)",
+  "basicInfo": "Basic Info",
+  "details": "Details",
+  "amenities": "Amenities",
+  "photos": "Photos",
+  "showItOff": "Show it off",
+  "condition": "Condition",
+  "selectCity": "Select City",
+  "selectCityFirst": "Select City First",
+  "selectNeighborhood": "Select Neighborhood",
+  "pleaseSelectCity": "Please select a city",
+  "pleaseSelectNeighborhood": "Please select a neighborhood",
+  "pleaseEnterAddress": "Please enter an address",
+  "pleaseEnterMonthlyRent": "Please enter monthly rent",
+  "pleaseEnterDailyRent": "Please enter daily rent",
+  "pleaseEnterLandSize": "Please enter land size",
+  "pleaseEnterBuildingSize": "Please enter building size",
+  "pleaseAddPhoto": "Please add at least one photo",
+  "heating": "Heating",
+  "waterWell": "Water Well",
+  "petFriendly": "Pet Friendly",
+  "nearbySchools": "Nearby Schools",
+  "nearbyHospitals": "Nearby Hospitals",
+  "nearbyShopping": "Nearby Shopping",
+  "publicTransport": "Public Transport",
+  "listingExpiry": "Listing Expiry",
+  "expiresToday": "Expires Today",
+  "listingWillExpireIn": "Listing will expire in {time}",
+  "openInGoogleMaps": "Open in Google Maps",
+  "daysSuffix": "days",
+  "hoursSuffix": "hours",
+  "minutesSuffix": "minutes",
+  "now": "Now",
+  "call": "Call",
+  "whatsApp": "WhatsApp",
+  "sqmSuffix": "m²",
+  "propertyRenewedSuccessfully": "Property renewed successfully",
+  "interestedInProperty": "I'm interested in this property: {title}",
+  "phoneNumberNotAvailable": "Phone number not available",
+  "whatsAppNotAvailable": "WhatsApp not available",
+  "starter": "Starter",
+  "starterDesc": "Perfect for getting started (60 Days)",
+  "professional": "Professional",
+  "professionalDesc": "Ideal for growing businesses (60 Days)",
+  "enterprise": "Enterprise",
+  "enterpriseDesc": "For large-scale operations (60 Days)",
+  "elite": "Elite",
+  "eliteDesc": "Unlimited possibilities (60 Days)",
+  "premiumSlots": "Premium Slots",
+  "scaleYourBusiness": "Scale your real estate business",
+  "currentLimitLabel": "CURRENT LIMIT",
+  "usedSlotsLabel": "USED SLOTS",
+  "currentActivePackages": "Current Active Packages",
+  "chooseNewPackage": "Choose New Package",
+  "mostPopular": "MOST POPULAR",
+  "orderTotal": "Order Total",
+  "billedOnce": "Billed once",
+  "pleaseSelectPackage": "Please select a package",
+  "paymentSuccessful": "Payment Successful!",
+  "amountAddedToWallet": "{amount} LYD has been added to your wallet.",
+  "cardNumber": "Card Number",
+  "cvv": "CVV",
+  "cardholderName": "Cardholder Name",
+  "processing": "Processing...",
+  "payNow": "Pay Now",
+  "testCards": "Test Cards",
+  "boosted": "Boosted",
+  "boostExpired": "Boost expired",
+  "unlimited": "Unlimited",
+  "unknownUser": "Unknown User",
+  "propertyOwner": "Property Owner",
+  "listingExpired": "Listing Expired",
+  "listingExpiredDesc": "This property is no longer visible to the public.",
+  "renewNow": "Renew now",
+  "area": "Area",
+  "securityDeposit": "Security Deposit",
+  "sharePropertyText": "Check out this property: {title} in {city}!",
+  "shareProfileText": "Check out this profile on Dary: {name}",
+  "indoorFeatures": "Indoor Features",
+  "outdoorFeatures": "Outdoor Features",
+  "buildingFeatures": "Building Features",
+  "nearby": "Nearby",
+  "viewProfile": "View profile",
+  "listed": "Listed",
+  "messageSeller": "Message Seller",
+  "manageBoost": "Manage Boost",
+  "failedToCreateConversation": "Failed to create conversation. Please try again.",
+  "failedToStartConversation": "Failed to start conversation: {error}",
+  "starterPackage": "Starter",
+  "professionalPackage": "Professional",
+  "enterprisePackage": "Enterprise",
+  "elitePackage": "Elite",
+  "starterDesc": "Perfect for getting started (60 Days)",
+  "professionalDesc": "Ideal for growing businesses (60 Days)",
+  "enterpriseDesc": "For large-scale operations (60 Days)",
+  "eliteDesc": "Unlimited possibilities (60 Days)",
+  "premiumSlots": "Premium Slots",
+  "scaleBusiness": "Scale your real estate business",
+  "currentLimit": "CURRENT LIMIT",
+  "usedSlots": "USED SLOTS",
+  "currentActivePackages": "Current Active Packages",
+  "expiresInDays": "Expires in {days} days",
+  "chooseNewPackage": "Choose New Package",
+  "slots": "Slots",
+  "sixtyDays": "60 Days",
+  "mostPopular": "MOST POPULAR",
+  "newLimit": "New Limit",
+  "packagesExpiryWarning": "Packages expire after 60 days. Properties will be unpublished (but not deleted) when the package expires until new slots are purchased.",
+  "orderTotal": "Order Total",
+  "billedOnce": "Billed once",
+  "insufficientBalance": "Insufficient balance. You need {amount} more.",
+  "completePurchase": "Complete Purchase",
+  "pleaseSelectPackage": "Please select a package",
+  "oneWeek": "1 Week",
+  "oneMonth": "1 Month",
+  "oneDay": "1 Day",
+  "durationDays": "{days} Days",
+  "@durationDays": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "shortTermPromo": "Perfect for short-term promotion",
+  "quickPromo": "Perfect for quick promotion",
+  "testingWaters": "Great for testing the waters",
+  "bestValueSerious": "Best value for serious sellers",
+  "popular": "POPULAR",
+  "buyPackage": "Buy {duration}",
+  "perDay": "/day",
+  "perMonth": "/month",
+  "boostedWithTime": "Boosted ({time} left)",
+  "@boostedWithTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "hoursShort": "h",
+  "minutesShort": "m",
+  "typeApartment": "Apartment",
+  "typeHouse": "House",
+  "typeVilla": "Villa",
+  "typeVacationHome": "Vacation Home",
+  "typeTownhouse": "Townhouse",
+  "typeStudio": "Studio",
+  "typePenthouse": "Penthouse",
+  "typeCommercial": "Commercial",
+  "typeLand": "Land",
+  "statusForSale": "For Sale",
+  "statusForRent": "For Rent",
+  "statusSold": "Sold",
+  "statusRented": "Rented",
+  "condNewConstruction": "New Construction",
+  "condExcellent": "Excellent",
+  "condGood": "Good",
+  "condFair": "Fair",
+  "condNeedsRenovation": "Needs Renovation",
+  "addedToWallet": "{amount} has been added to your wallet.",
+  "continueText": "Continue",
+  "payWithCard": "Pay with Card",
+  "amountLabel": "Amount: {amount}",
+  "enterCardNumber": "Please enter card number",
+  "cardTooShort": "Card number must be at least 13 digits",
+  "expiryDate": "Expiry Date",
+  "requiredField": "Required",
+  "invalidFormat": "Invalid format",
+  "tooShort": "Too short",
+  "enterCardholderName": "Please enter cardholder name",
+  "enterFullName": "Please enter full name",
+  "testCardsInfo": "Success: 4242 4242 4242 4242\nDecline: 4000 0000 0000 0002\nExpired: 4000 0000 0000 0069",
+  "errorOccurred": "An error occurred. Please try again.",
+  "loginToContactSeller": "Please log in to contact the seller.",
+  "viewMoreDetails": "View more details",
+  "noPhoneNumberAvailable": "No phone number available",
+  "whatsappMessageIntro": "Hello! I am interested in this property:",
+  "addedToFavorites": "Added to favorites",
+  "removedFromFavorites": "Removed from favorites",
+  "cannotMakePhoneCall": "Cannot make phone call from this device",
+  "share": "Share",
+  "save": "Save",
+  "boostProperty": "Boost Property",
+  "boostPropertyDescription": "Choose a premium package to boost your property visibility.",
+  "viewPackages": "View Packages",
+  "airConditioning": "Air Conditioning",
+  "currencyLYD": "LYD",
+  "daysShort": "d",
+  "whatsAppShort": "WA",
+  "premiumSlots": "Premium Slots",
+  "scaleBusiness": "Scale your real estate business",
+  "currentLimit": "CURRENT LIMIT",
+  "usedSlots": "USED SLOTS",
+  "currentActivePackages": "Current Active Packages",
+  "unlimited": "Unlimited",
+  "slots": "slots",
+  "expiresInDays": "Expires in {days} days",
+  "chooseNewPackage": "Choose New Package",
+  "sixtyDays": "60 Days",
+  "mostPopular": "MOST POPULAR",
+  "newLimit": "New Limit",
+  "packagesExpiryWarning": "Packages expire after 60 days. Properties will be unpublished (but not deleted) when the package expires until new slots are purchased.",
+  "orderTotal": "Order Total",
+  "billedOnce": "Billed once",
+  "insufficientBalance": "Insufficient balance. You need {amount} LYD more.",
+  "cancel": "Cancel",
+  "completePurchase": "Complete Purchase",
+  "pleaseSelectPackage": "Please select a package",
+  "timeAgoYears": "{count, plural, =1{1 year ago} other{{count} years ago}}",
+  "timeAgoMonths": "{count, plural, =1{1 month ago} other{{count} months ago}}",
+  "timeAgoDays": "{count, plural, =1{1 day ago} other{{count} days ago}}",
+  "timeAgoHours": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "timeAgoMinutes": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
+  "timeAgoSeconds": "{count, plural, =1{Just now} other{{count} seconds ago}}",
+  "now": "Now",
+  "@expiresInDays": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "@insufficientBalance": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@timeAgoYears": { "placeholders": { "count": {} } },
+  "@timeAgoMonths": { "placeholders": { "count": {} } },
+  "@timeAgoDays": { "placeholders": { "count": {} } },
+  "@timeAgoHours": { "placeholders": { "count": {} } },
+  "@timeAgoMinutes": { "placeholders": { "count": {} } },
+  "@timeAgoSeconds": { "placeholders": { "count": {} } },
+  "@buyPackage": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "welcomeToDary": "Welcome to Dary",
+  "yourSmartPropertyCompanion": "Your smart property companion",
+  "emailOrPhone": "Email or Phone",
+  "enterEmailOrPhone": "Enter your email or phone",
+  "password": "Password",
+  "enterPassword": "Enter your password",
+  "forgotPassword": "Forgot Password?",
+  "signIn": "Sign In",
+  "orContinueWith": "Or continue with",
+  "google": "Google",
+  "dontHaveAccount": "Don't have an account?",
+  "signUp": "Sign Up",
+  "signingInWithGoogle": "Signing in with Google...",
+  "createAccount": "Create Account",
+  "joinDaryFindDreamHome": "Join Dary and find your dream home",
+  "fullName": "Full Name",
+  "enterFullName": "Enter your full name",
+  "emailAddress": "Email Address",
+  "enterEmail": "Enter your email",
+  "invalidEmail": "Invalid email",
+  "phoneNumber": "Phone Number",
+  "enterPhoneNumber": "Enter your phone number",
+  "confirmPassword": "Confirm Password",
+  "confirmYourPassword": "Confirm your password",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "enterPasswordValidation": "Enter password",
+  "passwordMinLength": "Password must be at least 8 characters",
+  "passwordNeedsCapital": "Must contain at least one capital letter",
+  "passwordNeedsNumber": "Must contain at least one number",
+  "passwordNeedsSymbol": "Must contain at least one symbol",
+  "agreeToTermsPrivacy": "I agree to the Terms & Privacy Policy",
+  "orSignUpWith": "Or sign up with",
+  "googleAccount": "Google Account",
+  "alreadyHaveAccount": "Already have an account?",
+  "loginSuccess": "Login successful! Welcome back",
+  "loginFailed": "Login failed. Please check your credentials",
+  "registerSuccess": "Account created successfully! Welcome to Dary",
+  "registerFailed": "Registration failed. Please try again",
+  "termsAndConditions": "Please agree to terms and conditions",
+  "activeListingsLabel": "Active listings",
+  "upgradeAd": "Upgrade Ad",
+  "moreSlots": "More Slots",
+  "boostAd": "Boost Ad",
+  "myFavorites": "My Favorites",
+  "officeDashboard": "Office Dashboard",
+  "allCaughtUp": "All caught up!",
+  "noMessagesYet": "No messages yet",
+  "localCreditCard": "Local credit card",
+  "feePercentage": "Fee percentage {fee}",
+  "transactionFeePercentage": "Fee Percentage",
+  "@feePercentage": { "placeholders": { "fee": {} } },
+  "amount": "Amount",
+  "cancel": "Cancel",
+  "topUp": "Top up",
+  "pleaseEnterValidAmount": "Please enter a valid amount",
+  "daryVouchers": "DARY Vouchers",
+  "enter13DigitCode": "Enter 13-digit code",
+  "whereToBuyVouchers": "Where to buy vouchers / أين يتم شراء القسائم ؟",
+  "purchaseFromStore": "• Purchase from any store with Umbrella or Anis POS terminals.",
+  "purchaseFromStoreAr": "• يمكنك الشراء من أي محل تتوفر لديه ماكينة دفع (المظلة) أو (أنيس).",
+  "directSupport": "Direct Support / الدعم الفني",
+  "customerSupport": "Customer Support / الدعم الفني",
+  "ibanCopied": "IBAN copied to clipboard",
+  "copy": "Copy",
+  "selectChargeMethod": "Select charge method",
+  "pleaseEnterValid13DigitCode": "Please enter a valid 13-digit code",
+  "pleaseLoginToRecharge": "Please login to recharge your wallet",
+  "walletRechargedSuccessfully": "Wallet recharged successfully! New balance: {balance} {currency}",
+  "@walletRechargedSuccessfully": { "placeholders": { "balance": {}, "currency": {} } },
+  "invalidRechargeCode": "Invalid recharge code. Please try again.",
+  "errorProcessingRecharge": "Error processing recharge: {error}",
+  "@errorProcessingRecharge": { "placeholders": { "error": {} } },
+  "couldNotLaunchWhatsApp": "Could not launch WhatsApp",
+  "wallet": "Wallet",
+  "balance": "Balance",
+  "transactions": "Transactions",
+  "recentTransactions": "Recent Transactions",
+  "noTransactionsYet": "No transactions yet",
+  "transactionRecharge": "Recharge",
+  "transactionPurchase": "Purchase",
+  "transactionBoost": "Boost: {name}",
+  "@transactionBoost": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "transactionRefund": "Refund",
+  "transactionFee": "Fee",
+  "home": "Home",
+  "messages": "Messages",
+  "profile": "Profile",
+  "add": "Add",
+  "search": "Search",
+  "filters": "Filters",
+  "sortBy": "Sort by",
+  "sortByDate": "Date",
+  "sortByPrice": "Price",
+  "sortByPriceLowToHigh": "Price: Low to High",
+  "sortByPriceHighToLow": "Price: High to Low",
+  "sortByNewest": "Newest First",
+  "sortByOldest": "Oldest First",
+  "propertyType": "Property Type",
+  "propertyStatus": "Property Status",
+  "city": "City",
+  "neighborhood": "Neighborhood",
+  "bedrooms": "Bedrooms",
+  "bathrooms": "Bathrooms",
+  "kitchens": "Kitchens",
+  "minPrice": "Min Price",
+  "maxPrice": "Max Price",
+  "minSize": "Min Size",
+  "maxSize": "Max Size",
+  "condition": "Condition",
+  "floors": "Floors",
+  "featuredOnly": "Featured Only",
+  "hasParking": "Has Parking",
+  "hasPool": "Has Pool",
+  "hasGarden": "Has Garden",
+  "hasElevator": "Has Elevator",
+  "hasFurnished": "Furnished",
+  "hasAC": "Has A/C",
+  "applyFilters": "Apply Filters",
+  "clearFilters": "Clear Filters",
+  "noPropertiesFound": "No properties found",
+  "tryAdjustingFilters": "Try adjusting your filters",
+  "premiumSlots": "Premium Slots",
+  "slotsUsed": "{used} / {total} slots used",
+  "@slotsUsed": { "placeholders": { "used": {}, "total": {} } },
+  "buyMoreSlots": "Buy More Slots",
+  "boostYourAd": "Boost Your Ad",
+  "selectListingToBoost": "Select a listing to boost",
+  "noActiveListingsFound": "No active listings found. Please create a listing first.",
+  "allListingsBoosted": "All your active listings are currently boosted. Wait for boost to expire before boosting again.",
+  "information": "Information",
+  "settings": "Settings",
+  "logout": "Logout",
+  "editProfile": "Edit Profile",
+  "myListings": "My Listings",
+  "savedProperties": "Saved Properties",
+  "accountSettings": "Account Settings",
+  "language": "Language",
+  "theme": "Theme",
+  "notifications": "Notifications",
+  "privacyPolicy": "Privacy Policy",
+  "termsOfService": "Terms of Service",
+  "aboutUs": "About Us",
+  "contactUs": "Contact Us",
+  "version": "Version",
+  "boostElite": "ELITE",
+  "boostPremium": "PREMIUM",
+  "boostEmerald": "Emerald",
+  "boostPlus": "Plus",
+  "packageEmerald": "Emerald",
+  "packageBronze": "Bronze",
+  "packageSilver": "Silver",
+  "packageGold": "Gold",
+  "packageBasic": "Basic",
+  "packageStandard": "Standard",
+  "packagePremium": "Premium",
+  "packageEnterprise": "Enterprise",
+  "packageMonth": "Month",
+  "packageMonths": "Months",
+  "packageYear": "Year",
+  "packagePerMonth": "per month",
+  "packagePerYear": "per year",
+  "packageSlots": "{count} Slots",
+  "@packageSlots": { "placeholders": { "count": {} } },
+  "packageBoosts": "{count} Boosts",
+  "@packageBoosts": { "placeholders": { "count": {} } },
+  "packagePriority": "Priority Support",
+  "packageAnalytics": "Advanced Analytics",
+  "packageVerified": "Verified Badge",
+  "selectPackage": "Select Package",
+  "currentPlan": "Current Plan",
+  "upgradePlan": "Upgrade Plan",
+  "downgradePlan": "Downgrade Plan",
+  "freePlan": "Free Plan",
+  "searchPropertiesCities": "Search properties, cities...",
+  "rentalProperties": "Rental properties",
+  "propertiesForSale": "Properties for sale",
+  "advanced": "Advanced",
+  "area": "Area",
+  "baths": "Baths",
+  "set": "Set",
+  "more": "More",
+  "pleaseLoginToAccess": "Please login to access {feature}",
+  "@pleaseLoginToAccess": { "placeholders": { "feature": {} } },
+  "backToHome": "Back to Home",
+  "manageBalanceTransactions": "Manage your balance and transactions",
+  "transactionCompleted": "Completed",
+  "transactionPending": "Pending",
+  "transactionPending": "Pending",
+  "transactionFailed": "Failed",
+  "verifiedSeller": "Verified Seller",
+  "memberSince": "Member since {date}",
+  "@memberSince": { "placeholders": { "date": {} } },
+  "increasePropertyLimit": "Increase Property Limit",
+  "deleteAccount": "Delete Account",
+  "areYouSureLogout": "Are you sure you want to logout?",
+  "cancel": "Cancel",
+  "topListing": "Top Listing",
+  "priorityPlacement": "Priority placement in search results",
+  "featuredBadge": "Featured badge on your listing",
+  "increasedVisibility": "Increased visibility",
+  "hourBoost24": "24-hour boost",
+  "popular": "POPULAR",
+  "upgradeToPremiumTitle": "Buy Points",
+  "getMoreVisibility": "Purchase posting points to list your properties",
+  "limitedTimeOffer": "✨ Limited Time Offer",
+  "selectCity": "Select City",
+  "propertyType": "Property Type",
+  "apply": "Apply",
+  "reset": "Reset",
+  "filters": "Filters",
+  "whyChooseTopListing": "Why Buy Points?",
+  "increasedVisibilityTitle": "Increased Visibility",
+  "increasedVisibilityDesc": "Your listing appears at the top of search results",
+  "featuredBadgeTitle": "Featured Badge",
+  "featuredBadgeDesc": "Stand out with a premium featured badge",
+  "analyticsDashboardTitle": "Analytics Dashboard",
+  "analyticsDashboardDesc": "Track views, clicks, and engagement metrics",
+  "premiumSupportTitle": "Premium Support",
+  "premiumSupportDesc": "Get priority customer support",
+  "selectNeighborhood": "Select Neighborhood",
+  "priceRange": "Price Range",
+  "sizeRange": "Size Range",
+  "moreFilters": "More Filters",
+  "bedrooms": "Bedrooms",
+  "bathrooms": "Bathrooms",
+  "updatePersonalInfo": "Update your personal information",
+  "tapToAddCover": "Tap to add cover photo",
+  "slotsValidity": "Properties that use slots are valid for 60 days total",
+  "profileUpdatedSuccess": "Profile updated successfully!",
+  "profileUpdateFail": "Failed to update profile. Please try again.",
+  "removedFromFavorites": "Removed from favorites",
+  "errorRemovingFavorite": "Error removing favorite",
+  "errorLoadingFavorites": "Error loading favorites",
+  "realEstateOffice": "Real Estate Office",
+  "propertyLimit": "Property Limit",
+  "totalListings": "Total Listings",
+  "active": "Active",
+  "overview": "Overview",
+  "totalViews": "Total Views",
+  "contactClicks": "Contact Clicks",
+  "phoneCalls": "Phone Calls",
+  "whatsapp": "WhatsApp",
+  "walletBalance": "Wallet Balance",
+  "soldRented": "Sold/Rented",
+  "buySlots": "Buy Slots",
+  "boost": "Boost",
+  "wallet": "Wallet",
+  "viewsOverTime": "Views Over Time",
+  "noData": "No data",
+  "byType": "By Type",
+  "byStatus": "By Status",
+  "engagementMetrics": "Engagement Metrics",
+  "avgViewsPerProperty": "Average Views per Property",
+  "conversionRate": "Conversion Rate",
+  "totalProperties": "Total Properties",
+  "activeListings": "Active Listings",
+  "noPropertiesFound": "No properties found",
+  "all": "All",
+  "sold": "Sold",
+  "rented": "Rented",
+  "expired": "Expired",
+  "fullName": "Full Name",
+  "enterFullName": "Enter your full name",
+  "emailAddress": "Email Address",
+  "phoneNumber": "Phone Number",
+  "enterPhoneNumber": "Enter your phone number",
+  "changeCover": "Change Cover",
+  "premiumSlotsStatus": "Premium Slots Status",
+  "statTotalListings": "Total Listings",
+  "statActiveListings": "Active Listings",
+  "statTotalProperties": "Total Properties",
+  "statAvailableProperties": "Available Properties",
+  "unlimitedCapacity": "Unlimited Capacity",
+  "totalSlotsCount": "{count} Total Slots",
+  "@totalSlotsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "daysLeftCount": "{count} days left",
+  "@daysLeftCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "hoursLeftCount": "{count} hours left",
+  "@hoursLeftCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "unlimitedPackage": "Unlimited Package",
+  "scaleWithoutLimits": "Scale your business without limits",
+  "moreSlotsCount": "+ {count} more slots",
+  "@moreSlotsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "upgrade": "Upgrade",
+  "editCover": "Edit Cover",
+  "whoWeAreTitle": "Who We Are",
+  "whoWeAreContent": "Dary is the ultimate Libyan digital real estate companion. We’ve built more than just an app; we’ve created a seamless marketplace where property dreams become reality. From high-end villas to cozy apartments, we bridge the gap between Libyan homeowners and seekers.",
+  "ourMissionTitle": "Our Mission",
+  "ourMissionContent": "To revolutionize the Libyan real estate market through transparency, technology, and trust. We empower users with detailed insights, high-quality media, and direct communication channels.",
+  "whyDaryTitle": "Why Dary?",
+  "whyDaryContent": "• Verified Listings\n• Secure Direct Contact\n• Advanced Filtering\n• Real-time Analytics\n• Specialized Office Dashboards",
+  "userAgreementTitle": "1. User Agreement",
+  "userAgreementContent": "By accessing Dary, you agree to provide authentic information. Users are responsible for all activity under their accounts.",
+  "listingAuthenticityTitle": "2. Listing Authenticity",
+  "listingAuthenticityContent": "All properties must be genuine. False advertising, misleading prices, or duplicate listings are strictly prohibited and will lead to account suspension.",
+  "communicationTitle": "3. Communication",
+  "communicationContent": "Dary facilitates connection but is not responsible for external agreements between users. Always exercise caution and verify property details in person.",
+  "paymentServicesTitle": "4. Payment Services",
+  "paymentServicesContent": "Premium features and wallet recharges are final. Payments are handled via secure third-party integration (Ma'amalat).",
+  "getInTouch": "Get in Touch",
+  "reachOutHelp": "We're here to help you with any questions",
+  "emailSupport": "Email Support",
+  "response24h": "Response within 24 hours",
+  "callUs": "Call Us",
+  "lineCount": "Line {count}",
+  "@lineCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "whatsAppChat": "WhatsApp Chat",
+  "supportDeskCount": "Support Desk {count}",
+  "@supportDeskCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "showMoreCount": "Show More ({count} more)",
+  "@showMoreCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "showLess": "Show Less",
+  "select": "Select",
+  "selectedCount": "{count} Selected",
+  "@selectedCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "selectAll": "Select All",
+  "deselectAll": "Deselect All",
+  "deleteSelected": "Delete Selected",
+  "activeListingsLabel": "Active Listings",
+  "noListingsYet": "No listings yet",
+  "propertiesCount": "{count} properties",
+  "@propertiesCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "listingsExpiringSoon": "Listings Expiring Soon!",
+  "listingsExpiryWarning": "The following properties are about to expire. Please renew them to keep them visible to public.",
+  "andMoreCount": "...and {count} more",
+  "@andMoreCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "later": "Later",
+  "gotIt": "Got it",
+  "renewAll": "Renew All ({count})",
+  "@renewAll": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "renewedSuccessfully": "{count} {count, plural, =1{property} other{properties}} renewed successfully!",
+  "@renewedSuccessfully": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "notEnoughPointsToRenew": "Not enough points. You have {available} pts but need {required} pts to renew all properties. Buy more points first.",
+  "@notEnoughPointsToRenew": {
+    "placeholders": {
+      "available": { "type": "int" },
+      "required": { "type": "int" }
+    }
+  },
+  "renewingProperties": "Renewing properties...",
+  "office": "OFFICE",
+  "realEstateOffice": "Real Estate Office",
+  "userNotFound": "User not found",
+  "goBack": "Go Back",
+  "totalCount": "{count} total",
+  "@totalCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deleteAccountTitle": "Delete Account",
+  "deleteAccountConfirmation": "Are you sure you want to delete your account? This action cannot be undone.",
+  "googleReauthDeletion": "Since you signed in with Google, you will be asked to re-authenticate with Google to confirm deletion.",
+  "enterPasswordToConfirm": "Please enter your password to confirm:",
+  "passwordHint": "Password",
+  "pleaseEnterPassword": "Please enter your password",
+  "accountDeletedSuccessfully": "Your account has been successfully deleted.",
+  "deleteAccountComingSoon": "Delete account functionality coming soon!",
+  "delete": "Delete",
+  "deletePropertiesCountTitle": "Delete {count} Properties?",
+  "@deletePropertiesCountTitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deletePropertiesConfirmation": "Are you sure you want to delete the selected {count} properties? This action cannot be undone and these slots will remain used (burned).",
+  "@deletePropertiesConfirmation": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "deleteAll": "Delete All",
+  "deletePropertiesSuccessCount": "Successfully deleted {successCount} out of {totalCount} properties",
+  "@deletePropertiesSuccessCount": {
+    "placeholders": {
+      "successCount": { "type": "int" },
+      "totalCount": { "type": "int" }
+    }
+  },
+  "errorPickingImage": "Error picking image: {error}",
+  "profileUpdatedSuccess": "Profile updated successfully!",
+  "profileUpdateFail": "Failed to update profile. Please try again.",
+  "errorUpdatingProfile": "Error updating profile: {error}",
+  "noUserFound": "No user found",
+  "editProfile": "Edit Profile",
+  "updatePersonalInfo": "Update your personal information",
+  "tapToAddCover": "Tap to add cover photo",
+  "fullName": "Full Name",
+  "enterFullName": "Enter your full name",
+  "emailAddress": "Email Address",
+  "emailChangeInfo": "This email is linked to your account and cannot be changed.",
+  "phoneNumber": "PhoneNumber",
+  "enterPhoneNumber": "Enter your phone number",
+  "saveChanges": "Save Changes",
+  "settings": "Settings",
+  "customizeExperience": "Customize your experience",
+  "pleaseEnterName": "Please enter your name",
+  "nameTooShort": "Name must be at least 2 characters",
+  "phoneTooShort": "Phone number is too short",
+  "daysCount": "{count} Days",
+  "allTime": "All Time",
+  "actions": "Actions",
+  "performance": "Performance",
+  "topPerformingProperties": "Top Performing Properties",
+  "noPerformanceData": "No performance data available",
+  "totalSpent": "Total Spent",
+  "totalRecharged": "Total Recharged",
+  "properties": "Properties",
+  "analytics": "Analytics",
+  "viewsCount": "{count} views",
+  "spendingBreakdown": "Spending Breakdown",
+  "boostPackages": "Boost Packages",
+  "propertySlots": "Property Slots",
+  "manageWallet": "Manage Wallet",
+  "activeBoosts": "Active Boosts",
+  "engagementRate": "Engagement Rate: {rate}%",
+  "calls": "Calls",
+  "saves": "Saves",
+  "renew": "Renew",
+  "expiring": "Expiring",
+  "edit": "Edit",
+  "comingSoon": "Coming Soon",
+  "boostActive": "Boost Active",
+  "noActiveBoosts": "No active boosts",
+  "expires": "Expires",
+    "avgViews": "{count} avg",
+  "leadsPercentage": "{count}% of leads",
+  "available": "Available",
+  "ratePercentage": "{rate}% rate",
+  "transactionRechargeMoamalat": "Recharged via Moamalat Card",
+  "transactionPurchaseSlots": "Purchase {name} - Add {count} property slots",
+  "transactionTopListing": "Top Listing Purchase - {name}",
+  "transactionBoostPlus": "Boost New Listing: Plus",
+  "transactionVoucherRecharge": "Voucher Recharge",
+  "transactionAdminCredit": "Admin Manual Credit",
+  "transactionRefund": "Refund - {reason}",
+  "packageStarter": "Starter",
+  "packageProfessional": "Professional",
+  "packageEnterprise": "Enterprise",
+    "packageElite": "Elite",
+  "packageTopListing": "Top Listing",
+  "package1Day": "1 Day",
+  "package3Days": "3 Days",
+  "package1Week": "1 Week",
+    "package1Month": "1 Month",
+  "todayAt": "Today {time}",
+  "yesterdayAt": "Yesterday {time}",
+  "daysAgo": "{count} days ago",
+  "date": "Date",
+  "referenceId": "Reference ID",
+  "tipsFindProperty": "Find your dream property",
+  "tipsContactSeller": "Contact the seller directly",
+  "tipsNegotiateDeal": "Negotiate and close the deal",
+  "close": "Close",
+  "deleteConversation": "Delete Conversation",
+  "deleteConversationConfirmation": "Are you sure you want to delete this conversation? This action cannot be undone.",
+  "delete": "Delete",
+  "conversationDeleted": "Conversation deleted",
+  "errorDeletingConversation": "Error deleting conversation: {error}",
+  "startConversation": "Start the conversation!",
+  "online": "Online",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "propertyNotFound": "Property not found",
+  "errorLoadingProperty": "Error loading property: {error}",
+  "generalPreferences": "General Preferences",
+  "notificationTypes": "Notification Types",
+  "maintenance": "Maintenance",
+  "notificationsActive": "Notifications Active",
+  "notificationsPaused": "Notifications Paused",
+  "notificationsActiveDesc": "You will receive updates about your listings and chats",
+  "notificationsPausedDesc": "Turn on notifications to stay updated on opportunities",
+  "troubleshooting": "Troubleshooting",
+  "test": "Test",
+  "clear": "Clear",
+  "lastSync": "Last Sync:",
+  "newMessageFrom": "New message from {senderName}",
+  "newConversationStarted": "New conversation started",
+  "aboutProperty": "About {propertyTitle}",
+  "property": "Property",
+  "loading": "Loading...",
+  "insufficientBalance": "Insufficient balance. You need {price} {currency} but only have {balance} {currency}",
+  "pleaseLoginToPurchase": "Please log in to purchase packages",
+  "allListingsBoosted": "All your active listings are currently boosted. Wait for boost to expire before boosting again.",
+  "noActiveListingsToBoost": "No active listings found. Please create a listing first.",
+  "chooseListingToBoost": "Choose Listing to Boost",
+  "selectListingToBoost": "Select which listing you want to boost with {packageName}:",
+  "boostListing": "Boost Listing",
+  "cancel": "Cancel",
+  "weeksAgo": "{count} weeks ago",
+  "monthsAgo": "{count} months ago",
+  "boostActivated": "Boost Activated!",
+  "boostSuccessMessage": "{listingTitle} is now boosted with {packageName}!\nRemaining balance: {balance} LYD",
+  "bulkBoostActivated": "Bulk Boost Activated!",
+  "bulkBoostSuccessMessage": "{count} properties are now boosted with {packageName}!\nRemaining balance: {balance} LYD",
+  "awesome": "Awesome!",
+  "insufficientBalanceAction": "Top up",
+  "oneWeekAgo": "1 week ago",
+  "oneMonthAgo": "1 month ago",
+  "voucherPurchaseInstruction1": "• Purchase from any store with Umbrella or Anis POS terminals.",
+  "voucherPurchaseInstruction2": "• يمكنك الشراء من أي محل تتوفر لديه ماكينة دفع (المظلة) أو (أنيس).",
+  "securePayment": "Secure Payment",
+  "invalidVoucherCode": "Invalid voucher code. Please check and try again.",
+  "voucherAlreadyRedeemed": "This voucher has already been redeemed.",
+  "voucherRechargeSuccess": "Wallet recharged successfully! New balance: {balance} {currency}",
+  "processingVoucher": "Processing voucher...",
+  "done": "Done",
+  "rechargeSuccessful": "Recharge Successful",
+  "analyticsAssistant": "Analytics Assistant",
+  "aiPoweredInsights": "AI-Powered Performance Insights",
+  "lowVisibility": "Low Visibility",
+  "greatEngagement": "Great Engagement!",
+  "goodContactConversion": "Good Contact Conversion",
+  "quickActions": "Quick Actions",
+  "boostProperties": "Boost Properties",
+  "rechargeWallet": "Recharge Wallet",
+  "activeBoosts": "Active Boosts",
+  "propertySaved": "Property Saved",
+  "suggestions": "Suggestions:",
+  "propertiesSavedCount": "{count, plural, =1{1 property saved} other{{count} properties saved}}",
+  "noFavoritesYet": "No favorites yet",
+  "startAddingToFavorites": "Start adding properties to your favorites",
+  "@propertiesSavedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "idLabel": "ID",
+  "statTotalListings": "Total Listings",
+  "statActiveListings": "Active Listings",
+  "propertiesCount": "{count, plural, =1{1 property} other{{count} properties}}",
+  "@propertiesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editCover": "Edit Cover",
+  "noListingsYet": "No listings yet",
+  "myListings": "My Listings",
+  "boostedStatusBadge": "BOOSTED",
+  "boostedWithTime": "Boosted ({time} left)",
+  "hoursShort": "h",
+  "minutesShort": "m",
+  "notificationSettings": "Notification Settings",
+  "getVerified": "Get Verified",
+  "viewAnalytics": "View Analytics",
+  "adminDashboard": "Admin Dashboard",
+  "information": "Information",
+  "aboutUs": "About Us",
+  "termsAndConditions": "Terms & Conditions",
+  "privacyPolicy": "Privacy Policy",
+  "helpSupport": "Help & Support",
+  "logout": "Logout",
+  "onboardingTitle1": "Find Your Dream Home",
+  "onboardingDesc1": "Explore thousands of premium properties in the best locations across Libya.",
+  "onboardingTitle2": "Smart Search & Filters",
+  "onboardingDesc2": "Use our advanced search engine to find exactly what you need with just a few taps.",
+  "onboardingTitle3": "Secure & Direct Contact",
+  "onboardingDesc3": "Connect directly with sellers and agents through our secure messaging system.",
+  "skip": "Skip",
+  "start": "Start",
+  "next": "Next",
+  "pageNotFound": "Page not found",
+  "goHome": "Go Home",
+  "loadingProperty": "Loading property...",
+  "error": "Error",
+  "splashTagline": "Finding your dream home...",
+  "analyticsAssistant": "Analytics Assistant",
+  "aiPoweredInsights": "AI-Powered Performance Insights",
+  "noViewsTitle": "No Views Detected",
+  "noViewsMessage": "Your properties have received no views. This might be because:\n• Properties are not published\n• Poor quality images or missing photos\n• Unclear or unappealing titles\n• Properties might be hidden or inactive",
+  "checkPublished": "Check if all properties are published",
+  "addHighQualityPhotos": "Add high-quality photos to all properties",
+  "writeClearTitles": "Write clear, descriptive titles",
+  "considerBoosting": "Consider boosting your properties for visibility",
+  "lowVisibilityTitle": "Low Visibility",
+  "lowVisibilityMessage": "Your properties are getting very few views (average {average} per listing).\nThis suggests your listings need better optimization.",
+  "@lowVisibilityMessage": {
+    "placeholders": {
+      "average": {
+        "type": "String"
+      }
+    }
+  },
+  "improvePhotos": "Improve property photos quality",
+  "detailedDescriptions": "Write more detailed and appealing descriptions",
+  "addMorePhotos": "Add more photos (at least 5-10 per property)",
+  "verifyPricing": "Verify your pricing is competitive",
+  "lowEngagementTitle": "Low Engagement Rate",
+  "lowEngagementMessage": "Your engagement rate is {rate}%, which is below average.\nThis means people view your properties but don't take action.",
+  "@lowEngagementMessage": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "compellingDescriptions": "Add more compelling property descriptions",
+  "includeAmenities": "Include all amenities and features",
+  "verifyContactInfo": "Verify contact information is correct",
+  "adjustPricing": "Consider adjusting pricing to be more competitive",
+  "addLocationDetails": "Add property location details (neighborhood, nearby amenities)",
+  "veryLowContactTitle": "Very Low Contact Rate",
+  "veryLowContactMessage": "Only {rate}% of viewers are contacting you.\nThis suggests properties might be overpriced or lack important information.",
+  "@veryLowContactMessage": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewPricing": "Review and adjust pricing to market rates",
+  "completeInfo": "Add complete property information",
+  "highlightPoints": "Highlight unique selling points",
+  "visiblePhoneNumber": "Ensure contact phone number is visible",
+  "respondQuickly": "Respond quickly to inquiries when they come",
+  "noListingsTitle": "No Listings Yet",
+  "noListingsMessage": "You don't have any active listings. Start by adding your first property!",
+  "addFirstProperty": "Click \"Add Property\" to create your first listing",
+  "fillDetails": "Fill in all property details completely",
+  "publishVisible": "Publish your property to make it visible",
+  "increaseExposureTitle": "Increase Your Exposure",
+  "increaseExposureMessage": "Having only one listing limits your visibility. Consider adding more properties.",
+  "addMoreProperties": "Add more properties to increase your portfolio",
+  "eachPropertyVisibility": "Each property increases your overall visibility",
+  "diversify": "Diversify property types and locations",
+  "greatEngagementTitle": "Great Engagement!",
+  "greatEngagementMessage": "Your engagement rate of {rate}% is excellent!\nKeep up the good work by maintaining quality listings.",
+  "@greatEngagementMessage": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "maintainQuality": "Continue maintaining high-quality listings",
+  "keepUpdated": "Keep property information updated",
+  "addRegularly": "Add new properties regularly",
+  "goodContactTitle": "Good Contact Conversion",
+  "goodContactMessage": "Your contact rate of {rate}% shows good conversion.\nMake sure to respond promptly to all inquiries.",
+  "@goodContactMessage": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "respond24h": "Respond to inquiries within 24 hours",
+  "keepContactUpdated": "Keep contact information up to date",
+  "beProfessional": "Be professional and helpful in communications",
+  "doingGreatTitle": "You're Doing Great!",
+  "doingGreatMessage": "Your properties are performing well. No major issues detected.",
+  "monitorMetrics": "Continue monitoring your metrics",
+  "refreshListings": "Refresh listings periodically to keep them at the top",
+  "keepDescriptionsFresh": "Keep descriptions fresh and detailed",
+  "monitorWeekly": "Monitor analytics weekly",
+  "boostPeakTimes": "Consider boosting properties during peak times",
+  "gatherFeedback": "Gather and respond to user feedback",
+  "typeMessage": "Type a message...",
+  "conversationNotFound": "Conversation not found",
+  "verifyPhoneNumber": "Verify Phone Number",
+  "otpSentTo": "We've sent a 6-digit verification code to",
+  "verify": "Verify",
+  "resendCode": "Resend Code",
+  "unpublishAll": "Unpublish All",
+  "publishAll": "Publish All",
+  "unpublishPropertiesTitle": "Unpublish {count} Properties?",
+  "@unpublishPropertiesTitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "unpublishConfirmMessage": "Are you sure you want to unpublish the selected properties? they will disappear from public search.",
+  "publishPropertiesTitle": "Publish {count} Properties?",
+  "@publishPropertiesTitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "publishReuseSlotsMessage": "These properties will reuse your existing slots. No new slots will be consumed. Continue?",
+  "publishUseSomeSlotsMessage": "This will use {count} of your available slots. The rest are reusing existing slots. Continue?",
+  "@publishUseSomeSlotsMessage": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "slotLimitReached": "Slot Limit Reached",
+  "notEnoughSlotsMessage": "You don't have enough slots to publish these properties. You need {needed} new slots but only have {available} available.",
+  "@notEnoughSlotsMessage": {
+    "placeholders": {
+      "needed": { "type": "int" },
+      "available": { "type": "int" }
+    }
+  },
+  "buySlots": "Buy Slots",
+  "mockPropertySuccess": "Mock Property Created Successfully!",
+  "propertyLimitReachedAdd": "You have reached your property limit. Please purchase more slots to add properties.",
+  "propertyLimitReachedGeneral": "You have reached your property limit. Please purchase more slots.",
+  "purchaseSuccessfulLabel": "Purchase Successful!",
+  "addedSlotsNewLimit": "Added {slots} property slots.\nNew limit: {limit} properties",
+  "@addedSlotsNewLimit": {
+    "placeholders": {
+      "slots": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
+  "moreCredits": "Purchase More Points",
+  "buyMoreCredits": "Buy More Points",
+  "packageCredits": "{count} Points",
+  "@packageCredits": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "buyCredits": "Buy Points",
+  "buyNow": "Buy Now",
+  "purchaseSuccess": "Purchase Successful!",
+  "totalBalance": "Total Points",
+  "creditsLabel": "Points",
+  "postingCreditFooter": "Each property listing consumes 1 posting point.",
+  "postingCreditsTitle": "Posting Points",
+  "oneTimePurchase": "One-time purchase",
+  "persistentCredits": "Persistent points (no monthly loss)",
+  "publishUseSomeCreditsMessage": "This will use {count} of your available points. Continue?",
+  "@publishUseSomeCreditsMessage": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "renewPropertyConfirm": "Renew Property?",
+  "renewPropertyDescription": "This will deduct 1 point from your points and extend the listing for 60 days.",
+  "renew": "Renew",
+  "great": "Great!",
+  "noCreditsMessage": "No posting points remaining. Please purchase a points package to list your property.",
+  "purchaseSuccessSubtitle": "You have received {credits} posting points.\nRemaining balance: {remaining} points",
+  "@purchaseSuccessSubtitle": {
+    "placeholders": {
+      "credits": { "type": "int" },
+      "remaining": { "type": "int" }
+    }
+  },
+  "featurePostingCredits": "{count} Posting Points",
+  "@featurePostingCredits": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "featurePersistentCredits": "Points never expire",
+  "featurePersistentCreditsLong": "Points never expire (no monthly loss)",
+  "featureBasicVisibility": "Basic search visibility",
+  "featureStandardVisibility": "Standard search visibility",
+  "featureEnhancedVisibility": "Enhanced search visibility",
+  "featureMaximumVisibility": "Maximum search visibility",
+  "featureEmailSupport": "Email support",
+  "featurePrioritySupport": "Priority support",
+  "featureDedicatedManager": "Dedicated account manager",
+  "standardPackage": "Standard Package",
+  "businessPackage": "Business Package",
+  "listingsExpiringSoon": "Listings Expiring Soon!",
+  "listingsExpiryWarning": "The following properties are about to expire. Please renew them to keep them visible to the public.",
+  "andMoreCount": "...and {count} more",
+  "@andMoreCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "renewAll": "Renew All ({count})",
+  "@renewAll": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "renewedSuccessfully": "{count} properties renewed successfully!",
+  "@renewedSuccessfully": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "later": "Later",
+  "transactionRechargeMoamalat": "Recharged via Moamalat Card",
+  "transactionPurchaseSlots": "Purchase {name} - Add {count} property slots",
+  "transactionTopListing": "Top Listing Purchase - {name}",
+  "transactionBoostPlus": "Boost New Listing: Plus",
+  "transactionVoucherRecharge": "Voucher Recharge",
+  "transactionAdminCredit": "Manual Admin Credit",
+  "transactionRefund": "Refund - {reason}",
+  "packageStarter": "Starter",
+  "packageProfessional": "Professional",
+  "packageElite": "Elite",
+  "packagePlus": "Plus",
+  "packageEmerald": "Emerald",
+  "packagePremium": "Premium",
+  "packageTopListing": "Top Listing",
+  "todayAt": "Today {time}",
+  "yesterdayAt": "Yesterday {time}",
+  "daysAgo": "{count} days ago",
+  "referenceId": "Reference ID",
+  "tipsFindProperty": "Find your dream property",
+  "tipsContactSeller": "Contact seller directly",
+  "tipsNegotiateDeal": "Negotiate and close deal",
+  "deleteConversation": "Delete Conversation",
+  "deleteConversationConfirmation": "Are you sure you want to delete this conversation? This action cannot be undone.",
+  "conversationDeleted": "Conversation deleted",
+  "errorDeletingConversation": "Error deleting conversation: {error}",
+  "online": "Online",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "propertyNotFound": "Property not found",
+  "errorLoadingProperty": "Error loading property: {error}",
+  "generalPreferences": "General Preferences",
+  "maintenance": "Maintenance",
+  "notificationsActive": "Notifications Active",
+  "notificationsPaused": "Notifications Paused",
+  "notEnoughPointsToRenew": "Not enough points. You have {available} pts but need {required} pts.",
+  "@notEnoughPointsToRenew": {
+    "placeholders": {
+      "available": { "type": "int" },
+      "required": { "type": "int" }
+    }
+  },
+  "buyPoints": "Buy Points",
+  "boostApplied": "Boost Applied!",
+  "boostSuccessSubtitle": "Your listing has been boosted with {packageName} for {days} days.",
+  "chooseBoostPackage": "Choose your Boost Package",
+  "whyChooseTopListing": "Why Boost your Listing?",
+  "increasedVisibility": "Priority Search",
+  "featuredBadge": "Featured Badge",
+  "boostYourListings": "10x More Clicks",
+  "prioritySearch": "Priority Search",
+  "boostDescription": "Get maximum visibility and reach more buyers instantly",
+  "bestValueSerious": "Best value for serious sellers",
+  "quickPromo": "Perfect for quick promotion",
+  "testingWaters": "Great for testing the market",
+  "@boostSuccessSubtitle": {
+    "placeholders": {
+      "packageName": { "type": "String" },
+      "days": { "type": "int" }
+    }
   }
 }

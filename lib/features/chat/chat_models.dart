@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 /// Message status enum
 enum MessageStatus {

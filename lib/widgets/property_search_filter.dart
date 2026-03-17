@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:dary/l10n/app_localizations.dart';
-import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../models/property.dart';
-import '../providers/auth_provider.dart';
-import '../services/saved_search_service.dart';
 import '../services/theme_service.dart';
 import '../utils/text_input_formatters.dart';
+import '../utils/city_localizer.dart';
 
 class PropertySearchFilter extends StatefulWidget {
   final Function(List<Property>) onFilterChanged;
@@ -22,6 +20,7 @@ class PropertySearchFilter extends StatefulWidget {
   final PropertyType? initialType;
   final PropertyStatus? initialStatus;
   final String? initialCity;
+  final String? initialNeighborhood;
   final int? initialBedrooms;
   final int? initialBathrooms;
   final int? initialKitchens;
@@ -29,6 +28,13 @@ class PropertySearchFilter extends StatefulWidget {
   final String? initialMaxPrice;
   final String? initialMinSize;
   final String? initialMaxSize;
+  final bool? initialFeaturedOnly;
+  final bool? initialHasParking;
+  final bool? initialHasPool;
+  final bool? initialHasGarden;
+  final bool? initialHasElevator;
+  final bool? initialHasFurnished;
+  final bool? initialHasAC;
 
   const PropertySearchFilter({
     super.key,
@@ -42,6 +48,7 @@ class PropertySearchFilter extends StatefulWidget {
     this.initialType,
     this.initialStatus,
     this.initialCity,
+    this.initialNeighborhood,
     this.initialBedrooms,
     this.initialBathrooms,
     this.initialKitchens,
@@ -49,6 +56,13 @@ class PropertySearchFilter extends StatefulWidget {
     this.initialMaxPrice,
     this.initialMinSize,
     this.initialMaxSize,
+    this.initialFeaturedOnly,
+    this.initialHasParking,
+    this.initialHasPool,
+    this.initialHasGarden,
+    this.initialHasElevator,
+    this.initialHasFurnished,
+    this.initialHasAC,
   });
 
   @override
@@ -65,33 +79,18 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
   PropertyType? _selectedType;
   PropertyStatus? _selectedStatus;
   String? _selectedCity;
+  String? _selectedNeighborhood;
   int? _selectedBedrooms;
   int? _selectedBathrooms;
   int? _selectedKitchens;
   bool _showFeaturedOnly = false;
 
-  static const List<String> _libyanCities = [
-    'Tripoli',
-    'Benghazi',
-    'Misrata',
-    'Zawiya',
-    'Sirte',
-    'Sabha',
-    'Tobruk',
-    'Derna',
-    'Al Bayda',
-    'Al Marj',
-    'Gharyan',
-    'Zliten',
-    'Khoms',
-    'Tarhuna',
-    'Ajdabiya',
-    'Murzuq',
-    'Ghat',
-    'Ubari',
-    'Al Kufra',
-    'Al Jufra',
-  ];
+  // Libyan cities list - now handled by CityLocalizer
+  final List<String> _libyanCities = CityLocalizer.getAllEnglishCities();
+
+
+  // Map of cities to their neighborhoods - using CityLocalizer
+  List<String> getNeighborhoods(String city) => CityLocalizer.getNeighborhoods(city);
 
   bool _hasBalcony = false;
   bool _hasGarden = false;
@@ -103,6 +102,7 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
   bool _hasAC = false;
   bool _hasHeating = false;
   bool _hasFurnished = false;
+  bool _hasWaterWell = false;
 
   @override
   void initState() {
@@ -112,6 +112,7 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
     _selectedType = widget.initialType;
     _selectedStatus = widget.initialStatus;
     _selectedCity = widget.initialCity;
+    _selectedNeighborhood = widget.initialNeighborhood;
     _selectedBedrooms = widget.initialBedrooms;
     _selectedBathrooms = widget.initialBathrooms;
     _selectedKitchens = widget.initialKitchens;
@@ -119,6 +120,13 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
     _maxPriceController.text = widget.initialMaxPrice ?? '';
     _minSizeController.text = widget.initialMinSize ?? '';
     _maxSizeController.text = widget.initialMaxSize ?? '';
+    _showFeaturedOnly = widget.initialFeaturedOnly ?? false;
+    _hasParking = widget.initialHasParking ?? false;
+    _hasPool = widget.initialHasPool ?? false;
+    _hasGarden = widget.initialHasGarden ?? false;
+    _hasElevator = widget.initialHasElevator ?? false;
+    _hasFurnished = widget.initialHasFurnished ?? false;
+    _hasAC = widget.initialHasAC ?? false;
   }
 
   @override
@@ -134,11 +142,12 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
 
   void _notifyFilterValuesChanged() {
     if (widget.onFilterValuesChanged != null) {
-      widget.onFilterValuesChanged!({
+      final values = {
         'searchText': _searchController.text,
         'type': _selectedType,
         'status': _selectedStatus,
         'city': _selectedCity,
+        'neighborhood': _selectedNeighborhood,
         'bedrooms': _selectedBedrooms,
         'bathrooms': _selectedBathrooms,
         'kitchens': _selectedKitchens,
@@ -146,7 +155,18 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
         'maxPrice': _maxPriceController.text,
         'minSize': _minSizeController.text,
         'maxSize': _maxSizeController.text,
-      });
+        'featuredOnly': _showFeaturedOnly,
+        'hasParking': _hasParking,
+        'hasPool': _hasPool,
+        'hasGarden': _hasGarden,
+        'hasElevator': _hasElevator,
+        'hasFurnished': _hasFurnished,
+        'hasAC': _hasAC,
+      };
+      print('📤 Notifying filter values changed: $values');
+      widget.onFilterValuesChanged!(values);
+    } else {
+      print('⚠️ onFilterValuesChanged callback is null!');
     }
   }
 
@@ -232,6 +252,14 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
       filtered = filtered.where((p) => p.city == _selectedCity).toList();
       if (kDebugMode) {
         debugPrint('🏙️ After city filter: ${filtered.length} properties');
+      }
+    }
+
+    // Apply neighborhood filter
+    if (_selectedNeighborhood != null && _selectedNeighborhood!.isNotEmpty) {
+      filtered = filtered.where((p) => p.neighborhood == _selectedNeighborhood).toList();
+      if (kDebugMode) {
+        debugPrint('📍 After neighborhood filter: ${filtered.length} properties');
       }
     }
 
@@ -330,12 +358,43 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
     }
   }
 
+  List<String> _getAvailableNeighborhoods() {
+    if (_selectedCity == null) {
+      return [];
+    }
+    
+    // Get neighborhoods from CityLocalizer
+    final neighborhoods = CityLocalizer.getNeighborhoods(_selectedCity!);
+    
+    // Also include any neighborhoods from existing properties (in case there are new ones)
+    final propertiesInCity = widget.allProperties
+        .where((p) {
+          final pCity = p.city.trim() ?? '';
+          return (pCity == _selectedCity) && 
+                 p.neighborhood.isNotEmpty;
+        })
+        .toList();
+    
+    final propertyNeighborhoods = propertiesInCity
+        .map((p) => p.neighborhood.trim())
+        .where((n) => n.isNotEmpty)
+        .toSet()
+        .toList();
+    
+    // Combine both lists, remove duplicates, and sort
+    final allNeighborhoods = <String>{...neighborhoods, ...propertyNeighborhoods};
+    final sortedNeighborhoods = allNeighborhoods.toList()..sort();
+    
+    return sortedNeighborhoods;
+  }
+
   void _clearFilters() {
     setState(() {
       _searchController.clear();
       _selectedType = null;
       _selectedStatus = null;
       _selectedCity = null;
+      _selectedNeighborhood = null;
       _selectedBedrooms = null;
       _selectedBathrooms = null;
       _selectedKitchens = null;
@@ -356,6 +415,7 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
       _hasAC = false;
       _hasHeating = false;
       _hasFurnished = false;
+      _hasWaterWell = false;
     });
     
     // Notify parent to clear Rent/Sell filter as well
@@ -367,50 +427,104 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Return the full advanced filters interface directly
-    return StatefulBuilder(
-      builder: (context, setModalState) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Advanced Filters',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
-              const SizedBox(height: 24),
-              _buildAdvancedFiltersContent(context, setModalState),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.black54),
+                onPressed: () => Navigator.pop(context),
+              ),
+              Text(
+                l10n?.advancedFilters ?? 'Advanced Filters',
+                style: ThemeService.getDynamicStyle(
+                  context,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF01352D),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (widget.onClearAllFilters != null) {
+                    widget.onClearAllFilters!();
+                  }
+                  // Also clear local state
+                  setState(() {
+                    _searchController.clear();
+                    _maxPriceController.clear();
+                    _minPriceController.clear();
+                    _minSizeController.clear();
+                    _maxSizeController.clear();
+                    _selectedType = null;
+                    _selectedStatus = null;
+                    _selectedCity = null;
+                    _selectedNeighborhood = null;
+                    _selectedBedrooms = null;
+                    _selectedBathrooms = null;
+                    _selectedKitchens = null;
+                    _showFeaturedOnly = false;
+                  });
+                },
+                child: Text(
+                  l10n?.clearAllNotifications ?? 'Clear All', // Reusing clearAll
+                  style: ThemeService.getDynamicStyle(
+                    context,
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          const Divider(),
+          const SizedBox(height: 12),
+          // Content
+          Flexible(
+            child: SingleChildScrollView(
+              child: _buildAdvancedFiltersContent(context, setState),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildAdvancedFiltersContent(BuildContext context, StateSetter setModalState) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Property Type
-        const Text('Property Type',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        Text(l10n?.propertyType ?? 'Property Type',
+            style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
         const SizedBox(height: 8),
         DropdownButtonFormField<PropertyType>(
-          value: _selectedType,
+          initialValue: _selectedType,
           dropdownColor: Colors.white,
-          style: const TextStyle(color: Colors.black87),
+          style: ThemeService.getDynamicStyle(context, color: Colors.black87),
           decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Select property type',
-            hintStyle: TextStyle(color: Colors.grey[600]),
+            border: const OutlineInputBorder(),
+            hintText: l10n?.propertyType,
+            hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
           ),
           items: PropertyType.values.map((type) {
             return DropdownMenuItem(
               value: type,
-              child: Text(type.typeDisplayName, style: const TextStyle(color: Colors.black87)),
+              child: Text(type.getLocalizedName(context), style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
             );
           }).toList(),
           onChanged: (value) {
@@ -424,22 +538,22 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
         const SizedBox(height: 16),
 
         // Status
-        const Text('Property Status',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        Text(l10n?.propertyStatus ?? 'Property Status',
+            style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
         const SizedBox(height: 8),
         DropdownButtonFormField<PropertyStatus>(
-          value: _selectedStatus,
+          initialValue: _selectedStatus,
           dropdownColor: Colors.white,
-          style: const TextStyle(color: Colors.black87),
+          style: ThemeService.getDynamicStyle(context, color: Colors.black87),
           decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Select status',
-            hintStyle: TextStyle(color: Colors.grey[600]),
+            border: const OutlineInputBorder(),
+            hintText: l10n?.propertyStatus,
+            hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
           ),
           items: PropertyStatus.values.map((status) {
             return DropdownMenuItem(
               value: status,
-              child: Text(status.statusDisplayName, style: const TextStyle(color: Colors.black87)),
+              child: Text(status.getLocalizedName(context), style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
             );
           }).toList(),
           onChanged: (value) {
@@ -453,8 +567,8 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
         const SizedBox(height: 16),
 
         // Price Range
-        const Text('Price Range (LYD)',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        Text(l10n?.priceRangeLyd ?? 'Price Range (LYD)',
+            style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -468,11 +582,11 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 ),
                 inputFormatters: [PriceFormatter()],
                 decoration: InputDecoration(
-                  labelText: 'Min Price (LYD)',
+                  labelText: '${(l10n?.priceRangeLyd ?? 'Price (LYD)').split('(').first}(Min)',
                   labelStyle: ThemeService.getBodyStyle(context),
                   hintText: '0',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
-                  border: OutlineInputBorder(),
+                  hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (value) {},
               ),
@@ -488,11 +602,11 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 ),
                 inputFormatters: [PriceFormatter()],
                 decoration: InputDecoration(
-                  labelText: 'Max Price (LYD)',
+                  labelText: '${(l10n?.priceRangeLyd ?? 'Price (LYD)').split('(').first}(Max)',
                   labelStyle: ThemeService.getBodyStyle(context),
-                  hintText: '10000000',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
-                  border: OutlineInputBorder(),
+                  hintText: '10,000,000',
+                  hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (value) {},
               ),
@@ -503,27 +617,60 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
         const SizedBox(height: 16),
 
         // City
-        const Text('City',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        Text(l10n?.city ?? 'City',
+            style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _selectedCity,
+          initialValue: _selectedCity,
           dropdownColor: Colors.white,
-          style: const TextStyle(color: Colors.black87),
+          style: ThemeService.getDynamicStyle(context, color: Colors.black87),
           decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Select city',
-            hintStyle: TextStyle(color: Colors.grey[600]),
+            border: const OutlineInputBorder(),
+            hintText: l10n?.city,
+            hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
           ),
           items: _libyanCities.map((city) {
             return DropdownMenuItem(
               value: city,
-              child: Text(city, style: const TextStyle(color: Colors.black87)),
+              child: Text(
+                CityLocalizer.getBilingualCityName(city),
+                style: ThemeService.getDynamicStyle(context, color: Colors.black87),
+              ),
             );
           }).toList(),
           onChanged: (value) {
             setModalState(() {
               _selectedCity = value;
+              _selectedNeighborhood = null; // Reset neighborhood when city changes
+              _notifyFilterValuesChanged();
+            });
+          },
+        ),
+
+        const SizedBox(height: 16),
+
+        // Neighborhood
+        Text(l10n?.neighborhood ?? 'Neighborhood',
+            style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          initialValue: _selectedNeighborhood,
+          dropdownColor: Colors.white,
+          style: ThemeService.getDynamicStyle(context, color: Colors.black87),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            hintText: _selectedCity == null ? l10n?.city : l10n?.neighborhood,
+            hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+          ),
+          items: _getAvailableNeighborhoods().map((neighborhood) {
+            return DropdownMenuItem(
+              value: neighborhood,
+              child: Text(neighborhood, style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
+            );
+          }).toList(),
+          onChanged: _selectedCity == null ? null : (value) {
+            setModalState(() {
+              _selectedNeighborhood = value;
               _notifyFilterValuesChanged();
             });
           },
@@ -532,22 +679,22 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
         const SizedBox(height: 16),
 
         // Bedrooms
-        const Text('Bedrooms',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        Text(l10n?.bedrooms ?? 'Bedrooms',
+            style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
-          value: _selectedBedrooms,
+          initialValue: _selectedBedrooms,
           dropdownColor: Colors.white,
-          style: const TextStyle(color: Colors.black87),
+          style: ThemeService.getDynamicStyle(context, color: Colors.black87),
           decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Select bedrooms',
-            hintStyle: TextStyle(color: Colors.grey[600]),
+            border: const OutlineInputBorder(),
+            hintText: l10n?.bedrooms,
+            hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
           ),
           items: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((bedrooms) {
             return DropdownMenuItem(
               value: bedrooms,
-              child: Text('$bedrooms', style: const TextStyle(color: Colors.black87)),
+              child: Text('${l10n?.bedroomsCount(bedrooms)}', style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
             );
           }).toList(),
           onChanged: (value) {
@@ -561,22 +708,22 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
         const SizedBox(height: 16),
 
         // Bathrooms
-        const Text('Bathrooms',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        Text(l10n?.bathrooms ?? 'Bathrooms',
+            style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
-          value: _selectedBathrooms,
+          initialValue: _selectedBathrooms,
           dropdownColor: Colors.white,
-          style: const TextStyle(color: Colors.black87),
+          style: ThemeService.getDynamicStyle(context, color: Colors.black87),
           decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Select bathrooms',
-            hintStyle: TextStyle(color: Colors.grey[600]),
+            border: const OutlineInputBorder(),
+            hintText: l10n?.bathrooms,
+            hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
           ),
           items: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((bathrooms) {
             return DropdownMenuItem(
               value: bathrooms,
-              child: Text('$bathrooms', style: const TextStyle(color: Colors.black87)),
+              child: Text('${l10n?.bathroomsCount(bathrooms)}', style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
             );
           }).toList(),
           onChanged: (value) {
@@ -590,22 +737,22 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
         const SizedBox(height: 16),
 
         // Kitchens
-        const Text('Kitchens',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        Text(l10n?.kitchens ?? 'Kitchens',
+            style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
-          value: _selectedKitchens,
+          initialValue: _selectedKitchens,
           dropdownColor: Colors.white,
-          style: const TextStyle(color: Colors.black87),
+          style: ThemeService.getDynamicStyle(context, color: Colors.black87),
           decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Select kitchens',
-            hintStyle: TextStyle(color: Colors.grey[600]),
+            border: const OutlineInputBorder(),
+            hintText: l10n?.kitchens,
+            hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
           ),
           items: [1, 2, 3, 4, 5, 6].map((kitchens) {
             return DropdownMenuItem(
               value: kitchens,
-              child: Text('$kitchens', style: const TextStyle(color: Colors.black87)),
+              child: Text('$kitchens', style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
             );
           }).toList(),
           onChanged: (value) {
@@ -619,8 +766,8 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
         const SizedBox(height: 16),
 
         // Size Range
-        const Text('Size Range (m²)',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+        Text(l10n?.sizeRange ?? 'Size Range (m²)',
+            style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -634,11 +781,11 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 ),
                 inputFormatters: [PriceFormatter()],
                 decoration: InputDecoration(
-                  labelText: 'Min Size (m²)',
+                  labelText: '${(l10n?.sizeRange ?? 'Size (m²)').split('(').first}(Min)',
                   labelStyle: ThemeService.getBodyStyle(context),
                   hintText: '0',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
-                  border: OutlineInputBorder(),
+                   hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (value) {},
               ),
@@ -654,11 +801,11 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 ),
                 inputFormatters: [PriceFormatter()],
                 decoration: InputDecoration(
-                  labelText: 'Max Size (m²)',
+                  labelText: '${(l10n?.sizeRange ?? 'Size (m²)').split('(').first}(Max)',
                   labelStyle: ThemeService.getBodyStyle(context),
-                  hintText: '10000',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
-                  border: OutlineInputBorder(),
+                  hintText: '10,000',
+                  hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (value) {},
               ),
@@ -680,28 +827,29 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                   }
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.green[700],
-                  side: BorderSide(color: Colors.green[700]!),
+                  foregroundColor: const Color(0xFF01352D),
+                  side: const BorderSide(color: Color(0xFF01352D)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Clear Filters'),
+                child: Text(l10n?.clearFilters ?? 'Clear Filters'),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
                 onPressed: () async {
+                  _notifyFilterValuesChanged();
                   await _applyFilters();
                   if (mounted && Navigator.canPop(context)) {
                     Navigator.pop(context);
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[700],
+                  backgroundColor: const Color(0xFF01352D),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Apply Filters'),
+                child: Text(l10n?.applyFilters ?? 'Apply Filters'),
               ),
             ),
           ],
@@ -711,6 +859,7 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
   }
 
   void _showAdvancedFilters() {
+    final l10n = AppLocalizations.of(context);
     // This method opens the full advanced filters directly
     Navigator.pop(context); // Close the simple search modal
     showModalBottomSheet(
@@ -720,35 +869,35 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Container(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Advanced Filters',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text(l10n?.advancedFilters ?? 'Advanced Filters',
+                    style: ThemeService.getHeadingStyle(context, fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
                 const SizedBox(height: 24),
 
                 // Property Type
-                const Text('Property Type',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text(l10n?.propertyType ?? 'Property Type',
+                    style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 8),
                  DropdownButtonFormField<PropertyType>(
-                   value: _selectedType,
+                   initialValue: _selectedType,
                    dropdownColor: Colors.white,
-                   style: const TextStyle(color: Colors.black87),
+                   style: ThemeService.getDynamicStyle(context, color: Colors.black87),
                    decoration: InputDecoration(
-                     border: OutlineInputBorder(),
-                     hintText: 'Select property type',
-                     hintStyle: TextStyle(color: Colors.grey[600]),
+                     border: const OutlineInputBorder(),
+                     hintText: l10n?.propertyType,
+                     hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
                    ),
                    items: PropertyType.values.map((type) {
                      return DropdownMenuItem(
                        value: type,
-                       child: Text(type.typeDisplayName, style: const TextStyle(color: Colors.black87)),
+                       child: Text(type.getLocalizedName(context), style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
                      );
                    }).toList(),
                    onChanged: (value) {
@@ -760,22 +909,22 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 const SizedBox(height: 16),
 
                 // Status
-                const Text('Property Status',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text(l10n?.propertyStatus ?? 'Property Status',
+                    style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 8),
                  DropdownButtonFormField<PropertyStatus>(
-                   value: _selectedStatus,
+                   initialValue: _selectedStatus,
                    dropdownColor: Colors.white,
-                   style: const TextStyle(color: Colors.black87),
+                   style: ThemeService.getDynamicStyle(context, color: Colors.black87),
                    decoration: InputDecoration(
-                     border: OutlineInputBorder(),
-                     hintText: 'Select status',
-                     hintStyle: TextStyle(color: Colors.grey[600]),
+                     border: const OutlineInputBorder(),
+                     hintText: l10n?.propertyStatus,
+                     hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
                    ),
                    items: PropertyStatus.values.map((status) {
                      return DropdownMenuItem(
                        value: status,
-                       child: Text(status.statusDisplayName, style: const TextStyle(color: Colors.black87)),
+                       child: Text(status.getLocalizedName(context), style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
                      );
                    }).toList(),
                    onChanged: (value) {
@@ -787,8 +936,8 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 const SizedBox(height: 16),
 
                 // Price Range
-                const Text('Price Range (LYD)',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text(l10n?.priceRangeLyd ?? 'Price Range (LYD)',
+                    style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -801,11 +950,11 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                           color: Colors.black87,
                         ),
                         decoration: InputDecoration(
-                          labelText: 'Min Price (LYD)',
+                          labelText: '${(l10n?.priceRangeLyd ?? 'Price (LYD)').split('(').first}(Min)',
                           labelStyle: ThemeService.getBodyStyle(context),
                           hintText: '0',
-                          hintStyle: TextStyle(color: Colors.grey[600]),
-                          border: OutlineInputBorder(),
+                          hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+                          border: const OutlineInputBorder(),
                         ),
                         onChanged: (value) {},
                       ),
@@ -820,11 +969,11 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                           color: Colors.black87,
                         ),
                         decoration: InputDecoration(
-                          labelText: 'Max Price (LYD)',
+                          labelText: '${(l10n?.priceRangeLyd ?? 'Price (LYD)').split('(').first}(Max)',
                           labelStyle: ThemeService.getBodyStyle(context),
-                          hintText: '10000000',
-                          hintStyle: TextStyle(color: Colors.grey[600]),
-                          border: OutlineInputBorder(),
+                          hintText: '10,000,000',
+                           hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+                          border: const OutlineInputBorder(),
                         ),
                         onChanged: (value) {},
                       ),
@@ -835,26 +984,59 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 const SizedBox(height: 16),
 
                 // City
-                const Text('City',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text(l10n?.city ?? 'City',
+                    style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 8),
                  DropdownButtonFormField<String>(
-                   value: _selectedCity,
+                   initialValue: _selectedCity,
                    dropdownColor: Colors.white,
-                   style: const TextStyle(color: Colors.black87),
+                   style: ThemeService.getDynamicStyle(context, color: Colors.black87),
                    decoration: InputDecoration(
-                     border: OutlineInputBorder(),
-                     hintText: 'Select city',
-                     hintStyle: TextStyle(color: Colors.grey[600]),
+                     border: const OutlineInputBorder(),
+                     hintText: l10n?.city,
+                     hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
                    ),
                    items: _libyanCities.map((city) {
                      return DropdownMenuItem(
                        value: city,
-                       child: Text(city, style: const TextStyle(color: Colors.black87)),
+                       child: Text(
+                         CityLocalizer.getBilingualCityName(city),
+                         style: ThemeService.getDynamicStyle(context, color: Colors.black87),
+                       ),
                      );
                    }).toList(),
                    onChanged: (value) {
-                     setModalState(() => _selectedCity = value);
+                     setModalState(() {
+                       _selectedCity = value;
+                       _selectedNeighborhood = null; // Reset neighborhood when city changes
+                     });
+                     _applyFilters();
+                   },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Neighborhood
+                Text(l10n?.neighborhood ?? 'Neighborhood',
+                    style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedNeighborhood,
+                  dropdownColor: Colors.white,
+                  style: ThemeService.getDynamicStyle(context, color: Colors.black87),
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    hintText: _selectedCity == null ? l10n?.city : l10n?.neighborhood,
+                    hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+                  ),
+                  items: _getAvailableNeighborhoods().map((neighborhood) {
+                    return DropdownMenuItem(
+                      value: neighborhood,
+                      child: Text(neighborhood, style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
+                    );
+                  }).toList(),
+                  onChanged: _selectedCity == null ? null : (value) {
+                    setModalState(() => _selectedNeighborhood = value);
                      _applyFilters();
                    },
                 ),
@@ -862,22 +1044,22 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 const SizedBox(height: 16),
 
                 // Bedrooms
-                const Text('Bedrooms',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text(l10n?.bedrooms ?? 'Bedrooms',
+                    style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<int>(
-                  value: _selectedBedrooms,
+                  initialValue: _selectedBedrooms,
                   dropdownColor: Colors.white,
-                  style: const TextStyle(color: Colors.black87),
+                  style: ThemeService.getDynamicStyle(context, color: Colors.black87),
                   decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'Select bedrooms',
-                    hintStyle: TextStyle(color: Colors.grey[600]),
+                    border: const OutlineInputBorder(),
+                    hintText: l10n?.bedrooms,
+                    hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
                   ),
                   items: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((bedrooms) {
                     return DropdownMenuItem(
                       value: bedrooms,
-                      child: Text('$bedrooms', style: const TextStyle(color: Colors.black87)),
+                      child: Text(l10n?.bedroomsCount(bedrooms) ?? '$bedrooms Bedrooms', style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -889,22 +1071,22 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 const SizedBox(height: 16),
 
                 // Bathrooms
-                const Text('Bathrooms',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text(l10n?.bathrooms ?? 'Bathrooms',
+                    style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<int>(
-                  value: _selectedBathrooms,
+                  initialValue: _selectedBathrooms,
                   dropdownColor: Colors.white,
-                  style: const TextStyle(color: Colors.black87),
+                  style: ThemeService.getDynamicStyle(context, color: Colors.black87),
                   decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'Select bathrooms',
-                    hintStyle: TextStyle(color: Colors.grey[600]),
+                    border: const OutlineInputBorder(),
+                    hintText: l10n?.bathrooms,
+                    hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
                   ),
                   items: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((bathrooms) {
                     return DropdownMenuItem(
                       value: bathrooms,
-                      child: Text('$bathrooms', style: const TextStyle(color: Colors.black87)),
+                      child: Text(l10n?.bathroomsCount(bathrooms) ?? '$bathrooms Bathrooms', style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -916,22 +1098,22 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 const SizedBox(height: 16),
 
                 // Kitchens
-                const Text('Kitchens',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text(l10n?.kitchens ?? 'Kitchens',
+                    style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<int>(
-                  value: _selectedKitchens,
+                  initialValue: _selectedKitchens,
                   dropdownColor: Colors.white,
-                  style: const TextStyle(color: Colors.black87),
+                  style: ThemeService.getDynamicStyle(context, color: Colors.black87),
                   decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'Select kitchens',
-                    hintStyle: TextStyle(color: Colors.grey[600]),
+                    border: const OutlineInputBorder(),
+                    hintText: l10n?.kitchens,
+                    hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
                   ),
                   items: [1, 2, 3, 4, 5, 6].map((kitchens) {
                     return DropdownMenuItem(
                       value: kitchens,
-                      child: Text('$kitchens', style: const TextStyle(color: Colors.black87)),
+                      child: Text('$kitchens', style: ThemeService.getDynamicStyle(context, color: Colors.black87)),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -943,8 +1125,8 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                 const SizedBox(height: 16),
 
                 // Size Range
-                const Text('Size Range (m²)',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text(l10n?.sizeRange ?? 'Size Range (m²)',
+                    style: ThemeService.getDynamicStyle(context, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -957,11 +1139,11 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                           color: Colors.black87,
                         ),
                         decoration: InputDecoration(
-                          labelText: 'Min Size (m²)',
+                          labelText: '${(l10n?.sizeRange ?? 'Size (m²)').split('(').first}(Min)',
                           labelStyle: ThemeService.getBodyStyle(context),
                           hintText: '0',
-                          hintStyle: TextStyle(color: Colors.grey[600]),
-                          border: OutlineInputBorder(),
+                          hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+                          border: const OutlineInputBorder(),
                         ),
                         onChanged: (value) {},
                       ),
@@ -976,11 +1158,11 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                           color: Colors.black87,
                         ),
                         decoration: InputDecoration(
-                          labelText: 'Max Size (m²)',
+                          labelText: '${(l10n?.sizeRange ?? 'Size (m²)').split('(').first}(Max)',
                           labelStyle: ThemeService.getBodyStyle(context),
-                          hintText: '10000',
-                          hintStyle: TextStyle(color: Colors.grey[600]),
-                          border: OutlineInputBorder(),
+                          hintText: '10,000',
+                          hintStyle: ThemeService.getDynamicStyle(context, color: Colors.grey[600]),
+                          border: const OutlineInputBorder(),
                         ),
                         onChanged: (value) {},
                       ),
@@ -1000,29 +1182,35 @@ class _PropertySearchFilterState extends State<PropertySearchFilter> {
                           Navigator.pop(context);
                         },
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.green[700],
-                          side: BorderSide(color: Colors.green[700]!),
+                          foregroundColor: const Color(0xFF01352D),
+                          side: const BorderSide(color: Color(0xFF01352D)),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        child: const Text('Clear Filters'),
+                        child: Text(l10n?.clearFilters ?? 'Clear Filters'),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          setState(() {});
+                          // Save filter values first
+                          _notifyFilterValuesChanged();
+                          // Apply filters
                           await _applyFilters();
+                          // Small delay to ensure state updates complete
+                          await Future.delayed(const Duration(milliseconds: 50));
                           if (mounted && Navigator.canPop(context)) {
                             Navigator.pop(context);
                           }
                         },
+
+
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[700],
+                          backgroundColor: const Color(0xFF01352D),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        child: const Text('Apply Filters'),
+                        child: Text(l10n?.applyFilters ?? 'Apply Filters'),
                       ),
                     ),
                   ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dary_loading_indicator.dart';
 
 /// Global loading overlay widget
 class LoadingOverlay extends StatefulWidget {
@@ -84,9 +85,9 @@ class _LoadingOverlayState extends State<LoadingOverlay>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const CircularProgressIndicator(
-                        strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                      DaryLoadingIndicator(
+                        size: 40,
+                        color: Colors.green,
                       ),
                       if (widget.message != null) ...[
                         const SizedBox(height: 16),

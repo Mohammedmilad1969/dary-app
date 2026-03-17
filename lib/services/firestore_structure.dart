@@ -40,10 +40,12 @@ class FirestoreStructure {
         'profileImageUrl': profileImageUrl ?? 'https://via.placeholder.com/150/4F46E5/FFFFFF?text=${name.substring(0, 1).toUpperCase()}',
         'totalListings': 0,
         'activeListings': 0,
+        'propertyLimit': 3, // Default free tier: 3 properties for all users
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'isVerified': isVerified,
         'isAdmin': isAdmin,
+        'isRealEstateOffice': false,
         'lastLoginAt': FieldValue.serverTimestamp(),
         'preferences': {
           'notifications': true,
@@ -131,6 +133,7 @@ class FirestoreStructure {
           'hasHeating': features['hasHeating'] ?? false,
           'hasFurnished': features['hasFurnished'] ?? false,
           'hasPetFriendly': features['hasPetFriendly'] ?? false,
+          'hasWaterWell': features['hasWaterWell'] ?? false,
           'hasNearbySchools': features['hasNearbySchools'] ?? false,
           'hasNearbyHospitals': features['hasNearbyHospitals'] ?? false,
           'hasNearbyShopping': features['hasNearbyShopping'] ?? false,

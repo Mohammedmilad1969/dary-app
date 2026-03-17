@@ -70,13 +70,13 @@ class AppPageTransitions {
   static PageTransitionsTheme scaleFade = PageTransitionsTheme(
     builders: {
       TargetPlatform.android: CustomPageTransitionBuilder(
-        transitionDuration: const Duration(milliseconds: 300),
+        transitionDuration: const Duration(milliseconds: 400),
         transitionBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,
             child: ScaleTransition(
-              scale: Tween<double>(begin: 0.9, end: 1.0).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOut),
+              scale: Tween<double>(begin: 0.92, end: 1.0).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
               ),
               child: child,
             ),
@@ -84,13 +84,13 @@ class AppPageTransitions {
         },
       ),
       TargetPlatform.iOS: CustomPageTransitionBuilder(
-        transitionDuration: const Duration(milliseconds: 300),
+        transitionDuration: const Duration(milliseconds: 400),
         transitionBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,
             child: ScaleTransition(
-              scale: Tween<double>(begin: 0.9, end: 1.0).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOut),
+              scale: Tween<double>(begin: 0.92, end: 1.0).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
               ),
               child: child,
             ),
@@ -103,6 +103,7 @@ class AppPageTransitions {
 
 /// Custom page transition builder
 class CustomPageTransitionBuilder extends PageTransitionsBuilder {
+  @override
   final Duration transitionDuration;
   final Widget Function(BuildContext, Animation<double>, Animation<double>, Widget) transitionBuilder;
 
@@ -209,12 +210,11 @@ class _ScaleAnimationState extends State<ScaleAnimation>
     _controller.forward();
   }
 
-  void _handleTapUp(TapUpDetails details) {
-    _controller.reverse().then((_) {
-      if (widget.onTap != null) {
-        widget.onTap!();
-      }
-    });
+  void _handleTap() {
+    _controller.reverse();
+    if (widget.onTap != null) {
+      widget.onTap!();
+    }
   }
 
   void _handleTapCancel() {
@@ -224,8 +224,9 @@ class _ScaleAnimationState extends State<ScaleAnimation>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
+      onTap: _handleTap,
       onTapCancel: _handleTapCancel,
       child: ScaleTransition(
         scale: _scaleAnimation,

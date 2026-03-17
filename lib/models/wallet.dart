@@ -74,7 +74,9 @@ class Transaction {
       type: _parseTransactionType(data['type']),
       description: data['description'] ?? '',
       createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate()
+          ? (data['createdAt'] is Timestamp 
+              ? (data['createdAt'] as Timestamp).toDate() 
+              : DateTime.tryParse(data['createdAt'].toString()) ?? DateTime.now())
           : DateTime.now(),
       status: TransactionStatus.completed, // Default to completed for Firestore
       referenceId: data['referenceId'],
@@ -146,10 +148,14 @@ class Wallet {
       currency: data['currency'] ?? 'LYD',
       transactions: [], // Transactions are loaded separately from subcollection
       createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate()
+          ? (data['createdAt'] is Timestamp 
+              ? (data['createdAt'] as Timestamp).toDate() 
+              : DateTime.tryParse(data['createdAt'].toString()) ?? DateTime.now())
           : DateTime.now(),
       updatedAt: data['updatedAt'] != null 
-          ? (data['updatedAt'] as Timestamp).toDate()
+          ? (data['updatedAt'] is Timestamp 
+              ? (data['updatedAt'] as Timestamp).toDate() 
+              : DateTime.tryParse(data['updatedAt'].toString()) ?? DateTime.now())
           : DateTime.now(),
     );
   }

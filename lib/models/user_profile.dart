@@ -1,8 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:provider/provider.dart';
-import '../services/property_service.dart';
 import '../models/property.dart';
+import '../l10n/app_localizations.dart';
 
 class UserProfile {
   final String id;
@@ -10,6 +10,7 @@ class UserProfile {
   final String email;
   final String? phone;
   final String? profileImageUrl;
+  final String? coverImageUrl;
   final DateTime joinDate;
   final int totalListings;
   final int activeListings;
@@ -18,6 +19,10 @@ class UserProfile {
   final DateTime updatedAt;
   final bool isVerified;
   final bool isAdmin;
+  final bool isRealEstateOffice; // Real estate office status
+  final bool isGoogleUser; // Whether signed in with Google
+  final DateTime? freeTierResetDate; // Last time free tier was reset
+  final int postingCredits; // Replaces slot system: Credits needed to publish
 
   const UserProfile({
     required this.id,
@@ -25,14 +30,19 @@ class UserProfile {
     required this.email,
     this.phone,
     this.profileImageUrl,
+    this.coverImageUrl,
     required this.joinDate,
     required this.totalListings,
     required this.activeListings,
-    this.propertyLimit = 5, // Default free tier: 5 properties
+    this.propertyLimit = 3, // Default free tier: 3 properties for all users
     required this.createdAt,
     required this.updatedAt,
     this.isVerified = false,
     this.isAdmin = false,
+    this.isRealEstateOffice = false,
+    this.isGoogleUser = false,
+    this.freeTierResetDate,
+    this.postingCredits = 0,
   });
 
   UserProfile copyWith({
@@ -41,6 +51,7 @@ class UserProfile {
     String? email,
     String? phone,
     String? profileImageUrl,
+    String? coverImageUrl,
     DateTime? joinDate,
     int? totalListings,
     int? activeListings,
@@ -49,6 +60,10 @@ class UserProfile {
     DateTime? updatedAt,
     bool? isVerified,
     bool? isAdmin,
+    bool? isRealEstateOffice,
+    bool? isGoogleUser,
+    DateTime? freeTierResetDate,
+    int? postingCredits,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -56,6 +71,7 @@ class UserProfile {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      coverImageUrl: coverImageUrl ?? this.coverImageUrl,
       joinDate: joinDate ?? this.joinDate,
       totalListings: totalListings ?? this.totalListings,
       activeListings: activeListings ?? this.activeListings,
@@ -64,6 +80,10 @@ class UserProfile {
       updatedAt: updatedAt ?? this.updatedAt,
       isVerified: isVerified ?? this.isVerified,
       isAdmin: isAdmin ?? this.isAdmin,
+      isRealEstateOffice: isRealEstateOffice ?? this.isRealEstateOffice,
+      isGoogleUser: isGoogleUser ?? this.isGoogleUser,
+      freeTierResetDate: freeTierResetDate ?? this.freeTierResetDate,
+      postingCredits: postingCredits ?? this.postingCredits,
     );
   }
 
@@ -71,13 +91,15 @@ class UserProfile {
   bool get canAddProperty {
     // Debug logging
     if (kDebugMode) {
-      debugPrint('🔍 Property Limit Check:');
-      debugPrint('   Total Listings: $totalListings');
-      debugPrint('   Property Limit: $propertyLimit');
-      debugPrint('   Can Add: ${totalListings < propertyLimit}');
+      debugPrint('🔍 Posting Credits Check:');
+      debugPrint('   Current Credits: $postingCredits');
+      debugPrint('   Can Add: ${postingCredits > 0}');
     }
-    return totalListings < propertyLimit;
+    return postingCredits > 0;
   }
+  
+  /// Get effective property limit (Legacy - used for UI)
+  int get effectivePropertyLimit => propertyLimit;
   
   /// Get remaining property slots
   int get remainingSlots => (propertyLimit - totalListings).clamp(0, propertyLimit);
@@ -99,6 +121,9 @@ class UserListing {
   final bool isBoosted;
   final String? boostPackageName;
   final DateTime? boostExpiresAt;
+  final bool isExpired;
+  final bool isDeleted;
+  final DateTime? slotConsumedAt;
 
   const UserListing({
     required this.id,
@@ -113,6 +138,9 @@ class UserListing {
     this.isBoosted = false,
     this.boostPackageName,
     this.boostExpiresAt,
+    this.isExpired = false,
+    this.isDeleted = false,
+    this.slotConsumedAt,
   });
 
   UserListing copyWith({
@@ -128,6 +156,9 @@ class UserListing {
     bool? isBoosted,
     String? boostPackageName,
     DateTime? boostExpiresAt,
+    bool? isExpired,
+    bool? isDeleted,
+    DateTime? slotConsumedAt,
   }) {
     return UserListing(
       id: id ?? this.id,
@@ -142,8 +173,13 @@ class UserListing {
       isBoosted: isBoosted ?? this.isBoosted,
       boostPackageName: boostPackageName ?? this.boostPackageName,
       boostExpiresAt: boostExpiresAt ?? this.boostExpiresAt,
+      isExpired: isExpired ?? this.isExpired,
+      isDeleted: isDeleted ?? this.isDeleted,
+      slotConsumedAt: slotConsumedAt ?? this.slotConsumedAt,
     );
   }
+
+  bool get isEffectivelyExpired => isExpired || DateTime.now().difference(createdAt).inDays >= 60;
 
   bool get isBoostActive {
     if (!isBoosted || boostExpiresAt == null) return false;
@@ -161,6 +197,24 @@ class UserListing {
       }
     } else {
       return 'Boost expired';
+    }
+  }
+
+  String? getLocalizedBoostStatus(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (!isBoosted) return null;
+
+    if (isBoostActive) {
+      final remaining = boostExpiresAt!.difference(DateTime.now());
+      String timeStr;
+      if (remaining.inHours > 0) {
+        timeStr = '${remaining.inHours}${l10n?.hoursShort ?? "h"}';
+      } else {
+        timeStr = '${remaining.inMinutes}${l10n?.minutesShort ?? "m"}';
+      }
+      return l10n?.boostedWithTime(timeStr) ?? 'Boosted ($timeStr left)';
+    } else {
+      return l10n?.boostExpired ?? 'Boost expired';
     }
   }
 }
@@ -194,6 +248,10 @@ class ProfileService {
         final data = doc.data();
         final property = Property.fromFirestore(doc.id, data);
         
+        // A listing is active if it's published AND is for sale/rent (not sold/rented)
+        final isActiveStatus = property.status == PropertyStatus.forSale || property.status == PropertyStatus.forRent;
+        final isActiveProperty = isActiveStatus && property.isPublished && !property.isDeleted;
+        
         return UserListing(
           id: property.id,
           title: property.title,
@@ -201,14 +259,17 @@ class ProfileService {
           city: property.city,
           imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
           createdAt: property.createdAt,
-          isActive: property.status == PropertyStatus.forSale || property.status == PropertyStatus.forRent,
+          isActive: isActiveProperty,
           isPublished: property.isPublished,
           views: property.views,
           isBoosted: property.isBoosted,
           boostPackageName: property.boostPackageName,
           boostExpiresAt: property.boostExpiresAt,
+          isExpired: property.isExpired,
+          isDeleted: property.isDeleted,
+          slotConsumedAt: property.slotConsumedAt,
         );
-      }).toList();
+      }).toList(); // Include deleted listings for burned slot visualization
 
       if (kDebugMode) {
         debugPrint('👤 ProfileService: Loaded ${_userListings.length} properties for user: $userId');

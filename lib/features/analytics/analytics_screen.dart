@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:dary/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/analytics_service.dart';
 import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';
+import '../../widgets/dary_loading_indicator.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -77,71 +80,182 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final currentUser = authProvider.currentUser;
 
     if (currentUser == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(l10n?.analytics ?? 'Analytics'),
-          centerTitle: true,
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          actions: [
-            LanguageToggleButton(languageService: languageService),
-          ],
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
+      return const Scaffold(
+        backgroundColor: Color(0xFFF8FAFC),
+        body: Center(
+          child: DaryLoadingIndicator(color: Color(0xFF01352D)),
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n?.analytics ?? 'Analytics'),
-        centerTitle: true,
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadAnalyticsData,
-          ),
-          LanguageToggleButton(languageService: languageService),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadAnalyticsData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: CustomScrollView(
+        slivers: [
+          // Modern Gradient App Bar
+          SliverAppBar(
+            expandedHeight: 140,
+            floating: false,
+            pinned: true,
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/profile');
+                }
+              },
+            ),
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF01352D),
+                    Color(0xFF024035),
+                    Color(0xFF015F4D),
+                  ],
+                ),
+              ),
+              child: FlexibleSpaceBar(
+                background: Stack(
                   children: [
-                    // Summary Cards
-                    _buildSummaryCards(l10n),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // AI Assistant Bot
-                    _buildAnalyticsAssistant(l10n),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Daily Views Chart
-                    _buildDailyViewsChart(l10n),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Property Type Performance Chart
-                    _buildPropertyTypeChart(l10n),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Performance Details
-                    _buildPerformanceDetails(l10n),
+                    // Decorative circles
+                    Positioned(
+                      right: -50,
+                      top: -50,
+                      child: Container(
+                        width: 200,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.05),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: -30,
+                      bottom: -30,
+                      child: Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.05),
+                        ),
+                      ),
+                    ),
+                    // Content
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.analytics_rounded,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      l10n?.analytics ?? 'Analytics',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Track your property performance',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        color: Colors.white.withValues(alpha: 0.8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                                onPressed: _loadAnalyticsData,
+                              ),
+                              LanguageToggleButton(languageService: languageService),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
+          ),
+
+          // Content
+          if (_isLoading)
+            const SliverFillRemaining(
+              child: Center(
+                child: DaryLoadingIndicator(color: Color(0xFF01352D)),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.all(16.0),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // Summary Cards
+                  _buildSummaryCards(l10n),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // AI Assistant Bot
+                  _buildAnalyticsAssistant(l10n),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Daily Views Chart
+                  _buildDailyViewsChart(l10n),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Property Type Performance Chart
+                  _buildPropertyTypeChart(l10n),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Performance Details
+                  _buildPerformanceDetails(l10n),
+                  
+                  const SizedBox(height: 100), // Bottom padding
+                ]),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -173,7 +287,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 title: l10n?.averageEngagement ?? 'Average Engagement',
                 value: '${_performanceSummary?.averageEngagement.toStringAsFixed(1) ?? '0.0'}%',
                 icon: Icons.trending_up,
-                color: Colors.green,
+                color: const Color(0xFF01352D),
               ),
             ),
           ],
@@ -311,7 +425,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       barRods: [
                         BarChartRodData(
                           toY: data['views'].toDouble(),
-                          color: Colors.green,
+                          color: const Color(0xFF01352D),
                           width: 20,
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                         ),
@@ -421,7 +535,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
               _buildMetricRow(
                 l10n?.averageViewsPerListing ?? 'Average Views per Listing',
-                '${(_performanceSummary!.totalViews / _performanceSummary!.propertyTypePerformance.values.fold(0, (sum, count) => sum + count)).toStringAsFixed(1)}',
+                (_performanceSummary!.totalViews / _performanceSummary!.propertyTypePerformance.values.fold(0, (sum, count) => sum + count)).toStringAsFixed(1),
                 Icons.visibility,
               ),
               _buildMetricRow(
@@ -476,12 +590,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.blue[50]!,
-              Colors.green[50]!,
+              Color(0xFFE6F4F2),
+              Color(0xFFFFFFFF),
             ],
           ),
         ),
@@ -500,7 +614,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.blue.withOpacity(0.3),
+                          color: Colors.blue.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -513,21 +627,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Analytics Assistant',
-                          style: TextStyle(
+                          AppLocalizations.of(context)?.analyticsAssistant ?? 'Analytics Assistant',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
                         ),
                         Text(
-                          'AI-Powered Performance Insights',
-                          style: TextStyle(
+                          AppLocalizations.of(context)?.aiPoweredInsights ?? 'AI-Powered Performance Insights',
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
                           ),
@@ -552,6 +666,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   List<Map<String, dynamic>> _analyzePerformance() {
     final insights = <Map<String, dynamic>>[];
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return insights;
     
     if (_performanceSummary == null) return insights;
     
@@ -567,31 +683,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     if (summary.totalViews == 0) {
       insights.add({
         'type': 'error',
-        'title': 'No Views Detected',
-        'message': 'Your properties have received no views. This might be because:\n'
-            '• Properties are not published\n'
-            '• Poor quality images or missing photos\n'
-            '• Unclear or unappealing titles\n'
-            '• Properties might be hidden or inactive',
+        'title': l10n.noViewsTitle,
+        'message': l10n.noViewsMessage,
         'suggestions': [
-          'Check if all properties are published',
-          'Add high-quality photos to all properties',
-          'Write clear, descriptive titles',
-          'Consider boosting your properties for visibility',
+          l10n.checkPublished,
+          l10n.addHighQualityPhotos,
+          l10n.writeClearTitles,
+          l10n.considerBoosting,
         ],
       });
     } else if (avgViewsPerListing < 10) {
       insights.add({
         'type': 'warning',
-        'title': 'Low Visibility',
-        'message': 'Your properties are getting very few views (average ${avgViewsPerListing.toStringAsFixed(1)} per listing).\n'
-            'This suggests your listings need better optimization.',
+        'title': l10n.lowVisibilityTitle,
+        'message': l10n.lowVisibilityMessage(avgViewsPerListing.toStringAsFixed(1)),
         'suggestions': [
-          'Improve property photos quality',
-          'Write more detailed and appealing descriptions',
-          'Add more photos (at least 5-10 per property)',
-          'Consider using the boost feature to increase visibility',
-          'Verify your pricing is competitive',
+          l10n.improvePhotos,
+          l10n.detailedDescriptions,
+          l10n.addMorePhotos,
+          l10n.considerBoosting,
+          l10n.verifyPricing,
         ],
       });
     }
@@ -599,15 +710,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     if (engagementRate < 5.0 && summary.totalViews > 0) {
       insights.add({
         'type': 'warning',
-        'title': 'Low Engagement Rate',
-        'message': 'Your engagement rate is ${engagementRate.toStringAsFixed(1)}%, which is below average.\n'
-            'This means people view your properties but don\'t take action.',
+        'title': l10n.lowEngagementTitle,
+        'message': l10n.lowEngagementMessage(engagementRate.toStringAsFixed(1)),
         'suggestions': [
-          'Add more compelling property descriptions',
-          'Include all amenities and features',
-          'Verify contact information is correct',
-          'Consider adjusting pricing to be more competitive',
-          'Add property location details (neighborhood, nearby amenities)',
+          l10n.compellingDescriptions,
+          l10n.includeAmenities,
+          l10n.verifyContactInfo,
+          l10n.adjustPricing,
+          l10n.addLocationDetails,
         ],
       });
     }
@@ -615,15 +725,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     if (contactRate < 2.0 && summary.totalViews > 0) {
       insights.add({
         'type': 'warning',
-        'title': 'Very Low Contact Rate',
-        'message': 'Only ${contactRate.toStringAsFixed(1)}% of viewers are contacting you.\n'
-            'This suggests properties might be overpriced or lack important information.',
+        'title': l10n.veryLowContactTitle,
+        'message': l10n.veryLowContactMessage(contactRate.toStringAsFixed(1)),
         'suggestions': [
-          'Review and adjust pricing to market rates',
-          'Add complete property information',
-          'Highlight unique selling points',
-          'Ensure contact phone number is visible',
-          'Respond quickly to inquiries when they come',
+          l10n.reviewPricing,
+          l10n.completeInfo,
+          l10n.highlightPoints,
+          l10n.visiblePhoneNumber,
+          l10n.respondQuickly,
         ],
       });
     }
@@ -631,24 +740,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     if (totalListings == 0) {
       insights.add({
         'type': 'info',
-        'title': 'No Listings Yet',
-        'message': 'You don\'t have any active listings. Start by adding your first property!',
+        'title': l10n.noListingsTitle,
+        'message': l10n.noListingsMessage,
         'suggestions': [
-          'Click "Add Property" to create your first listing',
-          'Add high-quality photos',
-          'Fill in all property details completely',
-          'Publish your property to make it visible',
+          l10n.addFirstProperty,
+          l10n.addHighQualityPhotos,
+          l10n.fillDetails,
+          l10n.publishVisible,
         ],
       });
     } else if (totalListings == 1) {
       insights.add({
         'type': 'info',
-        'title': 'Increase Your Exposure',
-        'message': 'Having only one listing limits your visibility. Consider adding more properties.',
+        'title': l10n.increaseExposureTitle,
+        'message': l10n.increaseExposureMessage,
         'suggestions': [
-          'Add more properties to increase your portfolio',
-          'Each property increases your overall visibility',
-          'Diversify property types and locations',
+          l10n.addMoreProperties,
+          l10n.eachPropertyVisibility,
+          l10n.diversify,
         ],
       });
     }
@@ -657,13 +766,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     if (engagementRate >= 10.0 && summary.totalViews > 50) {
       insights.add({
         'type': 'success',
-        'title': 'Great Engagement!',
-        'message': 'Your engagement rate of ${engagementRate.toStringAsFixed(1)}% is excellent!\n'
-            'Keep up the good work by maintaining quality listings.',
+        'title': l10n.greatEngagementTitle,
+        'message': l10n.greatEngagementMessage(engagementRate.toStringAsFixed(1)),
         'suggestions': [
-          'Continue maintaining high-quality listings',
-          'Keep property information updated',
-          'Add new properties regularly',
+          l10n.maintainQuality,
+          l10n.keepUpdated,
+          l10n.addRegularly,
         ],
       });
     }
@@ -671,29 +779,28 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     if (contactRate >= 5.0 && summary.totalContactClicks > 0) {
       insights.add({
         'type': 'success',
-        'title': 'Good Contact Conversion',
-        'message': 'Your contact rate of ${contactRate.toStringAsFixed(1)}% shows good conversion.\n'
-            'Make sure to respond promptly to all inquiries.',
+        'title': l10n.goodContactTitle,
+        'message': l10n.goodContactMessage(contactRate.toStringAsFixed(1)),
         'suggestions': [
-          'Respond to inquiries within 24 hours',
-          'Keep contact information up to date',
-          'Be professional and helpful in communications',
+          l10n.respond24h,
+          l10n.keepContactUpdated,
+          l10n.beProfessional,
         ],
       });
     }
 
+
     // If no specific issues, provide general tips
     if (insights.isEmpty && summary.totalViews > 0) {
       insights.add({
-        'type': 'info',
-        'title': 'Performance Tips',
-        'message': 'Your properties are performing well! Here are some tips to improve further:',
+        'type': 'success',
+        'title': l10n.doingGreatTitle,
+        'message': l10n.doingGreatMessage,
         'suggestions': [
-          'Update property photos regularly',
-          'Keep descriptions fresh and detailed',
-          'Monitor analytics weekly',
-          'Consider boosting properties during peak times',
-          'Gather and respond to user feedback',
+          l10n.keepDescriptionsFresh,
+          l10n.monitorWeekly,
+          l10n.boostPeakTimes,
+          l10n.gatherFeedback,
         ],
       });
     }
@@ -723,8 +830,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         icon = Icons.warning;
         break;
       case 'success':
-        borderColor = Colors.green;
-        backgroundColor = Colors.green[50]!;
+        borderColor = const Color(0xFF01352D);
+        backgroundColor = const Color(0xFF01352D).withValues(alpha: 0.06);
         icon = Icons.check_circle_outline;
         break;
       default:
@@ -771,9 +878,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           ),
           if (suggestions.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text(
-              'Suggestions:',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)?.suggestions ?? 'Suggestions:',
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,

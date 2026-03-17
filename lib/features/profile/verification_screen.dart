@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:dary/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../providers/auth_provider.dart';
 import '../../services/language_service.dart';
 import '../../widgets/language_toggle_button.dart';
+import '../../widgets/dary_loading_indicator.dart';
 
 class VerificationScreen extends StatefulWidget {
   const VerificationScreen({super.key});
@@ -41,7 +43,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)?.errorPickingImage ?? 'Error picking image'),
+          content: Text(AppLocalizations.of(context)?.errorPickingImage(e) ?? 'Error picking image'),
           backgroundColor: Colors.red,
         ),
       );
@@ -117,7 +119,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -212,7 +214,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -242,7 +244,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton.icon(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => context.go('/profile'),
                   icon: const Icon(Icons.arrow_back),
                   label: Text(l10n?.backToProfile ?? 'Back to Profile'),
                   style: ElevatedButton.styleFrom(
@@ -443,13 +445,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
                     ? const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
+                          const DaryLoadingIndicator(
+                            size: 20,
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
                           SizedBox(width: 12),
                           Text('Submitting...'),

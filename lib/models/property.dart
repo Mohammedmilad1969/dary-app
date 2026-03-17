@@ -1,6 +1,8 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../l10n/app_localizations.dart';
+import 'package:flutter/foundation.dart';
 import '../services/api_client.dart';
 import '../services/property_cache_service.dart';
 import '../config/env_config.dart';
@@ -10,6 +12,32 @@ enum PropertyStatus { forSale, forRent, sold, rented }
 enum PropertyCondition { newConstruction, excellent, good, fair, needsRenovation }
 
 extension PropertyTypeExtension on PropertyType {
+  String getLocalizedName(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return typeDisplayName;
+    switch (this) {
+      case PropertyType.apartment:
+        return l10n.typeApartment;
+      case PropertyType.house:
+        return l10n.typeHouse;
+      case PropertyType.villa:
+        return l10n.typeVilla;
+      case PropertyType.vacationHome:
+        return l10n.typeVacationHome;
+      case PropertyType.townhouse:
+        return l10n.typeTownhouse;
+      case PropertyType.studio:
+        return l10n.typeStudio;
+      case PropertyType.penthouse:
+        return l10n.typePenthouse;
+      case PropertyType.commercial:
+        return l10n.typeCommercial;
+      case PropertyType.land:
+        return l10n.typeLand;
+    }
+  }
+
+  // Deprecated: use getLocalizedName(context) instead
   String get typeDisplayName {
     switch (this) {
       case PropertyType.apartment:
@@ -35,6 +63,22 @@ extension PropertyTypeExtension on PropertyType {
 }
 
 extension PropertyStatusExtension on PropertyStatus {
+  String getLocalizedName(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return statusDisplayName;
+    switch (this) {
+      case PropertyStatus.forSale:
+        return l10n.statusForSale;
+      case PropertyStatus.forRent:
+        return l10n.statusForRent;
+      case PropertyStatus.sold:
+        return l10n.statusSold;
+      case PropertyStatus.rented:
+        return l10n.statusRented;
+    }
+  }
+
+  // Deprecated: use getLocalizedName(context) instead
   String get statusDisplayName {
     switch (this) {
       case PropertyStatus.forSale:
@@ -50,6 +94,24 @@ extension PropertyStatusExtension on PropertyStatus {
 }
 
 extension PropertyConditionExtension on PropertyCondition {
+  String getLocalizedName(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return conditionDisplayName;
+    switch (this) {
+      case PropertyCondition.newConstruction:
+        return l10n.condNewConstruction;
+      case PropertyCondition.excellent:
+        return l10n.condExcellent;
+      case PropertyCondition.good:
+        return l10n.condGood;
+      case PropertyCondition.fair:
+        return l10n.condFair;
+      case PropertyCondition.needsRenovation:
+        return l10n.condNeedsRenovation;
+    }
+  }
+
+  // Deprecated: use getLocalizedName(context) instead
   String get conditionDisplayName {
     switch (this) {
       case PropertyCondition.newConstruction:
@@ -97,6 +159,7 @@ class Property {
   final bool hasHeating;
   final bool hasFurnished;
   final bool hasPetFriendly;
+  final bool hasWaterWell;
   final bool hasNearbySchools;
   final bool hasNearbyHospitals;
   final bool hasNearbyShopping;
@@ -113,6 +176,9 @@ class Property {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int views;
+  final int phoneClicks;
+  final int whatsappClicks;
+  final int saveCount;
   final bool isFeatured;
   final bool isVerified;
   final bool isBoosted;
@@ -120,6 +186,13 @@ class Property {
   final double? boostPrice;
   final DateTime? boostExpiresAt;
   final bool isPublished; // Published status (visible to public)
+  final bool isExpired; // Whether the 30-day listing has expired
+  final bool isDeleted; // Whether the property has been deleted by user
+  final DateTime? expiredAt; // When it expired
+  final bool slotConsumed; // Whether this property currently occupies a listing slot
+  final DateTime? slotConsumedAt; // When this property last consumed a slot
+
+  bool get isEffectivelyExpired => isExpired || DateTime.now().difference(createdAt).inDays >= 60;
 
   Property({
     required this.id,
@@ -150,6 +223,7 @@ class Property {
     this.hasHeating = false,
     this.hasFurnished = false,
     this.hasPetFriendly = false,
+    this.hasWaterWell = false,
     this.hasNearbySchools = false,
     this.hasNearbyHospitals = false,
     this.hasNearbyShopping = false,
@@ -164,6 +238,9 @@ class Property {
     required this.createdAt,
     required this.updatedAt,
     this.views = 0,
+    this.phoneClicks = 0,
+    this.whatsappClicks = 0,
+    this.saveCount = 0,
     this.isFeatured = false,
     this.isVerified = false,
     this.isBoosted = false,
@@ -171,6 +248,11 @@ class Property {
     this.boostPrice,
     this.boostExpiresAt,
     this.isPublished = true, // Default to published
+    this.isExpired = false,
+    this.isDeleted = false,
+    this.expiredAt,
+    this.slotConsumed = false,
+    this.slotConsumedAt,
   });
 
   String get displayPrice {
@@ -183,6 +265,21 @@ class Property {
       }
     }
     return '${formatter.format(price)} LYD';
+  }
+
+  String getLocalizedPrice(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final formatter = NumberFormat('#,###');
+    final currency = l10n?.currencyLYD ?? 'LYD';
+    
+    if (status == PropertyStatus.forRent) {
+      if (dailyRent > 0) {
+        return '${formatter.format(dailyRent)} $currency${l10n?.perDay ?? "/day"}';
+      } else if (monthlyRent > 0) {
+        return '${formatter.format(monthlyRent)} $currency${l10n?.perMonth ?? "/month"}';
+      }
+    }
+    return '${formatter.format(price)} $currency';
   }
 
   bool get isBoostActive {
@@ -204,6 +301,24 @@ class Property {
     }
   }
 
+  String? getLocalizedBoostStatus(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (!isBoosted) return null;
+    
+    if (isBoostActive) {
+      final remaining = boostExpiresAt!.difference(DateTime.now());
+      String timeStr;
+      if (remaining.inHours > 0) {
+        timeStr = '${remaining.inHours}${l10n?.hoursShort ?? "h"}';
+      } else {
+        timeStr = '${remaining.inMinutes}${l10n?.minutesShort ?? "m"}';
+      }
+      return l10n?.boostedWithTime(timeStr) ?? 'Boosted ($timeStr left)';
+    } else {
+      return l10n?.boostExpired ?? 'Boost expired';
+    }
+  }
+
   /// Get the boost amount in LYD based on the package name
   double? get boostAmount {
     if (!isBoosted) return null;
@@ -221,6 +336,10 @@ class Property {
     
     if (packageName.contains('bronze')) {
       return 20.0;
+    } else if (packageName.contains('emerald') || 
+               packageName.contains('green') || 
+               packageName.contains('50')) {
+      return 50.0;
     } else if (packageName.contains('silver')) {
       return 100.0;
     } else if (packageName.contains('gold')) {
@@ -265,6 +384,128 @@ class Property {
     return null;
   }
 
+  Property copyWith({
+    String? id,
+    String? userId,
+    String? title,
+    String? description,
+    double? price,
+    int? sizeSqm,
+    String? city,
+    String? neighborhood,
+    String? address,
+    int? bedrooms,
+    int? bathrooms,
+    int? kitchens,
+    int? floors,
+    int? yearBuilt,
+    PropertyType? type,
+    PropertyStatus? status,
+    PropertyCondition? condition,
+    bool? hasBalcony,
+    bool? hasGarden,
+    bool? hasParking,
+    bool? hasPool,
+    bool? hasGym,
+    bool? hasSecurity,
+    bool? hasElevator,
+    bool? hasAC,
+    bool? hasHeating,
+    bool? hasFurnished,
+    bool? hasPetFriendly,
+    bool? hasWaterWell,
+    bool? hasNearbySchools,
+    bool? hasNearbyHospitals,
+    bool? hasNearbyShopping,
+    bool? hasPublicTransport,
+    double? monthlyRent,
+    double? dailyRent,
+    double? deposit,
+    String? contactPhone,
+    String? contactEmail,
+    String? agentName,
+    List<String>? imageUrls,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    int? views,
+    int? phoneClicks,
+    int? whatsappClicks,
+    int? saveCount,
+    bool? isFeatured,
+    bool? isVerified,
+    bool? isBoosted,
+    String? boostPackageName,
+    double? boostPrice,
+    DateTime? boostExpiresAt,
+    bool? isPublished,
+    bool? isExpired,
+    bool? isDeleted,
+    DateTime? expiredAt,
+    bool? slotConsumed,
+    DateTime? slotConsumedAt,
+  }) {
+    return Property(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      sizeSqm: sizeSqm ?? this.sizeSqm,
+      city: city ?? this.city,
+      neighborhood: neighborhood ?? this.neighborhood,
+      address: address ?? this.address,
+      bedrooms: bedrooms ?? this.bedrooms,
+      bathrooms: bathrooms ?? this.bathrooms,
+      kitchens: kitchens ?? this.kitchens,
+      floors: floors ?? this.floors,
+      yearBuilt: yearBuilt ?? this.yearBuilt,
+      type: type ?? this.type,
+      status: status ?? this.status,
+      condition: condition ?? this.condition,
+      hasBalcony: hasBalcony ?? this.hasBalcony,
+      hasGarden: hasGarden ?? this.hasGarden,
+      hasParking: hasParking ?? this.hasParking,
+      hasPool: hasPool ?? this.hasPool,
+      hasGym: hasGym ?? this.hasGym,
+      hasSecurity: hasSecurity ?? this.hasSecurity,
+      hasElevator: hasElevator ?? this.hasElevator,
+      hasAC: hasAC ?? this.hasAC,
+      hasHeating: hasHeating ?? this.hasHeating,
+      hasFurnished: hasFurnished ?? this.hasFurnished,
+      hasPetFriendly: hasPetFriendly ?? this.hasPetFriendly,
+      hasWaterWell: hasWaterWell ?? this.hasWaterWell,
+      hasNearbySchools: hasNearbySchools ?? this.hasNearbySchools,
+      hasNearbyHospitals: hasNearbyHospitals ?? this.hasNearbyHospitals,
+      hasNearbyShopping: hasNearbyShopping ?? this.hasNearbyShopping,
+      hasPublicTransport: hasPublicTransport ?? this.hasPublicTransport,
+      monthlyRent: monthlyRent ?? this.monthlyRent,
+      dailyRent: dailyRent ?? this.dailyRent,
+      deposit: deposit ?? this.deposit,
+      contactPhone: contactPhone ?? this.contactPhone,
+      contactEmail: contactEmail ?? this.contactEmail,
+      agentName: agentName ?? this.agentName,
+      imageUrls: imageUrls ?? this.imageUrls,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      views: views ?? this.views,
+      phoneClicks: phoneClicks ?? this.phoneClicks,
+      whatsappClicks: whatsappClicks ?? this.whatsappClicks,
+      saveCount: saveCount ?? this.saveCount,
+      isFeatured: isFeatured ?? this.isFeatured,
+      isVerified: isVerified ?? this.isVerified,
+      isBoosted: isBoosted ?? this.isBoosted,
+      boostPackageName: boostPackageName ?? this.boostPackageName,
+      boostPrice: boostPrice ?? this.boostPrice,
+      boostExpiresAt: boostExpiresAt ?? this.boostExpiresAt,
+      isPublished: isPublished ?? this.isPublished,
+      isExpired: isExpired ?? this.isExpired,
+      isDeleted: isDeleted ?? this.isDeleted,
+      expiredAt: expiredAt ?? this.expiredAt,
+      slotConsumed: slotConsumed ?? this.slotConsumed,
+      slotConsumedAt: slotConsumedAt ?? this.slotConsumedAt,
+    );
+  }
+
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
       id: json['id']?.toString() ?? '',
@@ -295,6 +536,7 @@ class Property {
       hasHeating: json['has_heating'] ?? json['hasHeating'] ?? false,
       hasFurnished: json['has_furnished'] ?? json['hasFurnished'] ?? false,
       hasPetFriendly: json['has_pet_friendly'] ?? json['hasPetFriendly'] ?? false,
+      hasWaterWell: json['has_water_well'] ?? json['hasWaterWell'] ?? false,
       hasNearbySchools: json['has_nearby_schools'] ?? json['hasNearbySchools'] ?? false,
       hasNearbyHospitals: json['has_nearby_hospitals'] ?? json['hasNearbyHospitals'] ?? false,
       hasNearbyShopping: json['has_nearby_shopping'] ?? json['hasNearbyShopping'] ?? false,
@@ -331,10 +573,32 @@ class Property {
           : json['boostExpiresAt'] != null
               ? DateTime.parse(json['boostExpiresAt'])
               : null,
+      slotConsumed: json['slotConsumed'] ?? json['slot_consumed'] ?? false,
+      slotConsumedAt: json['slotConsumedAt'] != null 
+          ? DateTime.parse(json['slotConsumedAt'])
+          : json['slot_consumed_at'] != null
+              ? DateTime.parse(json['slot_consumed_at'])
+              : null,
     );
   }
 
   factory Property.fromFirestore(String id, Map<String, dynamic> data) {
+    // Helper to safely extract bool from nested features or root level
+    bool safeBool(Map<String, dynamic> map, String key) {
+      // First try nested features object
+      if (map['features'] is Map) {
+        final features = map['features'] as Map<String, dynamic>;
+        final value = features[key];
+        if (value != null && value is bool) return value;
+      }
+      // Then try root level
+      final value = map[key];
+      if (value == null) return false;
+      if (value is bool) return value;
+      // Handle explicit null or other types
+      return false;
+    }
+
     return Property(
       id: id,
       userId: data['userId'] ?? '', // Added userId parsing
@@ -353,21 +617,22 @@ class Property {
       type: _parsePropertyType(data['type']),
       status: _parsePropertyStatus(data['status']),
       condition: _parsePropertyCondition(data['condition']),
-      hasBalcony: data['hasBalcony'] ?? false,
-      hasGarden: data['hasGarden'] ?? false,
-      hasParking: data['hasParking'] ?? false,
-      hasPool: data['hasPool'] ?? false,
-      hasGym: data['hasGym'] ?? false,
-      hasSecurity: data['hasSecurity'] ?? false,
-      hasElevator: data['hasElevator'] ?? false,
-      hasAC: data['hasAC'] ?? false,
-      hasHeating: data['hasHeating'] ?? false,
-      hasFurnished: data['hasFurnished'] ?? false,
-      hasPetFriendly: data['hasPetFriendly'] ?? false,
-      hasNearbySchools: data['hasNearbySchools'] ?? false,
-      hasNearbyHospitals: data['hasNearbyHospitals'] ?? false,
-      hasNearbyShopping: data['hasNearbyShopping'] ?? false,
-      hasPublicTransport: data['hasPublicTransport'] ?? false,
+      hasBalcony: safeBool(data, 'hasBalcony'),
+      hasGarden: safeBool(data, 'hasGarden'),
+      hasParking: safeBool(data, 'hasParking'),
+      hasPool: safeBool(data, 'hasPool'),
+      hasGym: safeBool(data, 'hasGym'),
+      hasSecurity: safeBool(data, 'hasSecurity'),
+      hasElevator: safeBool(data, 'hasElevator'),
+      hasAC: safeBool(data, 'hasAC'),
+      hasHeating: safeBool(data, 'hasHeating'),
+      hasFurnished: safeBool(data, 'hasFurnished'),
+      hasPetFriendly: safeBool(data, 'hasPetFriendly'),
+      hasWaterWell: safeBool(data, 'hasWaterWell'),
+      hasNearbySchools: safeBool(data, 'hasNearbySchools'),
+      hasNearbyHospitals: safeBool(data, 'hasNearbyHospitals'),
+      hasNearbyShopping: safeBool(data, 'hasNearbyShopping'),
+      hasPublicTransport: safeBool(data, 'hasPublicTransport'),
       monthlyRent: (data['monthlyRent'] ?? 0).toDouble(),
       dailyRent: (data['dailyRent'] ?? 0).toDouble(),
       deposit: (data['deposit'] ?? 0).toDouble(),
@@ -376,12 +641,19 @@ class Property {
       agentName: data['agentName'] ?? '',
       imageUrls: (data['imageUrls'] ?? []).cast<String>(),
       createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate()
+          ? (data['createdAt'] is Timestamp 
+              ? (data['createdAt'] as Timestamp).toDate() 
+              : DateTime.tryParse(data['createdAt'].toString()) ?? DateTime.now())
           : DateTime.now(),
       updatedAt: data['updatedAt'] != null 
-          ? (data['updatedAt'] as Timestamp).toDate()
+          ? (data['updatedAt'] is Timestamp 
+              ? (data['updatedAt'] as Timestamp).toDate() 
+              : DateTime.tryParse(data['updatedAt'].toString()) ?? DateTime.now())
           : DateTime.now(),
       views: data['views'] ?? 0,
+      phoneClicks: data['phone_clicks'] ?? data['phoneClicks'] ?? 0,
+      whatsappClicks: data['whatsapp_clicks'] ?? data['whatsappClicks'] ?? 0,
+      saveCount: data['save_count'] ?? data['saveCount'] ?? 0,
       isFeatured: data['isFeatured'] ?? false,
       isVerified: data['isVerified'] ?? false,
       // Check if boost is expired - if so, treat as not boosted
@@ -391,6 +663,19 @@ class Property {
       boostPrice: _parseBoostData(data)['boostPrice'] as double?,
       boostExpiresAt: _parseBoostData(data)['boostExpiresAt'] as DateTime?,
       isPublished: data['isPublished'] ?? true, // Default to true for backward compatibility
+      isExpired: data['isExpired'] ?? false,
+      isDeleted: data['isDeleted'] ?? false,
+      expiredAt: data['expiredAt'] != null 
+          ? (data['expiredAt'] is Timestamp 
+              ? (data['expiredAt'] as Timestamp).toDate() 
+              : DateTime.tryParse(data['expiredAt'].toString()))
+          : null,
+      slotConsumed: data['slotConsumed'] ?? false,
+      slotConsumedAt: data['slotConsumedAt'] != null 
+          ? (data['slotConsumedAt'] is Timestamp 
+              ? (data['slotConsumedAt'] as Timestamp).toDate() 
+              : DateTime.tryParse(data['slotConsumedAt'].toString()))
+          : null,
     );
   }
 
@@ -398,9 +683,10 @@ class Property {
   /// This prevents properties with the same name from affecting each other's boost status
   /// Each property ID has independent boost state - matching by ID, never by title
   static Map<String, dynamic> _parseBoostData(Map<String, dynamic> data) {
-    final boostExpiresAtTimestamp = data['boostExpiresAt'] as Timestamp?;
-    final boostExpiresAt = boostExpiresAtTimestamp != null
-        ? boostExpiresAtTimestamp.toDate()
+    final boostExpiresAt = data['boostExpiresAt'] != null
+        ? (data['boostExpiresAt'] is Timestamp 
+            ? (data['boostExpiresAt'] as Timestamp).toDate() 
+            : DateTime.tryParse(data['boostExpiresAt'].toString()))
         : null;
     final isBoostedFlag = data['isBoosted'] ?? false;
     
@@ -499,20 +785,29 @@ class Property {
       'hasHeating': hasHeating,
       'hasFurnished': hasFurnished,
       'hasPetFriendly': hasPetFriendly,
+      'hasWaterWell': hasWaterWell,
       'hasNearbySchools': hasNearbySchools,
       'hasNearbyHospitals': hasNearbyHospitals,
       'hasNearbyShopping': hasNearbyShopping,
       'hasPublicTransport': hasPublicTransport,
       'views': views,
+      'phoneClicks': phoneClicks,
+      'whatsappClicks': whatsappClicks,
+      'saveCount': saveCount,
       'isFeatured': isFeatured,
       'isVerified': isVerified,
       'isBoosted': isBoosted,
       'boostPackageName': boostPackageName,
       'boostPrice': boostPrice,
       'isPublished': isPublished,
+      'isExpired': isExpired,
+      'isDeleted': isDeleted,
+      'expiredAt': expiredAt?.toIso8601String(),
       'boostExpiresAt': boostExpiresAt?.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'slotConsumed': slotConsumed,
+      'slotConsumedAt': slotConsumedAt?.toIso8601String(),
     };
   }
 }
@@ -743,6 +1038,7 @@ class PropertyService {
         hasHeating: property.hasHeating,
         hasFurnished: property.hasFurnished,
         hasPetFriendly: property.hasPetFriendly,
+        hasWaterWell: property.hasWaterWell,
         hasNearbySchools: property.hasNearbySchools,
         hasNearbyHospitals: property.hasNearbyHospitals,
         hasNearbyShopping: property.hasNearbyShopping,

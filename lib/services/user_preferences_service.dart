@@ -88,7 +88,7 @@ class UserPreferencesService extends ChangeNotifier {
   }
 
   /// Get language preference
-  String getLanguage({String defaultValue = 'en'}) {
+  String getLanguage({String defaultValue = 'ar'}) {
     return getPreference<String>('language', defaultValue: defaultValue) ?? defaultValue;
   }
 
@@ -255,5 +255,16 @@ class UserPreferencesService extends ChangeNotifier {
         debugPrint('❌ UserPreferencesService: Error importing preferences: $e');
       }
     }
+  }
+  /// Set onboarding seen status
+  Future<void> setHasSeenOnboarding(bool seen) async {
+    await _persistenceService.cacheAppSettings({'hasSeenOnboarding': seen});
+    notifyListeners();
+  }
+
+  /// Get onboarding seen status
+  Future<bool> hasSeenOnboarding() async {
+    final settings = await _persistenceService.loadAppSettings();
+    return settings['hasSeenOnboarding'] ?? false;
   }
 }

@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/env_config.dart';
 import '../services/api_client.dart';
-import '../models/property.dart';
-import '../services/property_service.dart';
 
 /// Analytics data models
 class ListingViews {
@@ -467,6 +465,158 @@ class AnalyticsService {
         {'type': 'Villa', 'count': 15, 'color': 0xFFFF9800},
         {'type': 'Studio', 'count': 10, 'color': 0xFF9C27B0},
       ];
+    }
+  }
+
+  /// Log a contact click (phone or whatsapp)
+  Future<void> logContactClick(String propertyId, String clickType) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🔥 Logging contact click: $clickType for property $propertyId');
+      }
+      await FirebaseFirestore.instance
+          .collection('analytics')
+          .doc('contact_clicks')
+          .collection('clicks')
+          .add({
+        'propertyId': propertyId,
+        'type': clickType, // 'phone' or 'whatsapp'
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error logging contact click: $e');
+    }
+  }
+
+  /// Get specific click counts (phone vs whatsapp) for a user's properties
+  Future<Map<String, int>> getClickBreakdown(String userId) async {
+    try {
+      int phoneClicks = 0;
+      int whatsappClicks = 0;
+
+      // Get user's properties first
+      final propertiesSnapshot = await FirebaseFirestore.instance
+          .collection('properties')
+          .where('userId', isEqualTo: userId)
+          .get();
+      
+      final propertyIds = propertiesSnapshot.docs.map((doc) => doc.id).toList();
+      
+      if (propertyIds.isEmpty) {
+        return {'phone': 0, 'whatsapp': 0};
+      }
+
+      // Query clicks for these properties
+      // Note: Firestore 'in' query is limited to 10 items.
+      // For a real app with many properties, we'd need a better data structure 
+      // (e.g. storing aggregating counts on the property document itself).
+      // For now, we'll iterate properties as done in other methods.
+      
+      for (final propertyId in propertyIds) {
+        final clicksSnapshot = await FirebaseFirestore.instance
+            .collection('analytics')
+            .doc('contact_clicks')
+            .collection('clicks')
+            .where('propertyId', isEqualTo: propertyId)
+            .get();
+            
+        for (final doc in clicksSnapshot.docs) {
+          final data = doc.data();
+          final type = data['type'] as String?;
+          if (type == 'phone') {
+            phoneClicks++;
+          } else if (type == 'whatsapp') {
+            whatsappClicks++;
+          } else {
+             // Legacy or undefined, count as generally contact clicks?
+             // Maybe default to one or just ignore. 
+             // For backward compatibility, if type is missing, assume it was valid engagement but maybe not categorized.
+          }
+        }
+      }
+
+      return {
+        'phone': phoneClicks,
+        'whatsapp': whatsappClicks,
+      };
+
+    } catch (e) {
+      debugPrint('Error getting click breakdown: $e');
+      return {'phone': 0, 'whatsapp': 0};
+    }
+  }
+
+  /// Get detailed metrics for each property of a user
+  Future<Map<String, Map<String, int>>> getPropertySpecificMetrics(String userId) async {
+    final Map<String, Map<String, int>> metrics = {};
+    
+    // Mock data handling
+    if (EnvConfig.useMockData) {
+      // Simulate varied data
+      return {
+        'prop_001': {'phone': 12, 'whatsapp': 25, 'favorites': 8},
+        'prop_002': {'phone': 5, 'whatsapp': 8, 'favorites': 3},
+        'prop_003': {'phone': 28, 'whatsapp': 45, 'favorites': 15},
+      };
+    }
+
+    try {
+      // Get user's properties first
+      final propertiesSnapshot = await FirebaseFirestore.instance
+          .collection('properties')
+          .where('userId', isEqualTo: userId)
+          .get();
+      
+      final propertyIds = propertiesSnapshot.docs.map((doc) => doc.id).toList();
+
+      for (final propertyId in propertyIds) {
+        metrics[propertyId] = {
+          'phone': 0,
+          'whatsapp': 0,
+          'favorites': 0, // In a real app, this would be a count from a 'favorites' subcollection or counter field
+        };
+
+        // Get clicks breakdown
+        // Optimization: In production, run these consecutively or use aggregation queries
+        final clicksSnapshot = await FirebaseFirestore.instance
+            .collection('analytics')
+            .doc('contact_clicks')
+            .collection('clicks')
+            .where('propertyId', isEqualTo: propertyId)
+            .get();
+
+        for (final doc in clicksSnapshot.docs) {
+          final type = doc.data()['type'] as String?;
+          if (type == 'phone') {
+            metrics[propertyId]!['phone'] = (metrics[propertyId]!['phone'] ?? 0) + 1;
+          } else if (type == 'whatsapp') {
+            metrics[propertyId]!['whatsapp'] = (metrics[propertyId]!['whatsapp'] ?? 0) + 1;
+          }
+        }
+        
+        // Mock favorites count - REMOVED
+        
+        // Real favorites count using Collection Group Query
+        // Note: This requires a Firestore Index. If it fails, we handle gracefully.
+        try {
+           final favoritesQuery = await FirebaseFirestore.instance
+              .collectionGroup('favorites')
+              .where('propertyId', isEqualTo: propertyId)
+              .get(); // Using get() to count documents. Count aggregation is better but requires newer SDK/backend.
+           
+           metrics[propertyId]!['favorites'] = favoritesQuery.docs.length;
+        } catch (e) {
+           // Fallback if index missing or permission denied
+           // debugPrint('Favorites query failed (likely needs index): $e');
+           metrics[propertyId]!['favorites'] = 0;
+        }
+      }
+      
+      return metrics;
+
+    } catch (e) {
+      debugPrint('Error getting property specific metrics: $e');
+      return {};
     }
   }
 

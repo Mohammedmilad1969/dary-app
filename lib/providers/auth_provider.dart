@@ -1,16 +1,39 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_profile.dart';
 import '../services/auth_service.dart';
+import '../services/wallet_service.dart';
+import 'package:dary/services/notification_service.dart';
+import '../app/app_router.dart';
 
 /// AuthProvider manages authentication state using ChangeNotifier
 /// This provides a clean interface for widgets to listen to auth changes
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final WalletService _walletService = WalletService();
   
   UserProfile? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+
+  AuthProvider() {
+    _authService.addListener(_handleAuthServiceUpdate);
+    initialize();
+  }
+
+  @override
+  void dispose() {
+    _authService.removeListener(_handleAuthServiceUpdate);
+    super.dispose();
+  }
+
+  void _handleAuthServiceUpdate() {
+    if (_currentUser != _authService.currentUser) {
+      _currentUser = _authService.currentUser;
+      notifyListeners();
+    }
+  }
 
   /// Getter for current user
   UserProfile? get currentUser => _currentUser;
@@ -33,6 +56,13 @@ class AuthProvider extends ChangeNotifier {
   /// Getter for user name
   String? get userName => _currentUser?.name;
 
+  /// Getter for session token
+  String? get sessionToken => _authService.sessionToken;
+
+  /// Check if email is verified
+  bool get isEmailVerified => _currentUser?.isVerified ?? false;
+
+
   /// Initialize authentication state
   Future<void> initialize() async {
     _setLoading(true);
@@ -46,6 +76,10 @@ class AuthProvider extends ChangeNotifier {
         if (kDebugMode) {
           debugPrint('✅ AuthProvider: Valid session found for user: ${_currentUser!.email}');
         }
+        // Initialize wallet for the authenticated user
+        await _initializeWallet();
+        // Update FCM token for push notifications
+        await NotificationService().updateFCMToken(_currentUser!.id);
       } else {
         // No valid session
         _clearError();
@@ -85,14 +119,20 @@ class AuthProvider extends ChangeNotifier {
       final user = await _authService.loginWithIdentifier(identifier, password);
       if (user != null) {
         _currentUser = user;
-        notifyListeners();
+        _notifySafely();
+        AppRouter.refresh();
+        // Initialize wallet for the authenticated user
+        await _initializeWallet();
+        // Update FCM token for push notifications
+        await NotificationService().updateFCMToken(_currentUser!.id);
         return true;
       } else {
-        _setError('Login failed. Please check your credentials.');
+        _setError('LOGIN_FAILED');
         return false;
       }
     } catch (e) {
-      _setError('Login error: $e');
+      // Pass the raw error so the UI can translate the specific Firebase error code
+      _setError(e.toString());
       return false;
     } finally {
       _setLoading(false);
@@ -108,7 +148,12 @@ class AuthProvider extends ChangeNotifier {
       final success = await _authService.signInWithGoogle();
       if (success) {
         _currentUser = await _authService.getCurrentUser();
-        notifyListeners();
+        _notifySafely();
+        AppRouter.refresh();
+        // Initialize wallet for the authenticated user
+        await _initializeWallet();
+        // Update FCM token for push notifications
+        await NotificationService().updateFCMToken(_currentUser!.id);
         return true;
       } else {
         _setError('Google Sign-In failed. Please try again.');
@@ -122,6 +167,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+
   /// Register new user
   Future<bool> register(String name, String email, String phone, String password) async {
     _setLoading(true);
@@ -129,21 +175,29 @@ class AuthProvider extends ChangeNotifier {
     
     try {
       final user = await _authService.register(name, email, phone, password);
+      
       if (user != null) {
         _currentUser = user;
-        notifyListeners();
+        _notifySafely();
+        AppRouter.refresh();
+        // Initialize wallet for the authenticated user
+        await _initializeWallet();
+        // Update FCM token for push notifications
+        await NotificationService().updateFCMToken(_currentUser!.id);
         return true;
       } else {
-        _setError('Registration failed. Please try again.');
+        _setError('REGISTRATION_FAILED');
         return false;
       }
     } catch (e) {
-      _setError('Registration error: $e');
+      // Pass the raw error so the UI can translate the specific Firebase error code
+      _setError(e.toString());
       return false;
     } finally {
       _setLoading(false);
     }
   }
+
 
   /// Logout current user
   Future<void> logout() async {
@@ -153,7 +207,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _authService.logout();
       _currentUser = null;
-      notifyListeners();
+      _notifySafely();
     } catch (e) {
       _setError('Logout error: $e');
     } finally {
@@ -161,16 +215,37 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Delete current user account fully
+  Future<bool> deleteAccount({String? password}) async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      await _authService.deleteAccount(password: password);
+      _currentUser = null;
+      _notifySafely();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+
   /// Refresh current user data
   Future<void> refreshUser() async {
     if (_currentUser == null) return;
     
     _setLoading(true);
     try {
+      // Call refreshUser which fetches from Firestore
+      await _authService.refreshUser();
       final user = await _authService.getCurrentUser();
       if (user != null) {
         _currentUser = user;
-        notifyListeners();
+        _notifySafely();
       }
     } catch (e) {
       _setError('Failed to refresh user data: $e');
@@ -184,22 +259,21 @@ class AuthProvider extends ChangeNotifier {
     if (_currentUser == null) return;
     
     _setLoading(true);
+    _clearError();
     try {
-      // Update user verification status in AuthService
       await _authService.verifyUser(_currentUser!.email);
-      
-      // Refresh user data to get updated verification status
-      final user = await _authService.getCurrentUser();
-      if (user != null) {
-        _currentUser = user;
-        notifyListeners();
-      }
+      _currentUser = await _authService.getCurrentUser();
+      _notifySafely();
     } catch (e) {
       _setError('Failed to verify user: $e');
     } finally {
       _setLoading(false);
     }
   }
+
+
+
+
 
   /// Clear error message
   void clearError() {
@@ -208,8 +282,17 @@ class AuthProvider extends ChangeNotifier {
 
   /// Set loading state
   void _setLoading(bool loading) {
+    if (_isLoading == loading) return;
     _isLoading = loading;
-    notifyListeners();
+    _notifySafely();
+  }
+
+  void _notifySafely() {
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => notifyListeners());
+    } else {
+      notifyListeners();
+    }
   }
 
   /// Set error message
@@ -218,13 +301,29 @@ class AuthProvider extends ChangeNotifier {
     if (kDebugMode) {
       debugPrint('AuthProvider Error: $error');
     }
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Clear error message
   void _clearError() {
     _errorMessage = null;
-    notifyListeners();
+    _notifySafely();
+  }
+
+  /// Initialize wallet for the current user
+  Future<void> _initializeWallet() async {
+    if (_currentUser != null) {
+      try {
+        await _walletService.initialize(_currentUser!.id);
+        if (kDebugMode) {
+          debugPrint('💰 AuthProvider: Wallet initialized for user: ${_currentUser!.id}');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('⚠️ AuthProvider: Failed to initialize wallet: $e');
+        }
+      }
+    }
   }
 
   /// Update user profile
@@ -232,6 +331,7 @@ class AuthProvider extends ChangeNotifier {
     required String name,
     String? phone,
     String? profileImageUrl,
+    String? coverImageUrl,
   }) async {
     _setLoading(true);
     _clearError();
@@ -241,12 +341,13 @@ class AuthProvider extends ChangeNotifier {
         name: name,
         phone: phone,
         profileImageUrl: profileImageUrl,
+        coverImageUrl: coverImageUrl,
       );
       
       if (success) {
         // Refresh user data to get updated profile
         _currentUser = await _authService.getCurrentUser();
-        notifyListeners();
+        _notifySafely();
         return true;
       } else {
         _setError('Failed to update profile.');
@@ -259,6 +360,33 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
     }
   }
+
+  /// Send password reset email
+  Future<bool> resetPassword(String email) async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      await _authService.resetPassword(email);
+      return true;
+    } catch (e) {
+      _setError('Reset password error: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Check email verification status
+  Future<bool> checkEmailVerification(String token) async {
+    return await _authService.checkEmailVerification(token);
+  }
+
+  /// Send email verification
+  Future<void> sendEmailVerification([String? token]) async {
+    await _authService.sendEmailVerification(token);
+  }
+
 
   /// Check if user has specific permission (placeholder for future use)
   bool hasPermission(String permission) {
@@ -285,11 +413,5 @@ class AuthProvider extends ChangeNotifier {
       }
     }
     return 'G';
-  }
-
-  @override
-  void dispose() {
-    // AuthService doesn't need disposal as it's static
-    super.dispose();
   }
 }

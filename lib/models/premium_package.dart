@@ -4,6 +4,7 @@ import '../services/api_client.dart';
 import '../services/wallet_service.dart' as wallet_service;
 import '../config/env_config.dart';
 import 'wallet.dart' as wallet_models;
+import '../l10n/app_localizations.dart';
 
 enum PackageDuration {
   day,
@@ -18,6 +19,7 @@ class PremiumPackage {
   final PackageDuration duration;
   final int durationDays;
   final double price;
+  final int? credits; // Number of posting credits provided by this package
   final String currency;
   final List<String> features;
   final bool isPopular;
@@ -32,6 +34,7 @@ class PremiumPackage {
     required this.duration,
     required this.durationDays,
     required this.price,
+    this.credits,
     required this.currency,
     required this.features,
     this.isPopular = false,
@@ -48,6 +51,7 @@ class PremiumPackage {
       duration: _parseDuration(json['duration']),
       durationDays: json['duration_days'] ?? json['durationDays'] ?? 1,
       price: (json['price'] ?? 0).toDouble(),
+      credits: json['credits'],
       currency: json['currency'] ?? 'LYD',
       features: (json['features'] ?? []).cast<String>(),
       isPopular: json['is_popular'] ?? json['isPopular'] ?? false,
@@ -69,6 +73,7 @@ class PremiumPackage {
       duration: _parseDuration(data['duration']),
       durationDays: data['durationDays'] ?? 1,
       price: (data['price'] ?? 0).toDouble(),
+      credits: data['credits'],
       currency: data['currency'] ?? 'LYD',
       features: (data['features'] ?? []).cast<String>(),
       isPopular: data['isPopular'] ?? false,
@@ -99,8 +104,8 @@ class PaywallService {
 
   static final List<PremiumPackage> _packages = [
     PremiumPackage(
-      id: '1',
-      name: 'Top Listing',
+      id: 'plus',
+      name: 'Plus',
       description: 'Boost your property for 1 day',
       duration: PackageDuration.day,
       durationDays: 1,
@@ -116,8 +121,26 @@ class PaywallService {
       updatedAt: DateTime.now(),
     ),
     PremiumPackage(
-      id: '2',
-      name: 'Top Listing',
+      id: 'emerald',
+      name: 'Emerald',
+      description: 'Boost your property for 3 days',
+      duration: PackageDuration.day,
+      durationDays: 3,
+      price: 50.0,
+      currency: _currency,
+      features: const [
+        'Priority placement in search results',
+        'Featured badge on your listing',
+        'Increased visibility',
+        '3-day boost',
+        'Enhanced analytics',
+      ],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ),
+    PremiumPackage(
+      id: 'premium',
+      name: 'Premium',
       description: 'Boost your property for 1 week',
       duration: PackageDuration.week,
       durationDays: 7,
@@ -136,8 +159,8 @@ class PaywallService {
       updatedAt: DateTime.now(),
     ),
     PremiumPackage(
-      id: '3',
-      name: 'Top Listing',
+      id: 'elite',
+      name: 'Elite',
       description: 'Boost your property for 1 month',
       duration: PackageDuration.month,
       durationDays: 30,
@@ -158,7 +181,83 @@ class PaywallService {
     ),
   ];
 
-  static List<PremiumPackage> get packages => _packages;
+  static final List<PremiumPackage> _creditPackages = [
+    PremiumPackage(
+      id: 'credits_15',
+      name: 'Starter Package',
+      description: 'Get 15 posting credits',
+      duration: PackageDuration.month,
+      durationDays: 30,
+      price: 100.0,
+      credits: 15,
+      currency: _currency,
+      features: const [
+        '15 Property Posting Credits',
+        'Persistent credits (no monthly loss)',
+        'Basic search visibility',
+      ],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ),
+    PremiumPackage(
+      id: 'credits_50',
+      name: 'Standard Package',
+      description: 'Get 50 posting credits',
+      duration: PackageDuration.month,
+      durationDays: 30,
+      price: 300.0,
+      credits: 50,
+      currency: _currency,
+      features: const [
+        '50 Property Posting Credits',
+        'Persistent credits',
+        'Standard search visibility',
+        'Email support',
+      ],
+      isPopular: true,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ),
+    PremiumPackage(
+      id: 'credits_100',
+      name: 'Professional Package',
+      description: 'Get 100 posting credits',
+      duration: PackageDuration.month,
+      durationDays: 30,
+      price: 600.0,
+      credits: 100,
+      currency: _currency,
+      features: const [
+        '100 Property Posting Credits',
+        'Persistent credits',
+        'Enhanced search visibility',
+        'Priority support',
+      ],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ),
+    PremiumPackage(
+      id: 'credits_200',
+      name: 'Business Package',
+      description: 'Get 200 posting credits',
+      duration: PackageDuration.month,
+      durationDays: 30,
+      price: 1000.0,
+      credits: 200,
+      currency: _currency,
+      features: const [
+        '200 Property Posting Credits',
+        'Persistent credits',
+        'Maximum search visibility',
+        'Dedicated account manager',
+      ],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ),
+  ];
+
+  static List<PremiumPackage> get packages => _creditPackages;
+  static List<PremiumPackage> get boostPackages => _packages;
   static String get currency => _currency;
 
   static Future<List<PremiumPackage>> getPackages({String? token}) async {
@@ -167,7 +266,7 @@ class PaywallService {
       if (kDebugMode) {
         debugPrint('🎭 Using mock data for packages (useMockData: true)');
       }
-      return _packages;
+      return _creditPackages;
     }
     
     try {
@@ -188,14 +287,14 @@ class PaywallService {
         if (kDebugMode) {
           debugPrint('⚠️ Unexpected packages API response format, using mock data');
         }
-        return _packages;
+        return _creditPackages;
       }
     } catch (e) {
       // If API call fails, fall back to mock data
       if (kDebugMode) {
         debugPrint('⚠️ Packages API call failed, using mock data: $e');
       }
-      return _packages;
+      return _creditPackages;
     }
   }
 
@@ -311,31 +410,35 @@ class PaywallService {
 
   static PremiumPackage? getPackageById(String packageId) {
     try {
-      return _packages.firstWhere((package) => package.id == packageId);
+      // Search in both credits and boost packages
+      final allPackages = [..._creditPackages, ..._packages];
+      return allPackages.firstWhere((package) => package.id == packageId);
     } catch (e) {
       return null;
     }
   }
 
-  static String getDurationText(PackageDuration duration) {
-    switch (duration) {
-      case PackageDuration.day:
-        return '1 Day';
-      case PackageDuration.week:
-        return '1 Week';
-      case PackageDuration.month:
-        return '1 Month';
+  static String getDurationText(PremiumPackage package, AppLocalizations? l10n) {
+    if (package.credits != null && package.credits! > 0) {
+      return l10n?.oneTimePurchase ?? 'One-time purchase';
     }
+    if (package.duration == PackageDuration.week) return l10n?.oneWeek ?? '1 Week';
+    if (package.duration == PackageDuration.month) return l10n?.oneMonth ?? '1 Month';
+    
+    // Default to days
+    if (package.durationDays == 1) return l10n?.oneDay ?? '1 Day';
+    return l10n?.durationDays('${package.durationDays}') ?? '${package.durationDays} Days';
   }
 
-  static String getDurationDescription(PackageDuration duration) {
-    switch (duration) {
+  static String getDurationDescription(PremiumPackage package, AppLocalizations? l10n) {
+    if (package.durationDays == 3) return l10n?.shortTermPromo ?? 'Perfect for short-term promotion';
+    switch (package.duration) {
       case PackageDuration.day:
-        return 'Perfect for quick promotion';
+        return l10n?.quickPromo ?? 'Perfect for quick promotion';
       case PackageDuration.week:
-        return 'Great for testing the waters';
+        return l10n?.testingWaters ?? 'Great for testing the waters';
       case PackageDuration.month:
-        return 'Best value for serious sellers';
+        return l10n?.bestValueSerious ?? 'Best value for serious sellers';
     }
   }
 }

@@ -1,0 +1,304 @@
+Analyzing dary...                                               
+
+   info • Don't use 'BuildContext's across async gaps • lib/app/app_router.dart:53:58 • use_build_context_synchronously
+warning • The declaration '_shouldShowFAB' isn't referenced • lib/app/main_layout.dart:219:8 • unused_element
+warning • The value of the field '_selectedPayments' isn't used • lib/features/admin/admin_dashboard.dart:51:21 • unused_field
+warning • The value of the field '_selectedTransactions' isn't used • lib/features/admin/admin_dashboard.dart:52:21 • unused_field
+   info • Don't use 'BuildContext's across async gaps • lib/features/admin/admin_dashboard.dart:308:58 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/features/admin/admin_dashboard.dart:335:58 • use_build_context_synchronously
+warning • The declaration '_bulkVerifyUsers' isn't referenced • lib/features/admin/admin_dashboard.dart:489:16 • unused_element
+warning • The declaration '_bulkDeactivateProperties' isn't referenced • lib/features/admin/admin_dashboard.dart:508:16 • unused_element
+   info • Don't use 'BuildContext's across async gaps • lib/features/auth/forgot_password_screen.dart:30:38 • use_build_context_synchronously
+warning • Unused import: 'dart:io' • lib/features/auth/login_screen.dart:1:8 • unused_import
+   info • The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • lib/features/auth/login_screen.dart:2:8 • unnecessary_import
+warning • The value of the field '_rememberMe' isn't used • lib/features/auth/login_screen.dart:25:14 • unused_field
+warning • The value of the local variable 'size' isn't used • lib/features/auth/login_screen.dart:171:11 • unused_local_variable
+warning • Unused import: 'dart:io' • lib/features/auth/register_screen.dart:1:8 • unused_import
+warning • Unused import: 'package:flutter/foundation.dart' • lib/features/auth/register_screen.dart:13:8 • unused_import
+warning • The value of the local variable 'size' isn't used • lib/features/auth/register_screen.dart:235:11 • unused_local_variable
+warning • The left operand can't be null, so the right operand is never executed • lib/features/chat/chat_notification_service.dart:177:97 • dead_null_aware_expression
+warning • The value of the field '_messages' isn't used • lib/features/chat/chat_screen.dart:40:21 • unused_field
+   info • Don't use 'BuildContext's across async gaps • lib/features/chat/chat_screen.dart:298:56 • use_build_context_synchronously
+   info • Don't invoke 'print' in production code • lib/features/chat/chat_screen.dart:354:5 • avoid_print
+warning • The left operand can't be null, so the right operand is never executed • lib/features/chat/chat_service.dart:774:101 • dead_null_aware_expression
+   info • The parameter name 'sum' matches a visible type name • lib/features/chat/chat_service.dart:1256:36 • avoid_types_as_parameter_names
+warning • The value of the local variable 'l10n' isn't used • lib/features/chat/chat_widgets.dart:24:11 • unused_local_variable
+warning • The value of the local variable 'l10n' isn't used • lib/features/chat/chat_widgets.dart:257:11 • unused_local_variable
+warning • The declaration '_testNotification' isn't referenced • lib/features/chat/conversation_list_screen.dart:157:8 • unused_element
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/features/notifications/notification_settings_screen.dart:245:19 • deprecated_member_use
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/features/notifications/notification_settings_screen.dart:292:9 • deprecated_member_use
+warning • Unused import: '../../models/user_profile.dart' • lib/features/paywall/paywall_screens.dart:10:8 • unused_import
+warning • Unused import: '../../widgets/listing_selection_dialog.dart' • lib/features/paywall/paywall_screens.dart:11:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps • lib/features/paywall/paywall_screens.dart:99:32 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/features/paywall/paywall_screens.dart:117:28 • use_build_context_synchronously
+warning • The value of the field '_propertyService' isn't used • lib/features/profile/favorites_screen.dart:20:42 • unused_field
+warning • Unused import: 'package:intl/intl.dart' • lib/features/profile/profile_screens.dart:2:8 • unused_import
+warning • Unused import: '../../services/auth_service.dart' • lib/features/profile/profile_screens.dart:20:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/profile/profile_screens.dart:141:36 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/features/profile/profile_screens.dart:145:48 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/profile/profile_screens.dart:157:44 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/profile/profile_screens.dart:332:75 • use_build_context_synchronously
+warning • The value of the local variable 'activeListings' isn't used • lib/features/profile/profile_screens.dart:518:11 • unused_local_variable
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/profile/profile_screens.dart:682:56 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/profile/profile_screens.dart:694:56 • use_build_context_synchronously
+warning • The value of the local variable 'now' isn't used • lib/features/profile/profile_screens.dart:1472:39 • unused_local_variable
+warning • The declaration '_buildAccountActionTile' isn't referenced • lib/features/profile/profile_screens.dart:2066:10 • unused_element
+warning • The declaration '_showPropertyLimitModal' isn't referenced • lib/features/profile/profile_screens.dart:2143:16 • unused_element
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/profile/profile_screens.dart:2156:7 • use_build_context_synchronously
+warning • The declaration '_englishPrivacyPolicy' isn't referenced • lib/features/profile/profile_screens.dart:2198:10 • unused_element
+warning • The declaration '_arabicPrivacyPolicy' isn't referenced • lib/features/profile/profile_screens.dart:2234:10 • unused_element
+warning • The value of the local variable 'successCount' isn't used • lib/features/profile/profile_screens.dart:2377:11 • unused_local_variable
+warning • The value of the local variable 'selectedProperties' isn't used • lib/features/profile/profile_screens.dart:2402:11 • unused_local_variable
+   info • Don't use 'BuildContext's across async gaps • lib/features/profile/profile_screens.dart:2420:7 • use_build_context_synchronously
+warning • The value of the local variable 'successCount' isn't used • lib/features/profile/profile_screens.dart:2454:11 • unused_local_variable
+warning • The declaration '_resetFreeTierSlots' isn't referenced • lib/features/profile/profile_screens.dart:2576:16 • unused_element
+   info • Don't use 'BuildContext's across async gaps • lib/features/profile/verification_screen.dart:44:28 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/features/profile/verification_screen.dart:46:45 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/features/profile/verification_screen.dart:103:54 • use_build_context_synchronously
+   info • Unnecessary 'const' keyword • lib/features/profile/verification_screen.dart:448:27 • unnecessary_const
+warning • The value of the local variable 'response' isn't used • lib/features/saved_searches/saved_search_service.dart:163:15 • unused_local_variable
+warning • Dead code • lib/features/saved_searches/saved_search_service.dart:169:15 • dead_code
+warning • The value of the local variable 'response' isn't used • lib/features/saved_searches/saved_search_service.dart:188:15 • unused_local_variable
+warning • Dead code • lib/features/saved_searches/saved_search_service.dart:194:15 • dead_code
+   info • Don't use 'BuildContext's across async gaps • lib/features/wallet/recharge_callback_screen.dart:36:54 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/features/wallet/recharge_callback_screen.dart:37:56 • use_build_context_synchronously
+warning • The value of the field '_selectedType' isn't used • lib/features/wallet/wallet_screens.dart:36:34 • unused_field
+  error • Invalid constant value • lib/features/wallet/wallet_screens.dart:477:42 • invalid_constant
+  error • The method 'DaryLoadingIndicator' isn't defined for the type '_WalletScreenState' • lib/features/wallet/wallet_screens.dart:477:42 • undefined_method
+warning • The value of the local variable 'phoneNumber' isn't used • lib/features/wallet/wallet_screens.dart:518:11 • unused_local_variable
+warning • The declaration '_showLyPayDialog' isn't referenced • lib/features/wallet/wallet_screens.dart:541:8 • unused_element
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/wallet/wallet_screens.dart:882:30 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/wallet/wallet_screens.dart:883:38 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/features/wallet/wallet_screens.dart:885:55 • use_build_context_synchronously
+  error • Invalid constant value • lib/features/wallet/wallet_screens.dart:1058:28 • invalid_constant
+  error • The method 'DaryLoadingIndicator' isn't defined for the type '_WalletScreenState' • lib/features/wallet/wallet_screens.dart:1058:28 • undefined_method
+   info • Unnecessary use of double quotes • lib/main.dart:36:14 • prefer_single_quotes
+warning • The value of the local variable 'updatedTransactions' isn't used • lib/models/premium_package.dart:323:13 • unused_local_variable
+warning • The value of the local variable 'actualPropertyCount' isn't used • lib/screens/add_property_screen.dart:240:11 • unused_local_variable
+warning • The value of the local variable 'propertyLimit' isn't used • lib/screens/add_property_screen.dart:245:11 • unused_local_variable
+warning • The value of the field '_isUploadingImages' isn't used • lib/screens/add_property_screen.dart:353:8 • unused_field
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:572:28 • use_build_context_synchronously
+warning • The declaration '_removeImage' isn't referenced • lib/screens/add_property_screen.dart:581:8 • unused_element
+warning • The declaration '_buildNumberSelector' isn't referenced • lib/screens/add_property_screen.dart:587:10 • unused_element
+warning • The declaration '_buildStatusToggle' isn't referenced • lib/screens/add_property_screen.dart:656:10 • unused_element
+warning • The left operand can't be null, so the right operand is never executed • lib/screens/add_property_screen.dart:909:46 • dead_null_aware_expression
+warning • The left operand can't be null, so the right operand is never executed • lib/screens/add_property_screen.dart:910:42 • dead_null_aware_expression
+warning • The value of the local variable 'totalImagesCount' isn't used • lib/screens/add_property_screen.dart:930:15 • unused_local_variable
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:934:32 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:949:32 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:972:32 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:1057:68 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:1063:62 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:1106:34 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:1114:13 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:1142:34 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:1154:13 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/add_property_screen.dart:1160:30 • use_build_context_synchronously
+warning • The value of the local variable 'languageService' isn't used • lib/screens/add_property_screen.dart:1215:11 • unused_local_variable
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/screens/add_property_screen.dart:1844:13 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre • lib/screens/add_property_screen.dart:1871:13 • deprecated_member_use
+warning • The declaration '_buildOldFormContent' isn't referenced • lib/screens/add_property_screen.dart:2572:10 • unused_element
+warning • The declaration '_buildSectionTitleOriginal' isn't referenced • lib/screens/add_property_screen.dart:2578:10 • unused_element
+warning • The declaration '_buildFeaturesGrid' isn't referenced • lib/screens/add_property_screen.dart:2673:10 • unused_element
+warning • The declaration '_buildPlatformImage' isn't referenced • lib/screens/add_property_screen.dart:2748:10 • unused_element
+warning • The declaration '_buildUpgradeAdSection' isn't referenced • lib/screens/add_property_screen.dart:2838:10 • unused_element
+warning • The declaration '_buildLoginRequiredScreen' isn't referenced • lib/screens/add_property_screen.dart:3230:10 • unused_element
+warning • The value of the field '_filterMinPrice' isn't used • lib/screens/home_screen.dart:46:10 • unused_field
+warning • The value of the field '_filterMaxPrice' isn't used • lib/screens/home_screen.dart:47:10 • unused_field
+warning • The value of the field '_filterMinSize' isn't used • lib/screens/home_screen.dart:48:10 • unused_field
+warning • The value of the field '_filterMaxSize' isn't used • lib/screens/home_screen.dart:49:10 • unused_field
+warning • The value of the field '_floorsOptions' isn't used • lib/screens/home_screen.dart:103:26 • unused_field
+warning • The value of the field '_scrollOffset' isn't used • lib/screens/home_screen.dart:114:16 • unused_field
+warning • The value of the field '_isHeaderVisible' isn't used • lib/screens/home_screen.dart:115:14 • unused_field
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/home_screen.dart:253:75 • use_build_context_synchronously
+warning • The value of the local variable 'button' isn't used • lib/screens/home_screen.dart:277:21 • unused_local_variable
+warning • The value of the local variable 'overlay' isn't used • lib/screens/home_screen.dart:278:21 • unused_local_variable
+warning • The value of the local variable 'authProvider' isn't used • lib/screens/home_screen.dart:379:11 • unused_local_variable
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:389:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:391:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:501:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:502:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:505:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:508:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:513:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:587:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:588:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:589:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:593:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:596:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:599:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:603:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:621:7 • avoid_print
+warning • The declaration '_buildSortButton' isn't referenced • lib/screens/home_screen.dart:780:10 • unused_element
+warning • The declaration '_buildSortButtonOld' isn't referenced • lib/screens/home_screen.dart:879:10 • unused_element
+warning • The declaration '_buildGridViewButton' isn't referenced • lib/screens/home_screen.dart:922:10 • unused_element
+warning • The declaration '_buildActionCard' isn't referenced • lib/screens/home_screen.dart:1460:10 • unused_element
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:1600:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/screens/home_screen.dart:1631:5 • avoid_print
+warning • The left operand can't be null, so the right operand is never executed • lib/screens/home_screen.dart:1764:60 • dead_null_aware_expression
+warning • The declaration '_buildFilterDropdown' isn't referenced • lib/screens/home_screen.dart:1884:10 • unused_element
+   info • The parameter name 'num' matches a visible type name • lib/screens/home_screen.dart:2219:58 • avoid_types_as_parameter_names
+   info • The parameter name 'num' matches a visible type name • lib/screens/home_screen.dart:2235:58 • avoid_types_as_parameter_names
+   info • The parameter name 'num' matches a visible type name • lib/screens/home_screen.dart:2359:62 • avoid_types_as_parameter_names
+warning • The declaration '_StickyFilterHeaderDelegate' isn't referenced • lib/screens/home_screen.dart:2981:7 • unused_element
+warning • The value of the field '_isLoadingSeller' isn't used • lib/screens/property_detail_screen.dart:46:8 • unused_field
+warning • The declaration '_buildActionButtons' isn't referenced • lib/screens/property_detail_screen.dart:442:10 • unused_element
+warning • The value of the local variable 'l10n' isn't used • lib/screens/property_detail_screen.dart:766:11 • unused_local_variable
+warning • The value of the local variable 'languageService' isn't used • lib/screens/property_detail_screen.dart:903:11 • unused_local_variable
+warning • The left operand can't be null, so the right operand is never executed • lib/screens/property_detail_screen.dart:1676:84 • dead_null_aware_expression
+warning • The declaration '_buildGoogleMapsWebView' isn't referenced • lib/screens/property_detail_screen.dart:2114:10 • unused_element
+warning • The declaration '_buildStyledMapPreview' isn't referenced • lib/screens/property_detail_screen.dart:2159:10 • unused_element
+warning • Unused import: 'package:intl/intl.dart' • lib/screens/public_user_profile_screen.dart:5:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps • lib/screens/public_user_profile_screen.dart:86:77 • use_build_context_synchronously
+warning • The declaration '_pickProfileImage' isn't referenced • lib/screens/public_user_profile_screen.dart:465:16 • unused_element
+warning • The declaration '_pickCoverImage' isn't referenced • lib/screens/public_user_profile_screen.dart:466:16 • unused_element
+warning • The value of the field '_performanceSummary' isn't used • lib/screens/real_estate_office_dashboard.dart:40:23 • unused_field
+   info • The parameter name 'sum' matches a visible type name • lib/screens/real_estate_office_dashboard.dart:257:40 • avoid_types_as_parameter_names
+   info • Don't use 'BuildContext's across async gaps • lib/screens/real_estate_office_dashboard.dart:2285:97 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/splash_screen.dart:156:11 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/splash_screen.dart:159:9 • use_build_context_synchronously
+warning • The value of the field '_mockUsers' isn't used • lib/services/admin_service.dart:367:32 • unused_field
+warning • The value of the field '_mockProperties' isn't used • lib/services/admin_service.dart:436:36 • unused_field
+warning • The value of the field '_mockPayments' isn't used • lib/services/admin_service.dart:484:35 • unused_field
+   info • The parameter name 'count' matches a visible type name • lib/services/admin_service.dart:675:43 • avoid_types_as_parameter_names
+warning • The value of the local variable 'userId' isn't used • lib/services/admin_service.dart:1145:13 • unused_local_variable
+   info • The parameter name 'count' matches a visible type name • lib/services/analytics_service.dart:436:33 • avoid_types_as_parameter_names
+   info • Don't invoke 'print' in production code • lib/services/api_client.dart:155:5 • avoid_print
+   info • The import of 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart' is unnecessary because all of the used elements are also provided by the import of 'package:firebase_auth/firebase_auth.dart' • lib/services/auth_service.dart:10:8 • unnecessary_import
+   info • The imported package 'firebase_auth_platform_interface' isn't a dependency of the importing package • lib/services/auth_service.dart:10:8 • depend_on_referenced_packages
+warning • The value of the field '_verificationId' isn't used • lib/services/auth_service.dart:53:11 • unused_field
+warning • The declaration '_clearError' isn't referenced • lib/services/auth_service.dart:167:8 • unused_element
+warning • The value of the local variable 'googleAuth' isn't used • lib/services/auth_service.dart:922:42 • unused_local_variable
+warning • The value of the local variable 'isArabic' isn't used • lib/services/chatbot_service.dart:243:13 • unused_local_variable
+warning • The operand must be 'null', so the condition is always 'false' • lib/services/chatbot_service.dart:858:15 • unnecessary_null_comparison
+   info • The private field _lastResult could be 'final' • lib/services/connectivity_service.dart:14:22 • prefer_final_fields
+warning • The value of the field '_lastResult' isn't used • lib/services/connectivity_service.dart:14:22 • unused_field
+   info • The private field _initCompleter could be 'final' • lib/services/connectivity_service.dart:16:19 • prefer_final_fields
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:30:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:32:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:77:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:79:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:100:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:102:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:116:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:132:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:149:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:168:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:203:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:219:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:232:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:253:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:255:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:267:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:269:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:306:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_manager.dart:308:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:14:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:25:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:27:7 • avoid_print
+warning • The declaration '_createSampleUsers' isn't referenced • lib/services/firestore_setup.dart:33:23 • unused_element
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:66:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:68:7 • avoid_print
+warning • The declaration '_createSampleProperties' isn't referenced • lib/services/firestore_setup.dart:73:23 • unused_element
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:235:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:237:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:278:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:280:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:320:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:322:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:329:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:335:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:336:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:337:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:338:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:339:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:340:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:341:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:343:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:351:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:370:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:373:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_setup.dart:375:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:63:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:65:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:166:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:168:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:197:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:199:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:234:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:236:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:275:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:277:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:318:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:320:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:382:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore_structure.dart:384:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:13:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:27:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:36:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:64:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:76:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:91:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:105:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:111:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:140:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:170:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:188:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:202:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:208:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:223:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/image_upload_service.dart:245:7 • avoid_print
+warning • Unused import: 'package:permission_handler/permission_handler.dart' • lib/services/notification_service.dart:5:8 • unused_import
+warning • Unused import: 'firebase_service.dart' • lib/services/notification_service.dart:21:8 • unused_import
+warning • The value of the local variable 'prefs' isn't used • lib/services/notification_service.dart:327:17 • unused_local_variable
+warning • The value of the local variable 'chatId' isn't used • lib/services/notification_service.dart:356:11 • unused_local_variable
+warning • The method doesn't override an inherited method • lib/services/notification_service.dart:510:16 • override_on_non_overriding_member
+warning • The value of the local variable 'notificationId' isn't used • lib/services/notification_service.dart:538:17 • unused_local_variable
+warning • The declaration '_runConnectivityDiagnostic' isn't referenced • lib/services/notification_service.dart:903:16 • unused_element
+warning • Unused import: '../models/wallet.dart' • lib/services/paywall_service.dart:5:8 • unused_import
+warning • The value of the field '_propertyService' isn't used • lib/services/paywall_service.dart:29:25 • unused_field
+warning • The value of the field '_firebaseService' isn't used • lib/services/property_service.dart:17:25 • unused_field
+warning • The declaration '_arePropertiesEqual' isn't referenced • lib/services/property_service.dart:45:8 • unused_element
+warning • The declaration '_cleanupExpiredBoosts' isn't referenced • lib/services/property_service.dart:75:16 • unused_element
+warning • The value of the local variable 'userId' isn't used • lib/services/property_service.dart:475:13 • unused_local_variable
+warning • The value of the local variable 'userId' isn't used • lib/services/property_service.dart:548:13 • unused_local_variable
+warning • The declaration '_incrementUserPropertyCount' isn't referenced • lib/services/property_service.dart:1062:16 • unused_element
+warning • The declaration '_decrementUserPropertyCount' isn't referenced • lib/services/property_service.dart:1082:16 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/dary_loading_indicator.dart:61:33 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/widgets/home_chatbot.dart:531:20 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/widgets/home_chatbot.dart:533:25 • prefer_const_literals_to_create_immutables
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/loading_overlay.dart:70:35 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/loading_overlay.dart:79:45 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/widgets/loading_overlay.dart:88:23 • prefer_const_constructors
+   info • 'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead • lib/widgets/moamalat_payment_screen_web.dart:2:1 • deprecated_member_use
+warning • The value of the field '_hasBalcony' isn't used • lib/widgets/property_search_filter.dart:95:8 • unused_field
+warning • The value of the field '_hasGym' isn't used • lib/widgets/property_search_filter.dart:99:8 • unused_field
+warning • The value of the field '_hasSecurity' isn't used • lib/widgets/property_search_filter.dart:100:8 • unused_field
+warning • The value of the field '_hasHeating' isn't used • lib/widgets/property_search_filter.dart:103:8 • unused_field
+warning • The value of the field '_hasWaterWell' isn't used • lib/widgets/property_search_filter.dart:105:8 • unused_field
+   info • Don't invoke 'print' in production code • lib/widgets/property_search_filter.dart:166:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/widgets/property_search_filter.dart:169:7 • avoid_print
+warning • The left operand can't be null, so the right operand is never executed • lib/widgets/property_search_filter.dart:372:42 • dead_null_aware_expression
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/property_search_filter.dart:843:51 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/property_search_filter.dart:844:35 • use_build_context_synchronously
+warning • The declaration '_showAdvancedFilters' isn't referenced • lib/widgets/property_search_filter.dart:861:8 • unused_element
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/property_search_filter.dart:1202:59 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/property_search_filter.dart:1203:43 • use_build_context_synchronously
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/success_popup.dart:157:49 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/success_popup.dart:174:49 • deprecated_member_use
+warning • The declaration '_getStatusText' isn't referenced • lib/widgets/transaction_card.dart:346:10 • unused_element
+warning • Unused import: 'package:intl/intl.dart' • lib/widgets/user_listing_card.dart:3:8 • unused_import
+warning • The value of the local variable 'label' isn't used • lib/widgets/user_listing_card.dart:473:12 • unused_local_variable
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:648:17 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:654:62 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:670:29 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:673:19 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:681:62 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:727:29 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:730:19 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:738:62 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:772:19 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/user_listing_card.dart:778:64 • use_build_context_synchronously
+   info • 'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead • lib/widgets/web_maps_iframe.dart:4:1 • deprecated_member_use
+
+300 issues found. (ran in 5.2s)

@@ -3,6 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'chat_models.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/notification_service.dart';
+import '../../models/notification.dart';
+import '../../widgets/premium_notification_banner.dart';
 
 /// Notification service for handling chat notifications
 class ChatNotificationService extends ChangeNotifier {
@@ -71,58 +75,32 @@ class ChatNotificationService extends ChangeNotifier {
       debugPrint('🔔 Showing notification for message from $senderName');
     }
     
-    // Show SnackBar notification
+    // Show system notification via NotificationService
+    final effectiveContext = context ?? _context;
+    if (effectiveContext != null) {
+      await NotificationService().addNotification(
+        title: AppLocalizations.of(effectiveContext)?.newMessageFrom(senderName) ?? 'New message from $senderName',
+        message: message.content,
+        type: NotificationType.chatMessage,
+        chatId: message.conversationId,
+        showSystemAlert: true, // Show system alert so it appears in notification center/history
+      );
+    }
+
+    // Show Premium Notification Banner for foreground
     final ctx = context ?? _context;
     if (ctx != null && ctx.mounted) {
-      ScaffoldMessenger.of(ctx).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(
-                Icons.chat,
-                color: Colors.white,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'New message from $senderName',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      message.content,
-                      style: const TextStyle(fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.indigo,
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          action: SnackBarAction(
-            label: 'View',
-            textColor: Colors.white,
-            onPressed: () {
-              // Navigate to chat using go_router
-              ctx.go('/chat');
-            },
-          ),
-        ),
+      final String initials = senderName.split(' ').take(2).map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').join();
+      
+      PremiumNotificationBanner.show(
+        ctx,
+        title: AppLocalizations.of(ctx)?.newMessageFrom(senderName) ?? 'New message from $senderName',
+        message: message.content,
+        initials: initials,
+        onTap: () {
+          // Navigate to chat using go_router
+          ctx.go('/chat');
+        },
       );
     }
   }
@@ -148,57 +126,27 @@ class ChatNotificationService extends ChangeNotifier {
       debugPrint('🔔 Showing notification for new conversation');
     }
     
-    // Show SnackBar notification
+    // Show system notification via NotificationService
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(
-                Icons.chat_bubble_outline,
-                color: Colors.white,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'New conversation started',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      'About ${conversation.propertyTitle}',
-                      style: const TextStyle(fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          action: SnackBarAction(
-            label: 'View',
-            textColor: Colors.white,
-            onPressed: () {
-              // Navigate to chat using go_router
-              context.go('/chat');
-            },
-          ),
-        ),
+      await NotificationService().addNotification(
+        title: AppLocalizations.of(context)?.newConversationStarted ?? 'New conversation started',
+        message: AppLocalizations.of(context)?.aboutProperty(conversation.propertyTitle ?? '') ?? 'About ${conversation.propertyTitle}',
+        type: NotificationType.chatMessage,
+        chatId: conversation.id,
+        showSystemAlert: true, // Show system alert
+      );
+    }
+
+    // Show Premium Notification Banner
+    if (context.mounted) {
+      PremiumNotificationBanner.show(
+        context,
+        title: AppLocalizations.of(context)?.newConversationStarted ?? 'New conversation started',
+        message: AppLocalizations.of(context)?.aboutProperty(conversation.propertyTitle ?? '') ?? 'About ${conversation.propertyTitle}',
+        onTap: () {
+          // Navigate to chat using go_router
+          context.go('/chat');
+        },
       );
     }
   }

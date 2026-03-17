@@ -9,7 +9,7 @@ class EnvConfig {
   EnvConfig._();
 
   /// Current environment
-  static const Environment _currentEnvironment = Environment.development;
+  static const Environment _currentEnvironment = Environment.production;
 
   /// API Configuration
   static const String _devApiBaseUrl = 'https://api-dev.daryproperties.com/v1';
@@ -35,7 +35,7 @@ class EnvConfig {
   static const int apiTimeoutSeconds = 30;
 
   /// Request timeout duration
-  static Duration get apiTimeoutDuration => Duration(seconds: apiTimeoutSeconds);
+  static Duration get apiTimeoutDuration => const Duration(seconds: apiTimeoutSeconds);
 
   /// Feature Flags
   static const bool enableAnalytics = true;

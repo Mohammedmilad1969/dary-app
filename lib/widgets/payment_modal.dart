@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:dary/l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import '../services/wallet_service.dart' as wallet_service;
 import '../utils/text_input_formatters.dart';
+import 'dary_loading_indicator.dart';
 
 class PaymentModal extends StatefulWidget {
   final double amount;
@@ -30,6 +31,8 @@ class _PaymentModalState extends State<PaymentModal> {
   bool _isSuccess = false;
   String? _errorMessage;
 
+  AppLocalizations? get l10n => AppLocalizations.of(context);
+
   @override
   void dispose() {
     _cardNumberController.dispose();
@@ -41,8 +44,6 @@ class _PaymentModalState extends State<PaymentModal> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -63,7 +64,7 @@ class _PaymentModalState extends State<PaymentModal> {
           width: 80,
           height: 80,
           decoration: const BoxDecoration(
-            color: Colors.green,
+            color: Color(0xFF01352D),
             shape: BoxShape.circle,
           ),
           child: const Icon(
@@ -74,16 +75,16 @@ class _PaymentModalState extends State<PaymentModal> {
         ),
         const SizedBox(height: 24),
         Text(
-          'Payment Successful!',
+          l10n?.paymentSuccessful ?? 'Payment Successful!',
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Colors.green,
+            color: Color(0xFF01352D),
           ),
         ),
         const SizedBox(height: 16),
         Text(
-          '${NumberFormat('#,###').format(widget.amount)} LYD has been added to your wallet.',
+          l10n?.addedToWallet('${NumberFormat('#,###').format(widget.amount)} ${l10n?.currencyLYD ?? "LYD"}') ?? '${NumberFormat('#,###').format(widget.amount)} LYD has been added to your wallet.',
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: 16,
@@ -99,11 +100,11 @@ class _PaymentModalState extends State<PaymentModal> {
               widget.onPaymentComplete(true);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFF01352D),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            child: const Text('Continue'),
+            child: Text(l10n?.continueText ?? 'Continue'),
           ),
         ),
       ],
@@ -120,10 +121,10 @@ class _PaymentModalState extends State<PaymentModal> {
           // Header
           Row(
             children: [
-              const Icon(Icons.credit_card, color: Colors.green),
+              const Icon(Icons.credit_card, color: Color(0xFF01352D)),
               const SizedBox(width: 8),
               Text(
-                'Pay with Card',
+                l10n?.payWithCard ?? 'Pay with Card',
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -138,11 +139,11 @@ class _PaymentModalState extends State<PaymentModal> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Amount: ${NumberFormat('#,###').format(widget.amount)} LYD',
+            l10n?.amountLabel('${NumberFormat('#,###').format(widget.amount)} ${l10n?.currencyLYD ?? "LYD"}') ?? 'Amount: ${NumberFormat('#,###').format(widget.amount)} LYD',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.green,
+              color: Color(0xFF01352D),
             ),
           ),
           const SizedBox(height: 24),
@@ -150,11 +151,11 @@ class _PaymentModalState extends State<PaymentModal> {
           // Card Number
           TextFormField(
             controller: _cardNumberController,
-            decoration: const InputDecoration(
-              labelText: 'Card Number',
+            decoration: InputDecoration(
+              labelText: l10n?.cardNumber ?? 'Card Number',
               hintText: '1234 5678 9012 3456',
-              prefixIcon: Icon(Icons.credit_card),
-              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.credit_card),
+              border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [
@@ -164,10 +165,10 @@ class _PaymentModalState extends State<PaymentModal> {
             ],
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please enter card number';
+                return l10n?.enterCardNumber ?? 'Please enter card number';
               }
               if (value.replaceAll(' ', '').length < 13) {
-                return 'Card number must be at least 13 digits';
+                return l10n?.cardTooShort ?? 'Card number must be at least 13 digits';
               }
               return null;
             },
@@ -180,11 +181,11 @@ class _PaymentModalState extends State<PaymentModal> {
               Expanded(
                 child: TextFormField(
                   controller: _expiryDateController,
-                  decoration: const InputDecoration(
-                    labelText: 'Expiry Date',
+                  decoration: InputDecoration(
+                    labelText: l10n?.expiryDate ?? 'Expiry Date',
                     hintText: 'MM/YY',
-                    prefixIcon: Icon(Icons.calendar_today),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.calendar_today),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
                   inputFormatters: [
@@ -194,10 +195,10 @@ class _PaymentModalState extends State<PaymentModal> {
                   ],
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Required';
+                      return l10n?.requiredField ?? 'Required';
                     }
                     if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(value)) {
-                      return 'Invalid format';
+                      return l10n?.invalidFormat ?? 'Invalid format';
                     }
                     return null;
                   },
@@ -207,11 +208,11 @@ class _PaymentModalState extends State<PaymentModal> {
               Expanded(
                 child: TextFormField(
                   controller: _cvvController,
-                  decoration: const InputDecoration(
-                    labelText: 'CVV',
+                  decoration: InputDecoration(
+                    labelText: l10n?.cvv ?? 'CVV',
                     hintText: '123',
-                    prefixIcon: Icon(Icons.security),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.security),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
                   inputFormatters: [
@@ -220,10 +221,10 @@ class _PaymentModalState extends State<PaymentModal> {
                   ],
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Required';
+                      return l10n?.requiredField ?? 'Required';
                     }
                     if (value.length < 3) {
-                      return 'Too short';
+                      return l10n?.tooShort ?? 'Too short';
                     }
                     return null;
                   },
@@ -237,19 +238,19 @@ class _PaymentModalState extends State<PaymentModal> {
           TextFormField(
             controller: _cardholderNameController,
             inputFormatters: [BasicTextFormatter()],
-            decoration: const InputDecoration(
-              labelText: 'Cardholder Name',
+            decoration: InputDecoration(
+              labelText: l10n?.cardholderName ?? 'Cardholder Name',
               hintText: 'John Doe',
-              prefixIcon: Icon(Icons.person),
-              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.person),
+              border: const OutlineInputBorder(),
             ),
             textCapitalization: TextCapitalization.words,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please enter cardholder name';
+                return l10n?.enterCardholderName ?? 'Please enter cardholder name';
               }
               if (value.trim().split(' ').length < 2) {
-                return 'Please enter full name';
+                return l10n?.enterFullName ?? 'Please enter full name';
               }
               return null;
             },
@@ -287,27 +288,28 @@ class _PaymentModalState extends State<PaymentModal> {
             child: ElevatedButton(
               onPressed: _isProcessing ? null : _processPayment,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: const Color(0xFF01352D),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: _isProcessing
-                  ? const Row(
+                  ? Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        SizedBox(
+                        const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(
+                          child: DaryLoadingIndicator(
+                            size: 20,
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            color: Colors.white,
                           ),
                         ),
-                        SizedBox(width: 12),
-                        Text('Processing...'),
+                        const SizedBox(width: 12),
+                        Text(l10n?.processing ?? 'Processing...'),
                       ],
                     )
-                  : const Text('Pay Now'),
+                  : Text(l10n?.payNow ?? 'Pay Now'),
             ),
           ),
           const SizedBox(height: 16),
@@ -328,7 +330,7 @@ class _PaymentModalState extends State<PaymentModal> {
                     Icon(Icons.info, color: Colors.blue[600], size: 16),
                     const SizedBox(width: 8),
                     Text(
-                      'Test Cards',
+                      l10n?.testCards ?? 'Test Cards',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.blue[600],
@@ -338,7 +340,7 @@ class _PaymentModalState extends State<PaymentModal> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Success: 4242 4242 4242 4242\nDecline: 4000 0000 0000 0002\nExpired: 4000 0000 0000 0069',
+                  l10n?.testCardsInfo ?? 'Success: 4242 4242 4242 4242\nDecline: 4000 0000 0000 0002\nExpired: 4000 0000 0000 0069',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.blue[600],
@@ -376,13 +378,13 @@ class _PaymentModalState extends State<PaymentModal> {
         });
       } else {
         setState(() {
-          _errorMessage = 'Payment failed. Please check your card details and try again.';
+          _errorMessage = l10n?.paymentFailed ?? 'Payment failed. Please check your card details and try again.';
           _isProcessing = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'An error occurred. Please try again.';
+        _errorMessage = l10n?.errorOccurred ?? 'An error occurred. Please try again.';
         _isProcessing = false;
       });
     }

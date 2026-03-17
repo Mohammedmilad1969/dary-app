@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' as scheduler;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../services/api_client.dart';
@@ -45,7 +46,7 @@ class ChatService extends ChangeNotifier {
     _sellerConversationsSubscription?.cancel();
 
     // Helper to upsert conversations from snapshot
-    void _upsertFromSnapshot(QuerySnapshot snapshot) {
+    void upsertFromSnapshot(QuerySnapshot snapshot) {
       bool changed = false;
       for (final doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
@@ -138,7 +139,7 @@ class ChatService extends ChangeNotifier {
       if (changed) {
         // Keep list sorted by updatedAt desc
         _conversations.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-        notifyListeners();
+        _notifySafely();
       }
     }
 
@@ -147,14 +148,14 @@ class ChatService extends ChangeNotifier {
         .where('buyerId', isEqualTo: userId)
         .orderBy('updatedAt', descending: true)
         .snapshots()
-        .listen(_upsertFromSnapshot, onError: (_) {});
+        .listen(upsertFromSnapshot, onError: (_) {});
 
     _sellerConversationsSubscription = _firestore
         .collection('conversations')
         .where('sellerId', isEqualTo: userId)
         .orderBy('updatedAt', descending: true)
         .snapshots()
-        .listen(_upsertFromSnapshot, onError: (_) {});
+        .listen(upsertFromSnapshot, onError: (_) {});
   }
 
   void stopListeningToUserConversations() {
@@ -175,7 +176,7 @@ class ChatService extends ChangeNotifier {
   /// Initialize mock data
   void _initializeMockData() {
     // Mock participants
-    _participants['user_001'] = ChatParticipant(
+    _participants['user_001'] = const ChatParticipant(
       id: 'user_001',
       name: 'John Doe',
       avatar: null, // Use null instead of placeholder URL
@@ -190,7 +191,7 @@ class ChatService extends ChangeNotifier {
       lastSeen: DateTime.now().subtract(const Duration(minutes: 15)),
     );
     
-    _participants['user_003'] = ChatParticipant(
+    _participants['user_003'] = const ChatParticipant(
       id: 'user_003',
       name: 'Mike Wilson',
       avatar: null, // Use null instead of placeholder URL
@@ -382,7 +383,7 @@ class ChatService extends ChangeNotifier {
           _conversations.addAll(allConversations);
         }
         
-        notifyListeners();
+        _notifySafely();
         return _conversations;
       } else {
         // Fall back to mock data
@@ -440,6 +441,7 @@ class ChatService extends ChangeNotifier {
           id: data['id'] ?? doc.id,
           propertyId: data['propertyId'] ?? '',
           propertyTitle: data['propertyTitle'] ?? 'Property',
+          propertyImage: data['propertyImage'],
           buyerId: data['buyerId'] ?? '',
           buyerName: data['buyerName'] ?? 'Buyer',
           sellerId: data['sellerId'] ?? '',
@@ -459,11 +461,12 @@ class ChatService extends ChangeNotifier {
             .get();
             
         final sellerConversations = sellerQuerySnapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           return Conversation(
             id: data['id'] ?? doc.id,
             propertyId: data['propertyId'] ?? '',
             propertyTitle: data['propertyTitle'] ?? 'Property',
+            propertyImage: data['propertyImage'],
             buyerId: data['buyerId'] ?? '',
             buyerName: data['buyerName'] ?? 'Buyer',
             sellerId: data['sellerId'] ?? '',
@@ -490,7 +493,7 @@ class ChatService extends ChangeNotifier {
         // Store in local cache
         _conversations.clear();
         _conversations.addAll(finalConversations);
-        notifyListeners();
+        _notifySafely();
 
         if (kDebugMode) {
           debugPrint('✅ Loaded ${finalConversations.length} conversations from Firebase for user: $userId');
@@ -503,7 +506,7 @@ class ChatService extends ChangeNotifier {
       // Store in local cache
       _conversations.clear();
       _conversations.addAll(conversations);
-      notifyListeners();
+      _notifySafely();
 
       if (kDebugMode) {
         debugPrint('✅ Loaded ${conversations.length} conversations from Firebase');
@@ -544,7 +547,7 @@ class ChatService extends ChangeNotifier {
         final List<dynamic> messagesData = response['data'];
         final messages = messagesData.map((data) => ChatMessage.fromJson(data)).toList();
         _messages[conversationId] = messages;
-        notifyListeners();
+        _notifySafely();
         return messages;
       } else {
         // Fall back to mock data
@@ -584,7 +587,7 @@ class ChatService extends ChangeNotifier {
           .get();
 
       final messages = querySnapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return ChatMessage(
           id: data['id'] ?? doc.id,
           conversationId: data['conversationId'] ?? conversationId,
@@ -607,7 +610,7 @@ class ChatService extends ChangeNotifier {
 
       // Store in local cache
       _messages[conversationId] = messages;
-      notifyListeners();
+      _notifySafely();
 
       if (kDebugMode) {
         debugPrint('✅ Loaded ${messages.length} messages from Firebase');
@@ -650,7 +653,7 @@ class ChatService extends ChangeNotifier {
     // Add to local storage immediately
     _messages[conversationId] ??= [];
     _messages[conversationId]!.add(message);
-    notifyListeners();
+    _notifySafely();
 
     // Check if mock data mode is enabled
     if (EnvConfig.useMockData) {
@@ -669,11 +672,16 @@ class ChatService extends ChangeNotifier {
       
       // Update conversation
       _updateLastMessages();
-      notifyListeners();
+      _notifySafely();
       
       return sentMessage;
     }
 
+    // Force local sending to ensure metadata updates and fix sync issues
+    // The API might be failing to update parent doc, so we handle it locally.
+    return await _sendMessageLocally(message);
+    
+    /* API Logic Disabled
     try {
       // Try to send via API
       if (kDebugMode) {
@@ -698,7 +706,7 @@ class ChatService extends ChangeNotifier {
         
         // Update conversation
         _updateLastMessages();
-        notifyListeners();
+        _notifySafely();
         
         return sentMessage;
       } else {
@@ -709,15 +717,9 @@ class ChatService extends ChangeNotifier {
         return await _sendMessageLocally(message);
       }
     } catch (e) {
-      // Fall back to local sending when API fails
-      if (kDebugMode) {
-        debugPrint('! Send message API call failed: $e');
-      }
-      if (kDebugMode) {
-        debugPrint('🔄 Falling back to local message sending');
-      }
       return await _sendMessageLocally(message);
     }
+    */
   }
 
   /// Send message locally when API fails
@@ -757,7 +759,7 @@ class ChatService extends ChangeNotifier {
         }
       } else if (cachedConversation != null) {
         // Backfill missing participant fields if they don't exist (older docs)
-        final data = convSnap.data() as Map<String, dynamic>? ?? {};
+        final data = convSnap.data() ?? {};
         final updates = <String, dynamic>{};
         if (!(data.containsKey('buyerId')) && cachedConversation.buyerId.isNotEmpty) {
           updates['buyerId'] = cachedConversation.buyerId;
@@ -770,7 +772,7 @@ class ChatService extends ChangeNotifier {
         if (!(data.containsKey('propertyId')) && cachedConversation.propertyId.isNotEmpty) {
           updates['propertyId'] = cachedConversation.propertyId;
         }
-        if (!(data.containsKey('propertyTitle')) && (cachedConversation.propertyTitle?.isNotEmpty ?? false)) {
+        if (!(data.containsKey('propertyTitle')) && (cachedConversation.propertyTitle.isNotEmpty ?? false)) {
           updates['propertyTitle'] = cachedConversation.propertyTitle;
         }
         if (updates.isNotEmpty) {
@@ -778,6 +780,7 @@ class ChatService extends ChangeNotifier {
         }
       }
 
+      // Store message in Firebase Firestore
       // Store message in Firebase Firestore
       await _firestore
           .collection('conversations')
@@ -793,8 +796,19 @@ class ChatService extends ChangeNotifier {
         'content': message.content,
         'type': message.type.name,
         'status': message.status.name,
-        'timestamp': message.timestamp.toIso8601String(),
-        'readAt': message.readAt?.toIso8601String(),
+        'timestamp': message.timestamp.toUtc().toIso8601String(),
+        'readAt': message.readAt?.toUtc().toIso8601String(),
+      });
+
+      // Update parent conversation to ensure Web Sync works (List View Updates)
+      await _firestore.collection('conversations').doc(message.conversationId).update({
+        'lastMessage': message.content,
+        'last_message': message.toJson(),
+        'lastMessageSenderId': message.senderId,
+        'lastMessageSenderName': message.senderName,
+        'updatedAt': message.timestamp.toUtc().toIso8601String(),
+        'updated_at': message.timestamp.toUtc().toIso8601String(),
+        'unreadCount': FieldValue.increment(1),
       });
 
       // Update conversation metadata so list queries pick this up and show recents
@@ -818,9 +832,21 @@ class ChatService extends ChangeNotifier {
         debugPrint('🔥 Message stored in Firebase: ${message.id}');
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Error storing message in Firebase: $e');
+      // VISIBLE ERROR REPORTING: Update message content to show reason for failure
+      final errorText = '\n[SEND FAILED: $e]';
+      final failedMessage = message.copyWith(
+          content: message.content + errorText,
+          status: MessageStatus.sent
+      );
+      
+      if (_messages[message.conversationId] != null) {
+          final idx = _messages[message.conversationId]!.indexWhere((m) => m.id == message.id);
+          if (idx != -1) {
+              _messages[message.conversationId]![idx] = failedMessage;
+              _notifySafely();
+          }
       }
+      return failedMessage;
     }
     
     // Simulate sending delay
@@ -835,7 +861,7 @@ class ChatService extends ChangeNotifier {
     
     // Update conversation
     _updateLastMessages();
-    notifyListeners();
+    _notifySafely();
     
     if (kDebugMode) {
       debugPrint('✅ Message sent locally: ${message.id}');
@@ -867,7 +893,7 @@ class ChatService extends ChangeNotifier {
       );
     }
 
-    notifyListeners();
+    _notifySafely();
 
     // Check if mock data mode is enabled
     if (EnvConfig.useMockData) {
@@ -915,6 +941,7 @@ class ChatService extends ChangeNotifier {
     required String buyerId,
     required String sellerId,
     String? propertyTitle,
+    String? propertyImage,
     String? sellerName,
     String? buyerName,
     String? token,
@@ -950,6 +977,7 @@ class ChatService extends ChangeNotifier {
         id: 'conv_${DateTime.now().millisecondsSinceEpoch}',
         propertyId: propertyId,
         propertyTitle: propertyTitle ?? 'Property Title',
+        propertyImage: propertyImage,
         buyerId: buyerId,
         buyerName: buyerName ?? 'Buyer Name',
         sellerId: sellerId,
@@ -959,7 +987,7 @@ class ChatService extends ChangeNotifier {
       );
       
       _conversations.insert(0, conversation);
-      notifyListeners();
+      _notifySafely();
       
       return conversation;
     }
@@ -982,7 +1010,7 @@ class ChatService extends ChangeNotifier {
       if (response['data'] != null) {
         final conversation = Conversation.fromJson(response['data']);
         _conversations.insert(0, conversation);
-        notifyListeners();
+        _notifySafely();
         return conversation;
       }
       
@@ -990,7 +1018,7 @@ class ChatService extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint('⚠️ Invalid API response, falling back to local conversation creation');
       }
-      return await _createNewLocalConversation(propertyId, buyerId, sellerId, propertyTitle, sellerName, buyerName);
+      return await _createNewLocalConversation(propertyId, buyerId, sellerId, propertyTitle, propertyImage, sellerName, buyerName);
       
     } catch (e) {
       if (kDebugMode) {
@@ -1001,7 +1029,7 @@ class ChatService extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint('🔄 Falling back to local conversation creation');
       }
-      return await _createNewLocalConversation(propertyId, buyerId, sellerId, propertyTitle, sellerName, buyerName);
+      return await _createNewLocalConversation(propertyId, buyerId, sellerId, propertyTitle, propertyImage, sellerName, buyerName);
     }
   }
   
@@ -1014,7 +1042,7 @@ class ChatService extends ChangeNotifier {
           .get();
       
       for (final doc in querySnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final convBuyerId = data['buyerId'] ?? '';
         final convSellerId = data['sellerId'] ?? '';
         
@@ -1037,7 +1065,7 @@ class ChatService extends ChangeNotifier {
           // Add to local cache if not already present
           if (!_conversations.any((c) => c.id == conversation.id)) {
             _conversations.add(conversation);
-            notifyListeners();
+            _notifySafely();
           }
           
           return conversation;
@@ -1059,6 +1087,7 @@ class ChatService extends ChangeNotifier {
     String buyerId,
     String sellerId,
     String? propertyTitle,
+    String? propertyImage,
     String? sellerName,
     String? buyerName,
   ) async {
@@ -1076,6 +1105,7 @@ class ChatService extends ChangeNotifier {
       id: 'conv_${DateTime.now().millisecondsSinceEpoch}',
       propertyId: propertyId,
       propertyTitle: finalPropertyTitle,
+      propertyImage: propertyImage,
       buyerId: buyerId,
       buyerName: finalBuyerName,
       sellerId: sellerId,
@@ -1090,6 +1120,7 @@ class ChatService extends ChangeNotifier {
         'id': conversation.id,
         'propertyId': conversation.propertyId,
         'propertyTitle': conversation.propertyTitle,
+        'propertyImage': conversation.propertyImage,
         'buyerId': conversation.buyerId,
         'buyerName': conversation.buyerName,
         'sellerId': conversation.sellerId,
@@ -1109,7 +1140,7 @@ class ChatService extends ChangeNotifier {
     }
     
     _conversations.insert(0, conversation);
-    notifyListeners();
+    _notifySafely();
     
     if (kDebugMode) {
       debugPrint('✅ Created local conversation: ${conversation.id}');
@@ -1121,7 +1152,7 @@ class ChatService extends ChangeNotifier {
   /// Set current conversation
   void setCurrentConversation(String? conversationId) {
     _currentConversationId = conversationId;
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Start listening for real-time messages
@@ -1142,7 +1173,7 @@ class ChatService extends ChangeNotifier {
         .listen((snapshot) {
       final previous = List<ChatMessage>.from(_messages[conversationId] ?? const []);
       final messages = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return ChatMessage(
           id: data['id'] ?? doc.id,
           conversationId: data['conversationId'] ?? conversationId,
@@ -1191,7 +1222,7 @@ class ChatService extends ChangeNotifier {
           }).catchError((_) {});
         }
       }
-      notifyListeners();
+      _notifySafely();
 
       if (kDebugMode) {
         debugPrint('📨 Real-time update: ${messages.length} messages for $conversationId');
@@ -1232,7 +1263,7 @@ class ChatService extends ChangeNotifier {
     _messages.clear();
     _participants.clear();
     _currentConversationId = null;
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Simulate receiving a new message (for testing notifications)
@@ -1269,7 +1300,7 @@ class ChatService extends ChangeNotifier {
       );
     }
 
-    notifyListeners();
+    _notifySafely();
 
     // Show notification if context is provided
     if (context != null) {
@@ -1313,7 +1344,7 @@ class ChatService extends ChangeNotifier {
     // Add to conversations
     _conversations.insert(0, conversation);
 
-    notifyListeners();
+    _notifySafely();
 
     // Show notification if context is provided
     if (context != null) {
@@ -1355,7 +1386,7 @@ class ChatService extends ChangeNotifier {
         _messagesSubscription = null;
       }
       
-      notifyListeners();
+      _notifySafely();
       
       if (kDebugMode) {
         debugPrint('✅ Conversation removed from local cache: $conversationId');
@@ -1366,5 +1397,26 @@ class ChatService extends ChangeNotifier {
       }
       rethrow;
     }
+  }
+
+  bool isDisposed = false;
+
+  void _notifySafely() {
+    if (WidgetsBinding.instance.schedulerPhase == scheduler.SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!isDisposed) notifyListeners();
+      });
+    } else {
+      if (!isDisposed) notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    isDisposed = true;
+    _messagesSubscription?.cancel();
+    _buyerConversationsSubscription?.cancel();
+    _sellerConversationsSubscription?.cancel();
+    super.dispose();
   }
 }

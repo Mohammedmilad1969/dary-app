@@ -14,3 +14,16 @@ String formatPriceWithCommas(num price, {String currency = 'LYD'}) {
   return '$formattedNumber $currency';
 }
 
+/// Formats a date using a pattern and locale, but ensures numbers are always English
+/// This is used to display years and days in English even when the month name is in Arabic
+String formatDateWithEnglishNumbers(DateTime date, String pattern, String locale) {
+  String formatted = DateFormat(pattern, locale).format(date);
+  if (locale == 'ar') {
+    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    for (int i = 0; i < 10; i++) {
+      formatted = formatted.replaceAll(arabicDigits[i], i.toString());
+    }
+  }
+  return formatted;
+}
+

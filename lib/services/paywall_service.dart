@@ -5,6 +5,7 @@ import '../models/premium_package.dart' as premium_package;
 import '../models/wallet.dart' as wallet_models;
 import '../services/wallet_service.dart' as wallet_service;
 import 'property_service.dart';
+import '../models/user_profile.dart';
 
 /// Firebase-based Paywall Service
 /// 
@@ -14,6 +15,15 @@ class PaywallService extends ChangeNotifier {
   static final PaywallService _instance = PaywallService._internal();
   factory PaywallService() => _instance;
   PaywallService._internal();
+
+  /// Helper to get a package by ID statically
+  static premium_package.PremiumPackage? getPackageById(String id) {
+    try {
+      return _instance._packages.firstWhere((p) => p.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final wallet_service.WalletService _walletService = wallet_service.WalletService();
@@ -70,7 +80,12 @@ class PaywallService extends ChangeNotifier {
       );
 
       // Create default packages if they don't exist
-      await _createDefaultPackages();
+      // Run in background without awaiting so it doesn't block app initialization speed
+      _createDefaultPackages().catchError((e) {
+        if (kDebugMode) {
+          debugPrint('❌ Error creating default packages: $e');
+        }
+      });
 
       if (kDebugMode) {
         debugPrint('💎 PaywallService initialized');
@@ -91,65 +106,172 @@ class PaywallService extends ChangeNotifier {
       final packagesSnapshot = await _firestore.collection('packages').get();
       
       if (packagesSnapshot.docs.isEmpty) {
-        // Create default packages
-        final defaultPackages = [
+        // Create default Posting Credit packages
+        final defaultCreditPackages = [
           {
-            'name': '1 Day Top Listing',
-            'description': 'Boost your property for 1 day',
-            'price': 20.0,
-            'durationDays': 1,
-            'features': [
-              'Property appears at top of search results',
-              'Highlighted with premium badge',
-              'Increased visibility',
-              'Priority in featured section',
-            ],
-            'isActive': true,
-            'createdAt': Timestamp.now(),
-            'updatedAt': Timestamp.now(),
-          },
-          {
-            'name': '1 Week Top Listing',
-            'description': 'Boost your property for 1 week',
+            'id': 'credits_15',
+            'name': 'Starter Package',
+            'description': 'Get 15 posting credits',
             'price': 100.0,
-            'durationDays': 7,
-            'features': [
-              'Property appears at top of search results',
-              'Highlighted with premium badge',
-              'Increased visibility',
-              'Priority in featured section',
-              'Extended exposure period',
-            ],
-            'isActive': true,
-            'createdAt': Timestamp.now(),
-            'updatedAt': Timestamp.now(),
-          },
-          {
-            'name': '1 Month Top Listing',
-            'description': 'Boost your property for 1 month',
-            'price': 300.0,
+            'credits': 15,
             'durationDays': 30,
             'features': [
-              'Property appears at top of search results',
-              'Highlighted with premium badge',
-              'Increased visibility',
-              'Priority in featured section',
-              'Maximum exposure period',
-              'Best value for money',
+              '15 Property Posting Credits',
+              'Persistent credits (no monthly loss)',
+              'Basic search visibility',
             ],
+            'type': 'credits',
+            'isActive': true,
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          },
+          {
+            'id': 'credits_50',
+            'name': 'Standard Package',
+            'description': 'Get 50 posting credits',
+            'price': 300.0,
+            'credits': 50,
+            'durationDays': 30,
+            'features': [
+              '50 Property Posting Credits',
+              'Persistent credits',
+              'Standard search visibility',
+              'Email support',
+            ],
+            'type': 'credits',
+            'isPopular': true,
+            'isActive': true,
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          },
+          {
+            'id': 'credits_100',
+            'name': 'Professional Package',
+            'description': 'Get 100 posting credits',
+            'price': 600.0,
+            'credits': 100,
+            'durationDays': 30,
+            'features': [
+              '100 Property Posting Credits',
+              'Persistent credits',
+              'Enhanced search visibility',
+              'Priority support',
+            ],
+            'type': 'credits',
+            'isActive': true,
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          },
+          {
+            'id': 'credits_200',
+            'name': 'Business Package',
+            'description': 'Get 200 posting credits',
+            'price': 1000.0,
+            'credits': 200,
+            'durationDays': 30,
+            'features': [
+              '200 Property Posting Credits',
+              'Persistent credits',
+              'Maximum search visibility',
+              'Dedicated account manager',
+            ],
+            'type': 'credits',
             'isActive': true,
             'createdAt': Timestamp.now(),
             'updatedAt': Timestamp.now(),
           },
         ];
 
-        // Add packages to Firestore
-        for (final packageData in defaultPackages) {
-          await _firestore.collection('packages').add(packageData);
+        // Create default Boost packages
+        final defaultBoostPackages = [
+          {
+            'id': '1',
+            'name': 'Top Listing',
+            'description': 'Boost your property for 1 day',
+            'price': 20.0,
+            'durationDays': 1,
+            'features': [
+              'Priority placement in search results',
+              'Featured badge on your listing',
+              'Increased visibility',
+              '24-hour boost',
+            ],
+            'type': 'boost',
+            'isActive': true,
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          },
+          {
+            'id': '4',
+            'name': 'Top Listing',
+            'description': 'Boost your property for 3 days',
+            'price': 50.0,
+            'durationDays': 3,
+            'features': [
+              'Priority placement in search results',
+              'Featured badge on your listing',
+              'Increased visibility',
+              '3-day boost',
+              'Enhanced analytics',
+            ],
+            'type': 'boost',
+            'isActive': true,
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          },
+          {
+            'id': '2',
+            'name': 'Top Listing',
+            'description': 'Boost your property for 1 week',
+            'price': 100.0,
+            'durationDays': 7,
+            'features': [
+              'Priority placement in search results',
+              'Featured badge on your listing',
+              'Increased visibility',
+              '7-day boost',
+              'Analytics dashboard',
+              'Premium support',
+            ],
+            'type': 'boost',
+            'isPopular': true,
+            'isActive': true,
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          },
+          {
+            'id': '3',
+            'name': 'Top Listing',
+            'description': 'Boost your property for 1 month',
+            'price': 300.0,
+            'durationDays': 30,
+            'features': [
+              'Priority placement in search results',
+              'Featured badge on your listing',
+              'Increased visibility',
+              '30-day boost',
+              'Analytics dashboard',
+              'Premium support',
+              'Multiple listing promotion',
+              'Custom listing design',
+            ],
+            'type': 'boost',
+            'isActive': true,
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          },
+        ];
+
+        // Add all packages to Firestore
+        final allPackages = [...defaultCreditPackages, ...defaultBoostPackages];
+        for (final packageData in allPackages) {
+          final id = packageData['id'] as String;
+          final data = Map<String, dynamic>.from(packageData)..remove('id');
+          await _firestore.collection('packages').doc(id).set(data);
         }
 
         if (kDebugMode) {
-          debugPrint('💎 Created ${defaultPackages.length} default packages');
+          debugPrint('💎 Created ${allPackages.length} default packages');
         }
       }
     } catch (e) {
@@ -189,11 +311,16 @@ class PaywallService extends ChangeNotifier {
         return false;
       }
 
+      // Set description for transaction based on package type
+      final description = (package.credits != null && package.credits! > 0)
+          ? 'Purchase ${package.name} - Add ${package.credits} property slots'
+          : 'Top Listing Purchase - ${package.name}';
+
       // Deduct amount from wallet
       final deductSuccess = await _walletService.deductAmount(
         userId: userId,
         amount: package.price,
-        description: 'Top Listing Purchase - ${package.name}',
+        description: description,
         metadata: {
           'packageId': packageId,
           'propertyId': propertyId,
@@ -206,30 +333,37 @@ class PaywallService extends ChangeNotifier {
         return false;
       }
 
-      // Boost the property directly using PropertyService
-      final boostSuccess = await _propertyService.boostProperty(
-        propertyId,
-        package.name,
-        package.price,
-        package.durationDays,
-      );
+      // Check if it's a credit package or a boost package
+      final isBoostPackage = package.credits == null || package.credits == 0;
 
-      if (!boostSuccess) {
-        // Refund the amount if boosting fails
-        await _walletService.addTransaction(
-          userId: userId,
-          amount: package.price,
-          type: wallet_models.TransactionType.refund,
-          description: 'Refund - Failed Top Listing Purchase',
-          metadata: {
-            'packageId': packageId,
-            'propertyId': propertyId,
-            'reason': 'boost_failed',
-          },
+      if (isBoostPackage) {
+        if (propertyId.isEmpty) {
+          _setErrorMessage('Property ID required for boost');
+          return false;
+        }
+        
+        // Apply property boost
+        final boostSuccess = await _propertyService.boostProperty(
+          propertyId,
+          package.name,
+          package.price,
+          package.durationDays,
         );
         
-        _setErrorMessage('Failed to boost property');
-        return false;
+        if (!boostSuccess) {
+          _setErrorMessage('Failed to apply boost to property');
+          return false;
+        }
+        
+        // Refresh properties in profile service to ensure UI stays in sync
+        await ProfileService.loadUserProperties(userId);
+      } else {
+        // Update User Credits directly
+        final userRef = _firestore.collection('users').doc(userId);
+        await userRef.update({
+          'postingCredits': FieldValue.increment(package.credits ?? 0),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
       }
 
       // Record the purchase

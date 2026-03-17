@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "998511654081",
+    "firebase_url": "https://dary-a74c8-default-rtdb.firebaseio.com",
+    "project_id": "dary-a74c8",
+    "storage_bucket": "dary-a74c8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998511654081:android:abc7c52521de3a56965040",
+        "android_client_info": {
+          "package_name": "com.dary.properties"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "998511654081-v422n7lqn8hp7qhal7ie3amtjscl629s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTVtsTijAekxTmi7chOPB-7mSR870u8HA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "998511654081-v422n7lqn8hp7qhal7ie3amtjscl629s.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "998511654081-puau7dtvpv36a93e6djfh4id91dqtql2.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.dary"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -59,8 +59,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAttyS8c3dT0eN0vNZXbbamtoqetIMcGp0',
-    appId: '1:998511654081:ios:71ec95cf37926676965040',
+    apiKey: 'AIzaSyCfgbtUOkLI_fDEQjeAgXroK70ymtbL-vg',
+    appId: '1:998511654081:ios:75c169f44c85ddaa965040',
     messagingSenderId: '998511654081',
     projectId: 'dary-a74c8',
     storageBucket: 'dary-a74c8.firebasestorage.app',
@@ -68,8 +68,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAttyS8c3dT0eN0vNZXbbamtoqetIMcGp0',
-    appId: '1:998511654081:ios:71ec95cf37926676965040',
+    apiKey: 'AIzaSyCfgbtUOkLI_fDEQjeAgXroK70ymtbL-vg',
+    appId: '1:998511654081:ios:75c169f44c85ddaa965040',
     messagingSenderId: '998511654081',
     projectId: 'dary-a74c8',
     storageBucket: 'dary-a74c8.firebasestorage.app',

@@ -162,13 +162,11 @@ class SavedSearchService extends ChangeNotifier {
         // API call to save search
         final response = await _apiClient.post('/saved-searches', body: newSearch.toJson());
         
-        if (response != null) {
-          _savedSearches.add(newSearch);
-          await _saveToStorage();
-          notifyListeners();
-          return true;
-        }
-        return false;
+        _savedSearches.add(newSearch);
+        await _saveToStorage();
+        notifyListeners();
+        return true;
+              return false;
       }
     } catch (e) {
       if (kDebugMode) {
@@ -189,13 +187,11 @@ class SavedSearchService extends ChangeNotifier {
         // API call to delete search
         final response = await _apiClient.delete('/saved-searches/$searchId');
         
-        if (response != null) {
-          _savedSearches.removeWhere((search) => search.id == searchId);
-          await _saveToStorage();
-          notifyListeners();
-          return true;
-        }
-        return false;
+        _savedSearches.removeWhere((search) => search.id == searchId);
+        await _saveToStorage();
+        notifyListeners();
+        return true;
+              return false;
       }
     } catch (e) {
       if (kDebugMode) {

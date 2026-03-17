@@ -177,7 +177,7 @@ class ChatbotService {
       }
       
       // After creation/retry, check again
-      if (doc != null && !doc.exists) {
+      if (!doc.exists) {
         throw Exception('API key document still not found after creation attempt');
       }
       
@@ -357,7 +357,7 @@ class ChatbotService {
           if (word == keyLower) {
             propertyType = entry.value;
             if (kDebugMode) {
-              debugPrint('✅ Found exact word match: "$word" -> ${propertyType!.name}');
+              debugPrint('✅ Found exact word match: "$word" -> ${propertyType.name}');
             }
             break;
           }
@@ -374,7 +374,7 @@ class ChatbotService {
               wordWithoutS.startsWith(keyLower) || keyLower.startsWith(wordWithoutS)) {
             propertyType = entry.value;
             if (kDebugMode) {
-              debugPrint('✅ Found word match: "$word" -> ${propertyType!.name}');
+              debugPrint('✅ Found word match: "$word" -> ${propertyType.name}');
             }
             break;
           }
@@ -459,28 +459,28 @@ class ChatbotService {
               minPrice = double.tryParse(minStr);
               maxPrice = double.tryParse(maxStr);
               if (kDebugMode && minPrice != null && maxPrice != null) {
-                debugPrint('✅ Extracted price range: ${minPrice!.toInt()} - ${maxPrice!.toInt()} LYD');
+                debugPrint('✅ Extracted price range: ${minPrice.toInt()} - ${maxPrice.toInt()} LYD');
               }
             } else if (pattern.pattern.contains('under|below|less|max|أقل|تحت')) {
               // Max price pattern
               final maxStr = parseNumber(match.group(1)!);
               maxPrice = double.tryParse(maxStr);
               if (kDebugMode && maxPrice != null) {
-                debugPrint('✅ Extracted max price: ${maxPrice!.toInt()} LYD');
+                debugPrint('✅ Extracted max price: ${maxPrice.toInt()} LYD');
               }
             } else if (pattern.pattern.contains('over|above|more|min|أكثر|فوق')) {
               // Min price pattern
               final minStr = parseNumber(match.group(1)!);
               minPrice = double.tryParse(minStr);
               if (kDebugMode && minPrice != null) {
-                debugPrint('✅ Extracted min price: ${minPrice!.toInt()} LYD');
+                debugPrint('✅ Extracted min price: ${minPrice.toInt()} LYD');
               }
             } else if (match.groupCount >= 1 && match.group(1) != null) {
               // Simple number pattern - assume max price
               final maxStr = parseNumber(match.group(1)!);
               maxPrice = double.tryParse(maxStr);
               if (kDebugMode && maxPrice != null) {
-                debugPrint('✅ Extracted price (assumed max): ${maxPrice!.toInt()} LYD');
+                debugPrint('✅ Extracted price (assumed max): ${maxPrice.toInt()} LYD');
               }
             }
             
@@ -674,7 +674,7 @@ class ChatbotService {
       if (minPrice != null) {
         firestoreQuery = firestoreQuery.where('price', isGreaterThanOrEqualTo: minPrice);
         if (kDebugMode) {
-          debugPrint('🔍 Filtering by min price: ${minPrice!.toInt()} LYD');
+          debugPrint('🔍 Filtering by min price: ${minPrice.toInt()} LYD');
         }
       }
       if (maxPrice != null && minPrice == null) {
@@ -682,7 +682,7 @@ class ChatbotService {
         // Otherwise we'll filter in memory
         firestoreQuery = firestoreQuery.where('price', isLessThanOrEqualTo: maxPrice);
         if (kDebugMode) {
-          debugPrint('🔍 Filtering by max price: ${maxPrice!.toInt()} LYD');
+          debugPrint('🔍 Filtering by max price: ${maxPrice.toInt()} LYD');
         }
       }
       
@@ -774,7 +774,7 @@ class ChatbotService {
         }).toList();
         
         if (kDebugMode) {
-          debugPrint('🔍 Filtered by price range ${minPrice!.toInt()}-${maxPrice!.toInt()}: ${filteredDocs.length} docs');
+          debugPrint('🔍 Filtered by price range ${minPrice.toInt()}-${maxPrice.toInt()}: ${filteredDocs.length} docs');
         }
       } else if (maxPrice != null && minPrice == null && filteredDocs.isNotEmpty) {
         // Only maxPrice specified but wasn't in Firestore query - filter in memory
@@ -785,7 +785,7 @@ class ChatbotService {
         }).toList();
         
         if (kDebugMode) {
-          debugPrint('🔍 Filtered by max price ${maxPrice!.toInt()}: ${filteredDocs.length} docs');
+          debugPrint('🔍 Filtered by max price ${maxPrice.toInt()}: ${filteredDocs.length} docs');
         }
       }
       
@@ -805,10 +805,16 @@ class ChatbotService {
         try {
           processedCount++;
           final data = doc.data() as Map<String, dynamic>;
-          final property = Property.fromFirestore(doc.id, data);
-          
-          // Double-check property type matches (extra validation)
-          if (propertyType != null && property.type != propertyType) {
+            final property = Property.fromFirestore(doc.id, data);
+            
+            // Filter out effectively expired properties
+            if (property.isEffectivelyExpired) {
+              skippedCount++;
+              continue;
+            }
+            
+            // Double-check property type matches (extra validation)
+            if (propertyType != null && property.type != propertyType) {
             skippedCount++;
             if (kDebugMode && skippedCount <= 3) {
               debugPrint('⚠️ Skipped property ${doc.id}: type is ${property.type.name} but expected ${propertyType.name}');
@@ -817,42 +823,42 @@ class ChatbotService {
           }
           
           // Filter by bedrooms range
-          if (minBedrooms != null && property.bedrooms < minBedrooms!) {
+          if (minBedrooms != null && property.bedrooms < minBedrooms) {
             skippedCount++;
             if (kDebugMode && skippedCount <= 3) {
-              debugPrint('⚠️ Skipped property ${doc.id}: bedrooms ${property.bedrooms} < min ${minBedrooms}');
+              debugPrint('⚠️ Skipped property ${doc.id}: bedrooms ${property.bedrooms} < min $minBedrooms');
             }
             continue;
           }
-          if (maxBedrooms != null && property.bedrooms > maxBedrooms!) {
+          if (maxBedrooms != null && property.bedrooms > maxBedrooms) {
             skippedCount++;
             if (kDebugMode && skippedCount <= 3) {
-              debugPrint('⚠️ Skipped property ${doc.id}: bedrooms ${property.bedrooms} > max ${maxBedrooms}');
+              debugPrint('⚠️ Skipped property ${doc.id}: bedrooms ${property.bedrooms} > max $maxBedrooms');
             }
             continue;
           }
           
           // Filter by bathrooms
-          if (minBathrooms != null && property.bathrooms < minBathrooms!) {
+          if (minBathrooms != null && property.bathrooms < minBathrooms) {
             skippedCount++;
             if (kDebugMode && skippedCount <= 3) {
-              debugPrint('⚠️ Skipped property ${doc.id}: bathrooms ${property.bathrooms} < min ${minBathrooms}');
+              debugPrint('⚠️ Skipped property ${doc.id}: bathrooms ${property.bathrooms} < min $minBathrooms');
             }
             continue;
           }
           
           // Filter by size
-          if (minSizeSqm != null && property.sizeSqm < minSizeSqm!) {
+          if (minSizeSqm != null && property.sizeSqm < minSizeSqm) {
             skippedCount++;
             if (kDebugMode && skippedCount <= 3) {
-              debugPrint('⚠️ Skipped property ${doc.id}: size ${property.sizeSqm} < min ${minSizeSqm}');
+              debugPrint('⚠️ Skipped property ${doc.id}: size ${property.sizeSqm} < min $minSizeSqm');
             }
             continue;
           }
-          if (maxSizeSqm != null && property.sizeSqm > maxSizeSqm!) {
+          if (maxSizeSqm != null && property.sizeSqm > maxSizeSqm) {
             skippedCount++;
             if (kDebugMode && skippedCount <= 3) {
-              debugPrint('⚠️ Skipped property ${doc.id}: size ${property.sizeSqm} > max ${maxSizeSqm}');
+              debugPrint('⚠️ Skipped property ${doc.id}: size ${property.sizeSqm} > max $maxSizeSqm');
             }
             continue;
           }
@@ -1272,11 +1278,11 @@ Remember:
       
       // If direct text is null, try to get from candidates
       if (responseText == null || responseText.isEmpty) {
-        if (response.candidates != null && response.candidates!.isNotEmpty) {
-          final candidate = response.candidates!.first;
-          if (candidate.content != null && candidate.content!.parts.isNotEmpty) {
+        if (response.candidates.isNotEmpty) {
+          final candidate = response.candidates.first;
+          if (candidate.content.parts.isNotEmpty) {
             // Extract text from TextPart objects in the parts list
-            final textParts = candidate.content!.parts
+            final textParts = candidate.content.parts
                 .whereType<TextPart>()
                 .map((part) => part.text)
                 .join('');

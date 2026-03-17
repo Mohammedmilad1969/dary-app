@@ -11,9 +11,10 @@
 ## Setup Steps
 
 ### 1. Login to Firebase
-```bash
-firebase login
+npx firebase-tools login
 ```
+
+*Prefix all commands with `npx firebase-tools` since you don't have the global CLI installed.*
 
 ### 2. Initialize Functions (if not already done)
 ```bash
@@ -41,7 +42,12 @@ const apiKey = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key;
 
 ### 4. Deploy the Function
 ```bash
-firebase deploy --only functions:getGeminiApiKey
+firebase deploy --only functions:onNewChatMessage
+```
+
+**Alternative (no install required):**
+```bash
+npx firebase-tools deploy --only functions:onNewChatMessage
 ```
 
 ### 5. Verify Deployment

@@ -1,0 +1,14 @@
+[
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.dary.properties",
+            "sha256_cert_fingerprints": [
+                "c8:bd:90:2e:9b:39:ca:48:48:76:91:9b:fb:e5:cf:df:d5:77:cf:b8:2f:9c:b1:de:e2:7e:41:88:a8:ac:ea:47"
+            ]
+        }
+    }
+]

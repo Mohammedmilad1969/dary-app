@@ -15,8 +15,11 @@ class AdminUser {
   final DateTime joinDate;
   final bool isVerified;
   final bool isActive;
+  final bool isRealEstateOffice;
+  final bool isAdmin;
   final int totalListings;
   final int activeListings;
+  final int postingCredits;
 
   AdminUser({
     required this.id,
@@ -26,8 +29,11 @@ class AdminUser {
     required this.joinDate,
     required this.isVerified,
     required this.isActive,
+    this.isRealEstateOffice = false,
+    this.isAdmin = false,
     required this.totalListings,
     required this.activeListings,
+    this.postingCredits = 0,
   });
 
   factory AdminUser.fromJson(Map<String, dynamic> json) {
@@ -39,8 +45,11 @@ class AdminUser {
       joinDate: DateTime.parse(json['joinDate']),
       isVerified: json['isVerified'],
       isActive: json['isActive'],
+      isRealEstateOffice: json['isRealEstateOffice'] ?? false,
+      isAdmin: json['isAdmin'] ?? false,
       totalListings: json['totalListings'],
       activeListings: json['activeListings'],
+      postingCredits: json['postingCredits'] ?? 0,
     );
   }
 
@@ -53,8 +62,11 @@ class AdminUser {
       'joinDate': joinDate.toIso8601String(),
       'isVerified': isVerified,
       'isActive': isActive,
+      'isRealEstateOffice': isRealEstateOffice,
+      'isAdmin': isAdmin,
       'totalListings': totalListings,
       'activeListings': activeListings,
+      'postingCredits': postingCredits,
     };
   }
 
@@ -66,8 +78,11 @@ class AdminUser {
     DateTime? joinDate,
     bool? isVerified,
     bool? isActive,
+    bool? isRealEstateOffice,
+    bool? isAdmin,
     int? totalListings,
     int? activeListings,
+    int? postingCredits,
   }) {
     return AdminUser(
       id: id ?? this.id,
@@ -77,8 +92,11 @@ class AdminUser {
       joinDate: joinDate ?? this.joinDate,
       isVerified: isVerified ?? this.isVerified,
       isActive: isActive ?? this.isActive,
+      isRealEstateOffice: isRealEstateOffice ?? this.isRealEstateOffice,
+      isAdmin: isAdmin ?? this.isAdmin,
       totalListings: totalListings ?? this.totalListings,
       activeListings: activeListings ?? this.activeListings,
+      postingCredits: postingCredits ?? this.postingCredits,
     );
   }
 }
@@ -95,6 +113,8 @@ class AdminProperty {
   final bool isActive;
   final int views;
   final bool isBoosted;
+  final bool isPublished;
+  final bool isExpired;
 
   AdminProperty({
     required this.id,
@@ -108,6 +128,8 @@ class AdminProperty {
     required this.isActive,
     required this.views,
     required this.isBoosted,
+    required this.isPublished,
+    required this.isExpired,
   });
 
   factory AdminProperty.fromJson(Map<String, dynamic> json) {
@@ -123,6 +145,8 @@ class AdminProperty {
       isActive: json['isActive'],
       views: json['views'],
       isBoosted: json['isBoosted'],
+      isPublished: json['isPublished'] ?? true,
+      isExpired: json['isExpired'] ?? false,
     );
   }
 
@@ -139,6 +163,8 @@ class AdminProperty {
       'isActive': isActive,
       'views': views,
       'isBoosted': isBoosted,
+      'isPublished': isPublished,
+      'isExpired': isExpired,
     };
   }
 
@@ -154,6 +180,8 @@ class AdminProperty {
     bool? isActive,
     int? views,
     bool? isBoosted,
+    bool? isPublished,
+    bool? isExpired,
   }) {
     return AdminProperty(
       id: id ?? this.id,
@@ -167,6 +195,8 @@ class AdminProperty {
       isActive: isActive ?? this.isActive,
       views: views ?? this.views,
       isBoosted: isBoosted ?? this.isBoosted,
+      isPublished: isPublished ?? this.isPublished,
+      isExpired: isExpired ?? this.isExpired,
     );
   }
 }
@@ -416,6 +446,8 @@ class AdminService {
       isActive: true,
       views: 156,
       isBoosted: true,
+      isPublished: true,
+      isExpired: false,
     ),
     AdminProperty(
       id: 'prop_008',
@@ -429,6 +461,8 @@ class AdminService {
       isActive: true,
       views: 89,
       isBoosted: false,
+      isPublished: true,
+      isExpired: false,
     ),
     AdminProperty(
       id: 'prop_009',
@@ -442,6 +476,8 @@ class AdminService {
       isActive: true,
       views: 134,
       isBoosted: false,
+      isPublished: true,
+      isExpired: false,
     ),
   ];
 
@@ -605,32 +641,143 @@ class AdminService {
           .collection('users')
           .get();
       
+      // Get all properties to count per user
+      final propertiesSnapshot = await FirebaseFirestore.instance
+          .collection('properties')
+          .get();
+      
+      // Build a map of user ID -> property counts
+      final Map<String, int> totalListingsMap = {};
+      final Map<String, int> activeListingsMap = {};
+      
+      for (final propDoc in propertiesSnapshot.docs) {
+        final propData = propDoc.data();
+        final userId = propData['userId']?.toString() ?? '';
+        if (userId.isNotEmpty) {
+          totalListingsMap[userId] = (totalListingsMap[userId] ?? 0) + 1;
+          
+          // Check if property is active/published
+          // Properties are considered active if:
+          // - isPublished doesn't exist (default true) OR isPublished == true
+          // - AND isActive doesn't exist (default true) OR isActive == true
+          final isPublished = propData.containsKey('isPublished') ? propData['isPublished'] : true;
+          final isActive = propData.containsKey('isActive') ? propData['isActive'] : true;
+          
+          // Only count as inactive if explicitly set to false
+          if (isPublished != false && isActive != false) {
+            activeListingsMap[userId] = (activeListingsMap[userId] ?? 0) + 1;
+          }
+        }
+      }
+      
+      if (kDebugMode) {
+        debugPrint('📊 Property counts calculated from ${propertiesSnapshot.docs.length} total properties:');
+        totalListingsMap.forEach((userId, count) {
+          debugPrint('   User $userId: ${activeListingsMap[userId] ?? 0}/$count properties');
+        });
+        // Count properties without userId
+        final noUserIdCount = propertiesSnapshot.docs.where((doc) {
+          final userId = doc.data()['userId']?.toString() ?? '';
+          return userId.isEmpty;
+        }).length;
+        if (noUserIdCount > 0) {
+          debugPrint('   ⚠️ $noUserIdCount properties have no userId');
+        }
+        // List all user IDs from users collection for comparison
+        debugPrint('📋 Users in database: ${usersSnapshot.docs.map((d) => d.id).join(', ')}');
+      }
+      
       final List<AdminUser> users = [];
       
       for (final doc in usersSnapshot.docs) {
-        final data = doc.data();
-        final user = AdminUser(
-          id: doc.id,
-          name: data['name'] ?? 'Unknown',
-          email: data['email'] ?? '',
-          phone: data['phone'] ?? '',
-          joinDate: data['createdAt'] != null 
-              ? (data['createdAt'] as Timestamp).toDate()
-              : DateTime.now(),
-          isVerified: data['isVerified'] ?? false,
-          isActive: data['isActive'] ?? true,
-          totalListings: data['totalListings'] ?? 0,
-          activeListings: data['activeListings'] ?? 0,
-        );
-        users.add(user);
+        try {
+          final data = doc.data();
+          final userId = doc.id;
+          final user = AdminUser(
+            id: userId,
+            name: data['name']?.toString() ?? 'Unknown',
+            email: data['email']?.toString() ?? '',
+            phone: data['phone']?.toString() ?? 'N/A',
+            joinDate: data['createdAt'] != null 
+                ? (data['createdAt'] is Timestamp 
+                    ? (data['createdAt'] as Timestamp).toDate() 
+                    : DateTime.tryParse(data['createdAt'].toString()) ?? DateTime.now())
+                : DateTime.now(),
+            isVerified: data['isVerified'] ?? false,
+            isActive: data['isActive'] ?? true,
+            isRealEstateOffice: data['isRealEstateOffice'] ?? false,
+            isAdmin: data['isAdmin'] ?? false,
+            // Use actual counted values instead of stored values
+            totalListings: totalListingsMap[userId] ?? 0,
+            activeListings: activeListingsMap[userId] ?? 0,
+            postingCredits: (data['postingCredits'] as num?)?.toInt() ?? 0,
+          );
+          users.add(user);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('⚠️ Error parsing user ${doc.id}: $e');
+          }
+        }
+      }
+      
+      if (kDebugMode) {
+        debugPrint('✅ Loaded ${users.length} users from Firestore');
+        if (users.isEmpty) {
+          debugPrint('⚠️ No users found in Firestore collection');
+        } else {
+          debugPrint('   First user: ${users.first.name} (${users.first.email})');
+        }
       }
       
       return users;
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (kDebugMode) {
-        debugPrint('⚠️ Failed to fetch admin users from Firebase, using empty list: $e');
+        debugPrint('❌ Failed to fetch admin users from Firebase: $e');
+        debugPrint('   Stack trace: $stackTrace');
       }
       return [];
+    }
+  }
+
+  /// Import vouchers from a list of codes
+  Future<int> importVouchers({
+    required int amount,
+    required List<String> codes,
+  }) async {
+    try {
+      int count = 0;
+      // Process in chunks of 500 (Firestore batch limit)
+      for (var i = 0; i < codes.length; i += 500) {
+        final end = (i + 500 < codes.length) ? i + 500 : codes.length;
+        final batch = FirebaseFirestore.instance.batch();
+        final chunk = codes.sublist(i, end);
+        
+        for (final code in chunk) {
+          final cleanCode = code.trim();
+          if (cleanCode.isNotEmpty) {
+            final docRef = FirebaseFirestore.instance.collection('vouchers').doc(cleanCode);
+            batch.set(docRef, {
+              'value': amount,
+              'isUsed': false,
+              'createdAt': FieldValue.serverTimestamp(),
+              'importedBy': 'admin_manual',
+            });
+            count++;
+          }
+        }
+        await batch.commit();
+      }
+      
+      if (kDebugMode) {
+        debugPrint('✅ Imported $count vouchers of $amount LYD');
+      }
+      
+      return count;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Failed to import vouchers: $e');
+      }
+      rethrow;
     }
   }
 
@@ -647,9 +794,40 @@ class AdminService {
           .get();
       
       final List<AdminProperty> properties = [];
+      final now = DateTime.now();
       
       for (final doc in propertiesSnapshot.docs) {
         final data = doc.data();
+        
+        // Check if boost has expired
+        bool isBoosted = data['isBoosted'] ?? false;
+        if (isBoosted && data['boostExpiresAt'] != null) {
+          final expiryDate = (data['boostExpiresAt'] as Timestamp).toDate();
+          if (expiryDate.isBefore(now)) {
+            // Boost has expired - update Firestore in background
+            isBoosted = false;
+            FirebaseFirestore.instance
+                .collection('properties')
+                .doc(doc.id)
+                .update({
+                  'isBoosted': false,
+                  'boostExpired': true,
+                }).catchError((e) {
+                  if (kDebugMode) {
+                    debugPrint('⚠️ Failed to update expired boost for ${doc.id}: $e');
+                  }
+                });
+          }
+        }
+        
+        // Calculate if property is effectively expired (60 days old)
+        final createdAt = data['createdAt'] != null 
+            ? (data['createdAt'] as Timestamp).toDate()
+            : DateTime.now();
+        final isExpiredByAge = now.difference(createdAt).inDays >= 60;
+        final isExpiredFlag = data['isExpired'] ?? false;
+        final effectivelyExpired = isExpiredFlag || isExpiredByAge;
+        
         final property = AdminProperty(
           id: doc.id,
           title: data['title'] ?? 'Untitled',
@@ -659,12 +837,12 @@ class AdminService {
           city: data['city'] ?? '',
           status: data['status'] == 'for_sale' ? 'For Sale' : 
                  data['status'] == 'for_rent' ? 'For Rent' : 'Unknown',
-          createdAt: data['createdAt'] != null 
-              ? (data['createdAt'] as Timestamp).toDate()
-              : DateTime.now(),
+          createdAt: createdAt,
           isActive: data['isActive'] ?? true,
           views: data['views'] ?? 0,
-          isBoosted: data['isBoosted'] ?? false,
+          isBoosted: isBoosted,
+          isPublished: data['isPublished'] ?? true,
+          isExpired: effectivelyExpired, // Use calculated expiration
         );
         properties.add(property);
       }
@@ -805,6 +983,127 @@ class AdminService {
     }
   }
 
+  /// Toggle real estate office status
+  Future<bool> toggleRealEstateOfficeStatus(String userId, {String? token}) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🔥 Toggling real estate office status in Firebase');
+      }
+      
+      // Get current user data
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (!userDoc.exists) {
+        if (kDebugMode) {
+          debugPrint('⚠️ User $userId not found in Firebase');
+        }
+        return false;
+      }
+      
+      final currentData = userDoc.data()!;
+      final currentOfficeStatus = currentData['isRealEstateOffice'] ?? false;
+      final newOfficeStatus = !currentOfficeStatus;
+      
+      if (kDebugMode) {
+        debugPrint('🔄 Toggling office status for user $userId:');
+        debugPrint('   Current status: $currentOfficeStatus');
+        debugPrint('   New status: $newOfficeStatus');
+        debugPrint('   Field exists in Firestore: ${currentData.containsKey('isRealEstateOffice')}');
+      }
+      
+      // Update office status - use set with merge to ensure field is created if it doesn't exist
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .set({
+        'isRealEstateOffice': newOfficeStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      
+      if (kDebugMode) {
+        debugPrint('✅ User $userId real estate office status updated to $newOfficeStatus in Firebase');
+        
+        // Verify the update
+        final verifyDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+        final verifyData = verifyDoc.data();
+        debugPrint('   Verification - isRealEstateOffice in Firestore: ${verifyData?['isRealEstateOffice']}');
+      }
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Failed to toggle real estate office status in Firebase: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Toggle admin status for a user
+  Future<bool> toggleAdminStatus(String userId, {String? token}) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('🔥 Toggling admin status in Firebase');
+      }
+      
+      // Get current user data
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (!userDoc.exists) {
+        if (kDebugMode) {
+          debugPrint('⚠️ User $userId not found in Firebase');
+        }
+        return false;
+      }
+      
+      final currentData = userDoc.data()!;
+      final currentAdminStatus = currentData['isAdmin'] ?? false;
+      final newAdminStatus = !currentAdminStatus;
+      
+      if (kDebugMode) {
+        debugPrint('🔄 Toggling admin status for user $userId:');
+        debugPrint('   Current status: $currentAdminStatus');
+        debugPrint('   New status: $newAdminStatus');
+      }
+      
+      // Update admin status
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .set({
+        'isAdmin': newAdminStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      
+      if (kDebugMode) {
+        debugPrint('✅ User $userId admin status updated to $newAdminStatus in Firebase');
+        
+        // Verify the update
+        final verifyDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+        final verifyData = verifyDoc.data();
+        debugPrint('   Verification - isAdmin in Firestore: ${verifyData?['isAdmin']}');
+      }
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('⚠️ Failed to toggle admin status in Firebase: $e');
+      }
+      return false;
+    }
+  }
+
   /// Deactivate a property
   Future<bool> deactivateProperty(String propertyId, {String? token}) async {
     try {
@@ -841,11 +1140,26 @@ class AdminService {
         debugPrint('🔥 Deleting property from Firebase (useMockData: false)');
       }
       
+      // Get property first to get userId
+      final doc = await FirebaseFirestore.instance.collection('properties').doc(propertyId).get();
+      final userId = doc.data()?['userId'] as String?;
+
       // Delete from Firebase Firestore
       await FirebaseFirestore.instance
           .collection('properties')
           .doc(propertyId)
           .delete();
+      
+      // Decrement user's property count to free up the slot
+      // COMMENTED OUT: We want burned slots behavior (deleted properties still occupy a slot)
+      /*
+      if (userId != null) {
+        await FirebaseFirestore.instance.collection('users').doc(userId).update({
+          'totalListings': FieldValue.increment(-1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      */
       
       if (kDebugMode) {
         debugPrint('✅ Property $propertyId deleted successfully from Firebase');
@@ -886,11 +1200,13 @@ class AdminService {
       int boostedProperties = 0;
       num totalRevenue = 0;
       int completedPayments = 0;
+      int totalPointsIssued = 0;
       
       for (final userDoc in users) {
         final userData = userDoc.data();
         if (userData['isVerified'] == true) verifiedUsers++;
         if (userData['isActive'] == true) activeUsers++;
+        totalPointsIssued += (userData['postingCredits'] as num?)?.toInt() ?? 0;
       }
       
       for (final propertyDoc in properties) {
@@ -936,12 +1252,47 @@ class AdminService {
         'activePremiumListings': boostedProperties,
         'expiredPremiumListings': 0,
         'premiumRevenue': totalRevenue.toInt(),
+        'totalPointsIssued': totalPointsIssued,
       };
     } catch (e) {
       if (kDebugMode) {
         debugPrint('⚠️ Failed to fetch admin dashboard stats from Firebase, using empty stats: $e');
       }
       return {};
+    }
+  }
+
+  /// Adjust posting credits for a user (admin action)
+  /// [delta] can be positive (add) or negative (deduct)
+  Future<bool> adjustUserPostingCredits(String userId, int delta) async {
+    try {
+      // Prevent credits from going below 0 by clamping
+      if (delta < 0) {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+        final current = (userDoc.data()?['postingCredits'] as num?)?.toInt() ?? 0;
+        if (current + delta < 0) {
+          delta = -current; // Clamp to 0
+        }
+        if (delta == 0) return true; // Already at 0
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .update({
+        'postingCredits': FieldValue.increment(delta),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (kDebugMode) {
+        debugPrint('✅ Admin adjusted postingCredits for $userId by $delta');
+      }
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Failed to adjust posting credits for $userId: $e');
+      }
+      return false;
     }
   }
 
@@ -952,16 +1303,76 @@ class AdminService {
         debugPrint('🔥 Fetching admin premium listings from Firebase (useMockData: false)');
       }
       
-      // Get boosted properties from Firestore
+      // Get boosted properties from Firestore - include both active and recently expired
       final propertiesSnapshot = await FirebaseFirestore.instance
           .collection('properties')
           .where('isBoosted', isEqualTo: true)
           .get();
       
-      final List<AdminPremiumListing> premiumListings = [];
+      // Also get recently expired boosts (properties that have boostExpiresAt but isBoosted might still be true)
+      final expiredBoostsSnapshot = await FirebaseFirestore.instance
+          .collection('properties')
+          .where('boostExpiresAt', isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 30))))
+          .get();
       
-      for (final doc in propertiesSnapshot.docs) {
+      final List<AdminPremiumListing> premiumListings = [];
+      final Set<String> processedIds = {};
+      final now = DateTime.now();
+      
+      // Process both snapshots
+      final allDocs = [...propertiesSnapshot.docs, ...expiredBoostsSnapshot.docs];
+      
+      for (final doc in allDocs) {
+        // Skip duplicates
+        if (processedIds.contains(doc.id)) continue;
+        processedIds.add(doc.id);
+        
         final data = doc.data();
+        
+        // Skip if no boost data at all
+        if (data['boostExpiresAt'] == null && data['isBoosted'] != true) continue;
+        
+        // Determine if boost is expired
+        DateTime expiryDate;
+        bool isExpired = false;
+        
+        if (data['boostExpiresAt'] != null) {
+          // Handle both Timestamp and String formats
+          if (data['boostExpiresAt'] is Timestamp) {
+            expiryDate = (data['boostExpiresAt'] as Timestamp).toDate();
+          } else if (data['boostExpiresAt'] is String) {
+            expiryDate = DateTime.tryParse(data['boostExpiresAt'] as String) ?? now.add(const Duration(days: 7));
+          } else {
+            expiryDate = now.add(const Duration(days: 7));
+          }
+          isExpired = expiryDate.isBefore(now);
+          
+          if (kDebugMode) {
+            final daysLeft = expiryDate.difference(now).inDays;
+            final hoursLeft = expiryDate.difference(now).inHours;
+            debugPrint('💎 Premium: ${data['title']} - Expires: $expiryDate, Days left: $daysLeft, Hours left: $hoursLeft, Expired: $isExpired');
+          }
+          
+          // Auto-deactivate expired boosts in Firestore
+          if (isExpired && data['isBoosted'] == true) {
+            FirebaseFirestore.instance
+                .collection('properties')
+                .doc(doc.id)
+                .update({
+                  'isBoosted': false,
+                  'boostExpired': true,
+                }).catchError((e) {
+                  if (kDebugMode) {
+                    debugPrint('⚠️ Failed to update expired boost for ${doc.id}: $e');
+                  }
+                });
+          }
+        } else {
+          expiryDate = DateTime.now().add(const Duration(days: 7));
+          if (kDebugMode) {
+            debugPrint('💎 Premium: ${data['title']} - No expiry date, defaulting to 7 days');
+          }
+        }
         
         // Get owner info
         final ownerId = data['userId'];
@@ -991,23 +1402,26 @@ class AdminService {
           purchaseDate: data['boostPurchasedAt'] != null 
               ? (data['boostPurchasedAt'] as Timestamp).toDate()
               : DateTime.now(),
-          expiryDate: data['boostExpiresAt'] != null 
-              ? (data['boostExpiresAt'] as Timestamp).toDate()
-              : DateTime.now().add(const Duration(days: 7)),
-          isActive: data['isBoosted'] ?? false,
+          expiryDate: expiryDate,
+          isActive: !isExpired,
           views: data['views'] ?? 0,
-          status: data['isBoosted'] == true ? 'Active' : 'Expired',
+          status: isExpired ? 'Expired' : 'Active',
         );
         premiumListings.add(premiumListing);
       }
       
       // Sort by the specified field
       if (sortBy == 'expiryDate' || sortBy == null) {
-        premiumListings.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
+        // Sort active listings first, then by expiry date
+        premiumListings.sort((a, b) {
+          if (a.isActive && !b.isActive) return -1;
+          if (!a.isActive && b.isActive) return 1;
+          return a.expiryDate.compareTo(b.expiryDate);
+        });
       } else if (sortBy == 'purchaseDate') {
         premiumListings.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
-      } else if (sortBy == 'packagePrice') {
-        premiumListings.sort((a, b) => b.packagePrice.compareTo(a.packagePrice));
+      } else if (sortBy == 'packageName') {
+        premiumListings.sort((a, b) => a.packageName.compareTo(b.packageName));
       } else if (sortBy == 'views') {
         premiumListings.sort((a, b) => b.views.compareTo(a.views));
       }
@@ -1068,7 +1482,7 @@ class AdminService {
       // Delete user from Firebase Authentication using REST API
       try {
         // Firebase Auth REST API endpoint for deleting a user
-        final authUrl = 'https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${FirebaseConfig.apiKey}';
+        const authUrl = 'https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${FirebaseConfig.apiKey}';
         
         final authResponse = await http.post(
           Uri.parse(authUrl),
@@ -1177,6 +1591,28 @@ class AdminService {
       if (kDebugMode) {
         debugPrint('⚠️ Failed to deactivate premium listing in Firebase: $e');
       }
+      return false;
+    }
+  }
+
+  /// Renew a property (Admin)
+  Future<bool> renewProperty(String propertyId) async {
+    try {
+      if (kDebugMode) debugPrint('🔥 Admin renewing property: $propertyId');
+      
+      await FirebaseFirestore.instance
+          .collection('properties')
+          .doc(propertyId)
+          .update({
+        'isPublished': true,
+        'isExpired': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ Failed to renew property as admin: $e');
       return false;
     }
   }

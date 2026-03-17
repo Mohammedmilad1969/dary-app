@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import '../models/property.dart';
 import '../models/wallet.dart' as wallet_models;
-import '../models/premium_package.dart';
 import '../models/saved_search.dart';
 
 /// Comprehensive Persistence Service
@@ -53,6 +52,7 @@ class PersistenceService {
 
       if (kDebugMode) {
         debugPrint('📦 PersistenceService: Cached ${properties.length} properties to Firebase and locally');
+        debugPrint('ℹ️ Note: Offline loading is limited to the latest 100 items to ensure performance.');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -77,9 +77,7 @@ class PersistenceService {
           return Property.fromJson(data['property']);
         }).toList();
 
-        if (kDebugMode) {
-          debugPrint('📦 PersistenceService: Loaded ${properties.length} properties from Firebase');
-        }
+
         return properties;
       }
 
@@ -91,9 +89,7 @@ class PersistenceService {
         final List<dynamic> propertiesData = jsonDecode(propertiesJson);
         final List<Property> cachedProperties = propertiesData.map((data) => Property.fromJson(data)).toList();
         
-        if (kDebugMode) {
-          debugPrint('📦 PersistenceService: Loaded ${cachedProperties.length} properties from local cache');
-        }
+
         return cachedProperties;
       }
     } catch (e) {

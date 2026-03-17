@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:provider/provider.dart';
-import '../../services/auth_service.dart';
 import '../../utils/firebase_auth_helper.dart';
+import '../../widgets/dary_loading_indicator.dart';
 
 class FirebaseAuthManagementScreen extends StatefulWidget {
   const FirebaseAuthManagementScreen({super.key});
@@ -106,7 +105,7 @@ class _FirebaseAuthManagementScreenState extends State<FirebaseAuthManagementScr
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: DaryLoadingIndicator())
           : _users.isEmpty
               ? const Center(
                   child: Column(
@@ -131,30 +130,30 @@ class _FirebaseAuthManagementScreenState extends State<FirebaseAuthManagementScr
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       color: Colors.orange.shade100,
-                      child: Column(
+                      child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             '📋 Instructions:',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
+                          SizedBox(height: 8),
+                          Text(
                             '1. Go to Firebase Console → Authentication → Users',
                             style: TextStyle(fontSize: 14),
                           ),
-                          const Text(
+                          Text(
                             '2. Click "Add user" for each user below',
                             style: TextStyle(fontSize: 14),
                           ),
-                          const Text(
+                          Text(
                             '3. Use the email and create a password',
                             style: TextStyle(fontSize: 14),
                           ),
-                          const Text(
+                          Text(
                             '4. Click "Mark as Created" after adding to Firebase Auth',
                             style: TextStyle(fontSize: 14),
                           ),

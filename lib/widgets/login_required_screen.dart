@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:dary/l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import '../services/theme_service.dart';
 
 class LoginRequiredScreen extends StatelessWidget {
@@ -38,7 +38,7 @@ class LoginRequiredScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'Login Required',
+                l10n?.loginRequired ?? 'Login Required',
                 style: ThemeService.getHeadingStyle(
                   context,
                   fontSize: 24,
@@ -48,7 +48,7 @@ class LoginRequiredScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                description ?? 'Please login to access $featureName',
+                description ?? l10n?.pleaseLoginToAccess(featureName) ?? 'Please login to access $featureName',
                 textAlign: TextAlign.center,
                 style: ThemeService.getBodyStyle(
                   context,
@@ -65,7 +65,7 @@ class LoginRequiredScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
                 child: Text(
-                  'Login',
+                  l10n?.login ?? 'Login',
                   style: ThemeService.getBodyStyle(
                     context,
                     fontWeight: FontWeight.w600,
@@ -76,7 +76,7 @@ class LoginRequiredScreen extends StatelessWidget {
               TextButton(
                 onPressed: () => context.go('/'),
                 child: Text(
-                  'Back to Home',
+                  l10n?.backToHome ?? 'Back to Home',
                   style: ThemeService.getBodyStyle(
                     context,
                     color: Colors.green,

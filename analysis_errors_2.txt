@@ -1,0 +1,7 @@
+Analyzing 2 items...                                            
+
+   info - The import of 'package:flutter/material.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/foundation.dart' - lib\providers\auth_provider.dart:2:8 - unnecessary_import
+warning - The value of the local variable 'googleAuth' isn't used - lib\services\auth_service.dart:849:40 - unused_local_variable
+warning - The '!' will have no effect because the receiver can't be null - lib\services\auth_service.dart:875:25 - unnecessary_non_null_assertion
+warning - The '!' will have no effect because the receiver can't be null - lib\services\auth_service.dart:906:25 - unnecessary_non_null_assertion
+

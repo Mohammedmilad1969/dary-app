@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "RNTRC2TF4Y.com.example.dary",
+        "paths": ["*"]
+      }
+    ]
+  }
+}

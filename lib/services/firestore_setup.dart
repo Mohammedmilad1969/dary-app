@@ -17,10 +17,10 @@ class FirestoreSetup {
       await FirestoreStructure.initializeDefaultPackages();
       
       // Create sample users (optional - for testing)
-      await _createSampleUsers();
+      // await _createSampleUsers();
       
       // Create sample properties (optional - for testing)
-      await _createSampleProperties();
+      // await _createSampleProperties();
       
       print('✅ Firestore initialization completed successfully!');
     } catch (e) {
@@ -50,15 +50,6 @@ class FirestoreSetup {
         isVerified: true,
       );
 
-      // Admin user
-      await FirestoreStructure.createUserDocument(
-        uid: 'admin_user',
-        name: 'Admin User',
-        email: 'admin@dary.com',
-        phone: '+9999999999',
-        isVerified: true,
-        isAdmin: true,
-      );
 
       // Create wallets for sample users
       await FirestoreStructure.createWalletDocument(
@@ -71,10 +62,6 @@ class FirestoreSetup {
         initialBalance: 150.0,
       );
 
-      await FirestoreStructure.createWalletDocument(
-        uid: 'admin_user',
-        initialBalance: 1000.0,
-      );
 
       print('✅ Sample users created');
     } catch (e) {

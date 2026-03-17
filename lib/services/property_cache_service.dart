@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/property.dart';
-import '../config/env_config.dart';
 
 class PropertyCacheService {
   static final PropertyCacheService _instance = PropertyCacheService._internal();

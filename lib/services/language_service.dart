@@ -4,7 +4,7 @@ class LanguageService extends ChangeNotifier {
   static const Locale _englishLocale = Locale('en');
   static const Locale _arabicLocale = Locale('ar');
   
-  Locale _currentLocale = _englishLocale;
+  Locale _currentLocale = _arabicLocale;
   
   Locale get currentLocale => _currentLocale;
   

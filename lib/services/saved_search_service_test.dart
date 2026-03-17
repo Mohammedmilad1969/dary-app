@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import 'saved_search_service.dart';
 
 /// Test widget to verify Firebase Saved Search Service functionality

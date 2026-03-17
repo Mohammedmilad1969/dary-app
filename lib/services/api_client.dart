@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../config/env_config.dart';
 import '../providers/auth_provider.dart';
-import '../app/app_router.dart';
 
 /// Custom exception for authentication-related errors
 class AuthException implements Exception {
@@ -72,11 +71,20 @@ class GlobalErrorHandler {
       debugPrint('🔍 Network error details: $error');
     }
     
-    await _showSnackBar(
-      'Network connection failed. Please check your internet connection.',
-      backgroundColor: Colors.orange,
-      duration: const Duration(seconds: 4),
-    );
+    // If this is just the custom API being unreachable (SocketException / ClientException),
+    // the service already falls back to Firebase silently — no need to alarm the user.
+    final errorStr = error.toString().toLowerCase();
+    final isApiServerUnreachable = errorStr.contains('socketexception') ||
+        errorStr.contains('failed host lookup') ||
+        errorStr.contains('clientexception');
+    
+    if (!isApiServerUnreachable) {
+      await _showSnackBar(
+        'Network connection failed. Please check your internet connection.',
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 4),
+      );
+    }
   }
   
   /// Handle 401 Unauthorized - logout and redirect to login
